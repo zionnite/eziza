@@ -453,15 +453,17 @@ class _RiderMapPageState extends State<RiderMapPage> {
 
     // Send (or resend) the OTP first so the sheet can show the masked phone.
     String maskedPhone = _otpMaskedPhone; // reuse if already sent
+    String? devOtp;
     if (maskedPhone.isEmpty) {
       try {
         final res = await _callOtp('send');
         maskedPhone = res['masked_phone'] as String? ?? _dropoffPhone;
+        devOtp = res['dev_otp'] as String?;
         if (mounted) setState(() => _otpMaskedPhone = maskedPhone);
       } catch (e) {
         if (mounted) {
           setState(() => _otpSheetOpen = false);
-          Get.snackbar('Could not send SMS', e.toString(),
+          Get.snackbar('Could not send OTP', e.toString(),
               backgroundColor: EzizaColors.kError,
               colorText: EzizaColors.kWhite,
               snackPosition: SnackPosition.BOTTOM);
@@ -481,15 +483,15 @@ class _RiderMapPageState extends State<RiderMapPage> {
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => _OtpSheet(
         maskedPhone: maskedPhone,
+        devOtp:     devOtp,
         onVerify: (code) => _callOtp('verify', otp: code),
         onResend: () async {
           final res = await _callOtp('send');
           final mp = res['masked_phone'] as String? ?? maskedPhone;
           if (mounted) setState(() => _otpMaskedPhone = mp);
-          return mp;
+          return (mp: mp, devOtp: res['dev_otp'] as String?);
         },
         onConfirmed: () {
-          // OTP sheet signals success — close map page.
           _otpSheetOpen = false;
           _closeMap();
         },
@@ -961,11 +963,13 @@ class _OtpSheet extends StatefulWidget {
     required this.onVerify,
     required this.onResend,
     required this.onConfirmed,
+    this.devOtp,
   });
 
   final String maskedPhone;
+  final String? devOtp;
   final Future<Map<String, dynamic>> Function(String code) onVerify;
-  final Future<String> Function() onResend;
+  final Future<({String mp, String? devOtp})> Function() onResend;
   final VoidCallback onConfirmed;
 
   @override
@@ -977,15 +981,17 @@ class _OtpSheetState extends State<_OtpSheet> {
   String? _error;
   bool    _loading    = false;
   bool    _resending  = false;
-  int     _resendSecs = 0; // countdown before next resend
+  int     _resendSecs = 0;
   Timer?  _resendTimer;
-  late String _maskedPhone;
+  late String  _maskedPhone;
+  String? _devOtp;
 
   @override
   void initState() {
     super.initState();
     _maskedPhone = widget.maskedPhone;
-    _startResendCooldown(30); // first send just happened — 30 s cooldown
+    _devOtp      = widget.devOtp;
+    _startResendCooldown(30);
   }
 
   @override
@@ -1026,11 +1032,19 @@ class _OtpSheetState extends State<_OtpSheet> {
     if (_resendSecs > 0 || _resending) return;
     setState(() { _resending = true; _error = null; });
     try {
-      final mp = await widget.onResend();
+      final result = await widget.onResend();
       if (mounted) {
-        setState(() { _maskedPhone = mp; _resending = false; _ctrl.clear(); });
+        setState(() {
+          _maskedPhone = result.mp;
+          _devOtp      = result.devOtp;
+          _resending   = false;
+          _ctrl.clear();
+        });
         _startResendCooldown(60);
-        Get.snackbar('Code sent', 'A new code was sent to $_maskedPhone',
+        Get.snackbar('Code sent',
+            result.devOtp != null
+                ? 'SMS unavailable — use the code shown on screen.'
+                : 'A new code was sent to ${result.mp}',
             backgroundColor: EzizaColors.kSuccess,
             colorText: Colors.white,
             snackPosition: SnackPosition.BOTTOM);
@@ -1073,10 +1087,35 @@ class _OtpSheetState extends State<_OtpSheet> {
                 color: EzizaColors.kText)),
         const SizedBox(height: 6),
         Text(
-          'Ask the recipient for the code sent to\n$_maskedPhone',
+          _devOtp != null
+              ? 'SMS unavailable — use the code below to test:'
+              : 'Ask the recipient for the code sent to\n$_maskedPhone',
           textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 13, color: EzizaColors.kMuted, height: 1.5),
         ),
+
+        // Dev fallback — show OTP on screen when SMS is not working
+        if (_devOtp != null) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF8E1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: EzizaColors.kGold),
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              const Icon(Icons.warning_amber_rounded,
+                  color: EzizaColors.kGold, size: 18),
+              const SizedBox(width: 8),
+              Text(_devOtp!,
+                  style: const TextStyle(
+                      fontSize: 26, fontWeight: FontWeight.w900,
+                      letterSpacing: 8, color: EzizaColors.kText)),
+            ]),
+          ),
+        ],
+
         const SizedBox(height: 24),
 
         // OTP input

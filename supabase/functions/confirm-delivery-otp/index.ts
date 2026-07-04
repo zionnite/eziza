@@ -140,9 +140,21 @@ serve(async (req) => {
       })
       if (insertErr) throw insertErr
 
-      await sendSms(phone.trim(), otpCode)
+      let devOtp: string | undefined
+      try {
+        await sendSms(phone.trim(), otpCode)
+      } catch (smsErr) {
+        // SMS failed — return the code in the response so the rider can
+        // enter it manually (temporary until SMS provider is working).
+        console.warn('[confirm-delivery-otp] SMS failed, falling back to dev_otp:', smsErr)
+        devOtp = otpCode
+      }
 
-      return json({ ok: true, masked_phone: maskPhone(phone.trim()) })
+      return json({
+        ok:           true,
+        masked_phone: maskPhone(phone.trim()),
+        ...(devOtp ? { dev_otp: devOtp } : {}),
+      })
     }
 
     // ── action: verify ────────────────────────────────────────────────────────
