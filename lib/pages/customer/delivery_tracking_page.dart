@@ -18,8 +18,13 @@ const _ngDefault = LatLng(9.0820, 8.6753);
 /// Customer's live tracking view — shows rider moving on map, ETA, and
 /// a "Confirm Receipt" button when the rider marks it delivered.
 class DeliveryTrackingPage extends StatefulWidget {
-  const DeliveryTrackingPage({super.key, required this.deliveryId});
+  const DeliveryTrackingPage({
+    super.key,
+    required this.deliveryId,
+    this.isRecipient = false,
+  });
   final String deliveryId;
+  final bool isRecipient;
 
   @override
   State<DeliveryTrackingPage> createState() => _DeliveryTrackingPageState();
@@ -902,8 +907,8 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
         ),
       ],
 
-      // Rider arrived — confirm handoff
-      if (_delivery?['status'] == 'awaiting_pickup_confirm') ...[
+      // Rider arrived — confirm handoff (sender only, not recipient)
+      if (!widget.isRecipient && _delivery?['status'] == 'awaiting_pickup_confirm') ...[
         const SizedBox(height: 14),
         Container(
           padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),

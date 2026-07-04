@@ -1111,7 +1111,10 @@ class _CustomerDeliveryDetailPageState
 
   Widget _trackLiveButton() => GestureDetector(
     onTap: () =>
-        Get.to(() => DeliveryTrackingPage(deliveryId: widget.deliveryId)),
+        Get.to(() => DeliveryTrackingPage(
+              deliveryId: widget.deliveryId,
+              isRecipient: widget.isRecipient,
+            )),
     child: Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 16),

@@ -1755,7 +1755,9 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
     final price    = (d['agreed_price']    as num?)?.toDouble();
     final createdAt = DateTime.tryParse(d['created_at'] as String? ?? '');
     final id       = d['id'] as String;
-    final needsConfirm = status == 'delivered';
+    final needsConfirm  = status == 'delivered';
+    final isTrackable = ['assigned', 'awaiting_pickup_confirm', 'picked_up', 'delivered']
+        .contains(status);
 
     final (Color statusColor, _, IconData statusIcon) = _statusMeta(status);
 
@@ -1906,6 +1908,43 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
                                 size: 12, color: EzizaColors.kPurpleD),
                           ]),
                           const Spacer(),
+                          if (isTrackable && !needsConfirm)
+                            GestureDetector(
+                              onTap: () => Get.to(() => DeliveryTrackingPage(
+                                    deliveryId: id,
+                                    isRecipient: true,
+                                  )),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 7),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(colors: [
+                                    EzizaColors.kPurple,
+                                    EzizaColors.kPurpleD,
+                                  ]),
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: [
+                                    BoxShadow(
+                                        color: EzizaColors.kPurpleD
+                                            .withValues(alpha: 0.3),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 3))
+                                  ],
+                                ),
+                                child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.location_on_rounded,
+                                          size: 12, color: EzizaColors.kGold),
+                                      SizedBox(width: 5),
+                                      Text('Track Live',
+                                          style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.white)),
+                                    ]),
+                              ),
+                            ),
                           if (needsConfirm)
                             GestureDetector(
                               onTap: () => _openIncomingDetail(id),
