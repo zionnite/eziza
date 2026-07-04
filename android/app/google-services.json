@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "727989696650",
+    "project_id": "eziza-rider",
+    "storage_bucket": "eziza-rider.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:727989696650:android:a2cc0ecb0df85dceee5573",
+        "android_client_info": {
+          "package_name": "com.eziza.eziza_rider"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC2S6_2zK3z4reSZMy7PJXpVvaeRuar-1I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
