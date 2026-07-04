@@ -1794,60 +1794,34 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
       );
 
   void _showFindPackageSheet() {
-    final idCtrl = TextEditingController();
-    bool searching = false;
-    bool claiming  = false;
-    Map<String, dynamic>? preview;
+    final codeCtrl = TextEditingController();
+    bool loading = false;
+    Map<String, dynamic>? result;
     String? error;
 
     Get.bottomSheet(
       StatefulBuilder(builder: (ctx, setS) {
-        Future<void> doSearch() async {
-          final raw = idCtrl.text.trim();
-          if (raw.isEmpty) return;
-          setS(() { searching = true; preview = null; error = null; });
+        Future<void> doFind() async {
+          final code = codeCtrl.text.trim().toUpperCase();
+          if (code.isEmpty) return;
+          setS(() { loading = true; result = null; error = null; });
           try {
-            final res = await _db.rpc('preview_delivery', params: {'p_id': raw});
+            final res = await _db.rpc(
+              'find_and_claim_delivery',
+              params: {'p_code': code},
+            );
             final data = Map<String, dynamic>.from(res as Map);
             if (data['error'] != null) {
-              setS(() { error = data['error'] as String; searching = false; });
+              setS(() { error = data['error'] as String; loading = false; });
             } else {
-              setS(() { preview = data; searching = false; });
+              // Refresh incoming list in background (don't await — sheet stays open)
+              _loadIncoming();
+              setS(() { result = data; loading = false; });
             }
           } catch (e) {
             setS(() {
-              error = 'Could not look up delivery. Check the ID and try again.';
-              searching = false;
-            });
-          }
-        }
-
-        Future<void> doClaim() async {
-          final delivId = preview!['delivery_id'] as String;
-          setS(() { claiming = true; error = null; });
-          try {
-            final res = await _db.rpc('claim_delivery', params: {'p_id': delivId});
-            final data = Map<String, dynamic>.from(res as Map);
-            if (data['error'] != null) {
-              setS(() { error = data['error'] as String; claiming = false; });
-            } else {
-              Get.back();
-              await _load();
-              setState(() => _tab = 1);
-              _deliveryTabController.animateTo(2);
-              Get.snackbar(
-                'Package claimed!',
-                'It\'s now in your Incoming tab.',
-                snackPosition: SnackPosition.BOTTOM,
-                backgroundColor: EzizaColors.kSuccess,
-                colorText: Colors.white,
-                duration: const Duration(seconds: 3),
-              );
-            }
-          } catch (e) {
-            setS(() {
-              error = 'Could not claim delivery. Please try again.';
-              claiming = false;
+              error = 'Could not look up delivery. Please try again.';
+              loading = false;
             });
           }
         }
@@ -1875,9 +1849,8 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
                     width: 40, height: 4,
                     margin: const EdgeInsets.only(bottom: 20),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2)),
                   ),
                 ),
 
@@ -1889,7 +1862,7 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
                       color: EzizaColors.kTeal.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.search_rounded,
+                    child: const Icon(Icons.qr_code_scanner_rounded,
                         color: EzizaColors.kTeal, size: 22),
                   ),
                   const SizedBox(width: 12),
@@ -1897,12 +1870,12 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Find My Package',
+                        Text('Track My Package',
                             style: TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.w800,
                                 color: EzizaColors.kText)),
-                        Text('Enter the ID shared by the sender',
+                        Text('Enter the 6-character code from the sender',
                             style: TextStyle(
                                 fontSize: 12, color: EzizaColors.kMuted)),
                       ],
@@ -1911,52 +1884,51 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
                 ]),
                 const SizedBox(height: 20),
 
-                // ID input + search button
+                // Code input + search button
                 Row(children: [
                   Expanded(
                     child: TextField(
-                      controller: idCtrl,
+                      controller: codeCtrl,
                       style: const TextStyle(
-                          fontSize: 14,
-                          letterSpacing: 1.2,
-                          fontWeight: FontWeight.w600),
+                          fontSize: 20,
+                          letterSpacing: 4,
+                          fontWeight: FontWeight.w800),
                       textCapitalization: TextCapitalization.characters,
-                      onSubmitted: (_) => doSearch(),
+                      textAlign: TextAlign.center,
+                      maxLength: 6,
+                      onSubmitted: (_) => doFind(),
                       decoration: InputDecoration(
-                        hintText: 'e.g. A3F7B2C1 or full UUID',
-                        hintStyle: const TextStyle(
-                            color: EzizaColors.kMuted,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w400,
-                            letterSpacing: 0),
+                        counterText: '',
+                        hintText: 'A B C 1 2 3',
+                        hintStyle: TextStyle(
+                            color: EzizaColors.kMuted.withValues(alpha: 0.4),
+                            fontSize: 20,
+                            letterSpacing: 4,
+                            fontWeight: FontWeight.w400),
                         filled: true,
                         fillColor: EzizaColors.kSurface,
-                        prefixIcon: const Icon(Icons.tag_rounded,
-                            color: EzizaColors.kPurple, size: 18),
-                        contentPadding: const EdgeInsets.all(14),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 16),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              const BorderSide(color: EzizaColors.kBorder),
-                        ),
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide:
+                                const BorderSide(color: EzizaColors.kBorder)),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              const BorderSide(color: EzizaColors.kBorder),
-                        ),
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide:
+                                const BorderSide(color: EzizaColors.kBorder)),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                              color: EzizaColors.kPurple, width: 1.5),
-                        ),
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                                color: EzizaColors.kPurple, width: 1.5)),
                       ),
                     ),
                   ),
                   const SizedBox(width: 10),
                   GestureDetector(
-                    onTap: searching ? null : doSearch,
+                    onTap: loading ? null : doFind,
                     child: Container(
-                      padding: const EdgeInsets.all(14),
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(colors: [
                           EzizaColors.kPurple,
@@ -1965,26 +1937,25 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                              color:
-                                  EzizaColors.kPurpleD.withValues(alpha: 0.3),
+                              color: EzizaColors.kPurpleD.withValues(alpha: 0.3),
                               blurRadius: 8,
                               offset: const Offset(0, 3)),
                         ],
                       ),
-                      child: searching
+                      child: loading
                           ? const SizedBox(
-                              width: 20, height: 20,
+                              width: 22, height: 22,
                               child: CircularProgressIndicator(
                                   color: Colors.white, strokeWidth: 2))
                           : const Icon(Icons.search_rounded,
-                              color: Colors.white, size: 20),
+                              color: Colors.white, size: 22),
                     ),
                   ),
                 ]),
 
                 // Error
                 if (error != null) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
                   Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 10),
@@ -2001,52 +1972,92 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
                       Expanded(
                         child: Text(error!,
                             style: const TextStyle(
-                                color: EzizaColors.kError, fontSize: 12)),
+                                color: EzizaColors.kError, fontSize: 12,
+                                height: 1.3)),
                       ),
                     ]),
                   ),
                 ],
 
-                // Preview card
-                if (preview != null) ...[
+                // Success card — package found & auto-claimed
+                if (result != null) ...[
                   const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: EzizaColors.kSurface,
+                      color: EzizaColors.kSuccess.withValues(alpha: 0.06),
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: EzizaColors.kBorder),
+                      border: Border.all(
+                          color: EzizaColors.kSuccess.withValues(alpha: 0.3)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Found banner
                         Row(children: [
-                          _statusChip(
-                              preview!['status'] as String? ?? 'open'),
-                          const Spacer(),
-                          Text(
-                            '#${(preview!['delivery_id'] as String).substring(0, 8).toUpperCase()}',
-                            style: const TextStyle(
-                                fontSize: 11,
-                                color: EzizaColors.kMuted,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 1.2),
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color:
+                                  EzizaColors.kSuccess.withValues(alpha: 0.15),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.check_rounded,
+                                color: EzizaColors.kSuccess, size: 16),
                           ),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Package Found!',
+                                    style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w800,
+                                        color: EzizaColors.kText)),
+                                Text('Added to your Incoming tab.',
+                                    style: TextStyle(
+                                        fontSize: 11,
+                                        color: EzizaColors.kMuted)),
+                              ],
+                            ),
+                          ),
+                          // Tracking code badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: EzizaColors.kPurpleD.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              result!['tracking_code'] as String? ?? '',
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  color: EzizaColors.kPurpleD,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 1.5),
+                            ),
+                          ),
+                        ]),
+                        const SizedBox(height: 14),
+                        // Status + route
+                        Row(children: [
+                          _statusChip(result!['status'] as String? ?? 'open'),
                         ]),
                         const SizedBox(height: 12),
                         _previewRoute(
-                          pickup: preview!['pickup_address'] as String? ?? '',
-                          dropoff:
-                              preview!['delivery_address'] as String? ?? '',
+                          pickup:  result!['pickup_address']   as String? ?? '',
+                          dropoff: result!['delivery_address'] as String? ?? '',
                         ),
-                        if (preview!['agreed_price'] != null) ...[
+                        if (result!['agreed_price'] != null) ...[
                           const SizedBox(height: 10),
                           Row(children: [
                             const Icon(Icons.payments_outlined,
                                 size: 13, color: EzizaColors.kMuted),
                             const SizedBox(width: 5),
                             Text(
-                              '₦${_fmtNum((preview!['agreed_price'] as num).toDouble())}',
+                              '₦${_fmtNum((result!['agreed_price'] as num).toDouble())}',
                               style: const TextStyle(
                                   fontSize: 12,
                                   color: EzizaColors.kPurpleD,
@@ -2055,85 +2066,49 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
                           ]),
                         ],
                         const SizedBox(height: 16),
-                        // Claim / Already-claimed button
-                        if (claiming)
-                          const Center(
-                            child: SizedBox(
-                              width: 22, height: 22,
-                              child: CircularProgressIndicator(
-                                  color: EzizaColors.kPurpleD, strokeWidth: 2),
+                        // View delivery button
+                        GestureDetector(
+                          onTap: () {
+                            Get.back();
+                            setState(() => _tab = 1);
+                            _deliveryTabController.animateTo(2);
+                            Get.to(() => CustomerDeliveryDetailPage(
+                                  deliveryId:  result!['delivery_id'] as String,
+                                  isRecipient: true,
+                                ));
+                          },
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(colors: [
+                                EzizaColors.kPurple,
+                                EzizaColors.kPurpleD,
+                              ]),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                    color: EzizaColors.kPurpleD
+                                        .withValues(alpha: 0.3),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4)),
+                              ],
                             ),
-                          )
-                        else if (preview!['already_claimed'] == true)
-                          GestureDetector(
-                            onTap: () {
-                              Get.back();
-                              setState(() => _tab = 1);
-                              _deliveryTabController.animateTo(2);
-                            },
-                            child: Container(
-                              width: double.infinity,
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 13),
-                              decoration: BoxDecoration(
-                                color:
-                                    EzizaColors.kSuccess.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                    color: EzizaColors.kSuccess
-                                        .withValues(alpha: 0.4)),
-                              ),
-                              child: const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.check_circle_outline_rounded,
-                                      color: EzizaColors.kSuccess, size: 18),
-                                  SizedBox(width: 8),
-                                  Text('Already claimed — view in Incoming',
-                                      style: TextStyle(
-                                          color: EzizaColors.kSuccess,
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 13)),
-                                ],
-                              ),
-                            ),
-                          )
-                        else
-                          GestureDetector(
-                            onTap: doClaim,
-                            child: Container(
-                              width: double.infinity,
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 14),
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(colors: [
-                                  EzizaColors.kTeal,
-                                  Color(0xFF0097B2),
-                                ]),
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: [
-                                  BoxShadow(
-                                      color: EzizaColors.kTeal
-                                          .withValues(alpha: 0.3),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 4)),
-                                ],
-                              ),
-                              child: const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.bookmark_add_rounded,
-                                      color: Colors.white, size: 18),
-                                  SizedBox(width: 8),
-                                  Text('This Is Mine — Claim Delivery',
-                                      style: TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: 14)),
-                                ],
-                              ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.local_shipping_rounded,
+                                    color: Colors.white, size: 18),
+                                SizedBox(width: 8),
+                                Text('View & Track Delivery',
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 14)),
+                              ],
                             ),
                           ),
+                        ),
                       ],
                     ),
                   ),

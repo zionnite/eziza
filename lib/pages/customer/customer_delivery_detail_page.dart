@@ -279,10 +279,11 @@ class _CustomerDeliveryDetailPageState
   // ── Header ────────────────────────────────────────────────────
 
   Widget _buildHeader() {
-    final status  = _delivery?['status'] as String? ?? 'open';
-    final shortId = widget.deliveryId.length >= 8
-        ? widget.deliveryId.substring(0, 8).toUpperCase()
-        : widget.deliveryId.toUpperCase();
+    final status      = _delivery?['status'] as String? ?? 'open';
+    final trackingCode = (_delivery?['tracking_code'] as String?) ??
+        (widget.deliveryId.length >= 8
+            ? widget.deliveryId.substring(0, 8).toUpperCase()
+            : widget.deliveryId.toUpperCase());
 
     return Container(
       decoration: const BoxDecoration(
@@ -359,25 +360,35 @@ class _CustomerDeliveryDetailPageState
                 const SizedBox(width: 4),
                 GestureDetector(
                   onTap: () {
-                    Clipboard.setData(ClipboardData(text: shortId));
-                    Get.snackbar('', 'Package ID copied!',
+                    Clipboard.setData(ClipboardData(text: trackingCode));
+                    Get.snackbar('', 'Tracking code copied! Share with recipient.',
                         titleText: const SizedBox.shrink(),
                         backgroundColor: EzizaColors.kPurple,
                         colorText: Colors.white,
                         snackPosition: SnackPosition.BOTTOM,
                         duration: const Duration(seconds: 2));
                   },
-                  child: Row(children: [
-                    Text(shortId,
-                        style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.white54,
-                            letterSpacing: 1.2,
-                            fontWeight: FontWeight.w600)),
-                    const SizedBox(width: 5),
-                    const Icon(Icons.copy_rounded,
-                        size: 11, color: Colors.white30),
-                  ]),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.2)),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Text(trackingCode,
+                          style: const TextStyle(
+                              fontSize: 13,
+                              color: Colors.white,
+                              letterSpacing: 2,
+                              fontWeight: FontWeight.w800)),
+                      const SizedBox(width: 6),
+                      const Icon(Icons.copy_rounded,
+                          size: 12, color: Colors.white60),
+                    ]),
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Container(width: 1, height: 10, color: Colors.white24),
