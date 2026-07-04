@@ -19,8 +19,9 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
     with SingleTickerProviderStateMixin {
   final _db = Supabase.instance.client;
 
-  List<Map<String, dynamic>> _active  = [];
-  List<Map<String, dynamic>> _history = [];
+  List<Map<String, dynamic>> _active   = [];
+  List<Map<String, dynamic>> _history  = [];
+  List<Map<String, dynamic>> _incoming = [];
   bool _loading = true;
   int  _tab     = 0;
   late final TabController _deliveryTabController;
@@ -40,7 +41,7 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
   @override
   void initState() {
     super.initState();
-    _deliveryTabController = TabController(length: 2, vsync: this);
+    _deliveryTabController = TabController(length: 3, vsync: this);
     _load();
     _subscribeRealtime();
   }
@@ -54,51 +55,11 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
 
   Future<void> _load() async {
     setState(() => _loading = true);
-    try {
-      final uid = _db.auth.currentUser?.id;
-      if (uid == null) return;
-      final res = await _db
-          .from('deliveries')
-          .select()
-          .eq('customer_id', uid)
-          .order('created_at', ascending: false);
-      final all = List<Map<String, dynamic>>.from(res);
-      if (mounted) {
-        setState(() {
-          _active  = all.where((d) => _activeStatuses.contains(d['status'])).toList();
-          _history = all.where((d) => _historyStatuses.contains(d['status'])).toList();
-          _loading = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
-    }
+    await Future.wait([_loadSent(), _loadIncoming()]);
+    if (mounted) setState(() => _loading = false);
   }
 
-  void _subscribeRealtime() {
-    final uid = _db.auth.currentUser?.id;
-    if (uid == null) return;
-    if (_channel != null) { _db.removeChannel(_channel!); _channel = null; }
-    _channel = _db
-        .channel('cust_dash_${uid}_${DateTime.now().millisecondsSinceEpoch}')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'deliveries',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'customer_id',
-            value: uid,
-          ),
-          callback: (p) {
-            if (!mounted) return;
-            _refreshQuiet();
-          },
-        )
-        .subscribe();
-  }
-
-  Future<void> _refreshQuiet() async {
+  Future<void> _loadSent() async {
     try {
       final uid = _db.auth.currentUser?.id;
       if (uid == null) return;
@@ -115,12 +76,59 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
         });
       }
     } catch (e) {
-      debugPrint('[CustomerDash] _refreshQuiet error: $e');
+      debugPrint('[CustomerDash] _loadSent error: $e');
     }
+  }
+
+  Future<void> _loadIncoming() async {
+    try {
+      final uid = _db.auth.currentUser?.id;
+      if (uid == null) return;
+      // RLS "recipient_can_read_delivery" policy filters by phone match.
+      // Exclude deliveries I also created to avoid showing them in both tabs.
+      final res = await _db
+          .from('deliveries')
+          .select()
+          .neq('customer_id', uid)
+          .order('created_at', ascending: false);
+      if (mounted) {
+        setState(() => _incoming = List<Map<String, dynamic>>.from(res));
+      }
+    } catch (e) {
+      debugPrint('[CustomerDash] _loadIncoming error: $e');
+    }
+  }
+
+  void _subscribeRealtime() {
+    final uid = _db.auth.currentUser?.id;
+    if (uid == null) return;
+    if (_channel != null) { _db.removeChannel(_channel!); _channel = null; }
+    _channel = _db
+        .channel('cust_dash_${uid}_${DateTime.now().millisecondsSinceEpoch}')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'deliveries',
+          // No column filter — RLS sends events for both sent and incoming deliveries.
+          callback: (p) {
+            if (!mounted) return;
+            _refreshQuiet();
+          },
+        )
+        .subscribe();
+  }
+
+  Future<void> _refreshQuiet() async {
+    await Future.wait([_loadSent(), _loadIncoming()]);
   }
 
   Future<void> _openDetail(String id) async {
     await Get.to(() => CustomerDeliveryDetailPage(deliveryId: id));
+    await _load();
+  }
+
+  Future<void> _openIncomingDetail(String id) async {
+    await Get.to(() => CustomerDeliveryDetailPage(deliveryId: id, isRecipient: true));
     await _load();
   }
 
@@ -243,7 +251,7 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
           'assigned', 'awaiting_pickup_confirm', 'picked_up', 'delivered'
         ].contains(d['status'])).length;
     final completed = _history.where((d) => d['status'] == 'confirmed').length;
-    final cancelled = _history.where((d) => d['status'] == 'cancelled').length;
+    final toConfirm = _incoming.where((d) => d['status'] == 'delivered').length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -320,7 +328,7 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
                           ),
                           const SizedBox(height: 3),
                           Text(
-                            '${_active.length + _history.length} total · ${_active.length} active',
+                            '${_active.length + _history.length} sent · ${_incoming.length} incoming',
                             style: const TextStyle(
                                 fontSize: 13, color: Colors.white60),
                           ),
@@ -338,7 +346,7 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
                             ),
                             child: Row(children: [
                               _miniStat('${_active.length + _history.length}',
-                                  'Total', Colors.white),
+                                  'Sent', Colors.white),
                               _miniStatDiv(),
                               _miniStat('$inTransit', 'In Transit',
                                   EzizaColors.kGold),
@@ -346,8 +354,8 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
                               _miniStat('$completed', 'Done',
                                   const Color(0xFF4ADE80)),
                               _miniStatDiv(),
-                              _miniStat('$cancelled', 'Cancelled',
-                                  const Color(0xFFFC8181)),
+                              _miniStat('${_incoming.length}', 'Incoming',
+                                  EzizaColors.kTeal),
                             ]),
                           ),
                         ],
@@ -392,6 +400,22 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
                                 const SizedBox(width: 6),
                                 _tabBadge(
                                     '${_history.length}', Colors.white54),
+                              ],
+                            ],
+                          ),
+                        ),
+                        Tab(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text('Incoming'),
+                              if (toConfirm > 0) ...[
+                                const SizedBox(width: 6),
+                                _tabBadge('$toConfirm', EzizaColors.kGold,
+                                    dark: true),
+                              ] else if (_incoming.isNotEmpty) ...[
+                                const SizedBox(width: 6),
+                                _tabBadge('${_incoming.length}', Colors.white54),
                               ],
                             ],
                           ),
@@ -446,6 +470,24 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
                               padding:
                                   const EdgeInsets.fromLTRB(16, 16, 16, 60),
                               children: _history.map(_deliveryCard).toList(),
+                            ),
+                    ),
+                    RefreshIndicator(
+                      color: EzizaColors.kPurpleD,
+                      onRefresh: _load,
+                      child: _incoming.isEmpty
+                          ? _bigEmptyState(
+                              icon: Icons.move_to_inbox_rounded,
+                              title: 'No incoming deliveries',
+                              subtitle:
+                                  'Deliveries sent to your phone number will appear here.',
+                            )
+                          : ListView(
+                              padding:
+                                  const EdgeInsets.fromLTRB(16, 16, 16, 60),
+                              children: _incoming
+                                  .map((d) => _incomingDeliveryCard(d))
+                                  .toList(),
                             ),
                     ),
                   ],
@@ -1240,7 +1282,8 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
     final inTransit = _active.where((d) => [
           'assigned', 'awaiting_pickup_confirm', 'picked_up', 'delivered'
         ].contains(d['status'])).length;
-    final done = _history.where((d) => d['status'] == 'confirmed').length;
+    final done       = _history.where((d) => d['status'] == 'confirmed').length;
+    final toConfirm  = _incoming.where((d) => d['status'] == 'delivered').length;
 
     return Stack(
       clipBehavior: Clip.none,
@@ -1266,6 +1309,10 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
               _floatStat('$inTransit', 'In\nTransit', const Color(0xFF0284C7)),
               _floatDiv(),
               _floatStat('$done', 'Completed', EzizaColors.kSuccess),
+              if (toConfirm > 0) ...[
+                _floatDiv(),
+                _floatStat('$toConfirm', 'Confirm\nReceipt', EzizaColors.kGold),
+              ],
             ]),
           ),
         ),
@@ -1679,6 +1726,213 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
                                           size: 12, color: EzizaColors.kGold),
                                       SizedBox(width: 5),
                                       Text('Track Live',
+                                          style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.white)),
+                                    ]),
+                              ),
+                            ),
+                        ]),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Incoming delivery card ────────────────────────────────────
+
+  Widget _incomingDeliveryCard(Map<String, dynamic> d) {
+    final status   = d['status']           as String? ?? 'open';
+    final pickup   = d['pickup_address']   as String? ?? '';
+    final dropoff  = d['delivery_address'] as String? ?? '';
+    final price    = (d['agreed_price']    as num?)?.toDouble();
+    final createdAt = DateTime.tryParse(d['created_at'] as String? ?? '');
+    final id       = d['id'] as String;
+    final needsConfirm = status == 'delivered';
+
+    final (Color statusColor, _, IconData statusIcon) = _statusMeta(status);
+
+    return GestureDetector(
+      onTap: () => _openIncomingDetail(id),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        decoration: BoxDecoration(
+          color: EzizaColors.kWhite,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: needsConfirm
+                ? EzizaColors.kGold.withValues(alpha: 0.5)
+                : EzizaColors.kBorder,
+            width: needsConfirm ? 1.5 : 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: (needsConfirm ? EzizaColors.kGold : EzizaColors.kPurple)
+                  .withValues(alpha: 0.07),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(width: 4, color: statusColor),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // "Incoming" label banner
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 7),
+                        color: needsConfirm
+                            ? EzizaColors.kGold.withValues(alpha: 0.08)
+                            : EzizaColors.kTeal.withValues(alpha: 0.07),
+                        child: Row(children: [
+                          Icon(
+                            needsConfirm
+                                ? Icons.check_circle_outline_rounded
+                                : Icons.move_to_inbox_rounded,
+                            size: 12,
+                            color: needsConfirm
+                                ? EzizaColors.kGold
+                                : EzizaColors.kTeal,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            needsConfirm
+                                ? 'Package delivered — tap to confirm receipt'
+                                : 'Incoming delivery addressed to you',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: needsConfirm
+                                  ? EzizaColors.kGold
+                                  : EzizaColors.kTeal,
+                            ),
+                          ),
+                        ]),
+                      ),
+
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: statusColor.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child:
+                                      Icon(statusIcon, size: 18, color: statusColor),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(_shortAddr(pickup),
+                                          style: const TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w700,
+                                              color: EzizaColors.kText),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis),
+                                      const SizedBox(height: 3),
+                                      Row(children: [
+                                        Icon(Icons.arrow_downward_rounded,
+                                            size: 10,
+                                            color: EzizaColors.kMuted
+                                                .withValues(alpha: 0.6)),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: Text(_shortAddr(dropoff),
+                                              style: const TextStyle(
+                                                  fontSize: 12,
+                                                  color: EzizaColors.kMuted),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis),
+                                        ),
+                                      ]),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                _statusChip(status),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Wrap(spacing: 6, runSpacing: 6, children: [
+                              if (createdAt != null)
+                                _infoPill(Icons.schedule_outlined,
+                                    _fmtDate(createdAt)),
+                              if (price != null)
+                                _infoPill(Icons.payments_outlined,
+                                    '₦${_fmtNum(price)}',
+                                    highlight: true),
+                            ]),
+                          ],
+                        ),
+                      ),
+
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                        child: Row(children: [
+                          const Row(children: [
+                            Text('View Details',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: EzizaColors.kPurpleD)),
+                            SizedBox(width: 3),
+                            Icon(Icons.arrow_forward_rounded,
+                                size: 12, color: EzizaColors.kPurpleD),
+                          ]),
+                          const Spacer(),
+                          if (needsConfirm)
+                            GestureDetector(
+                              onTap: () => _openIncomingDetail(id),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 7),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(colors: [
+                                    EzizaColors.kGold,
+                                    Color(0xFFD97706),
+                                  ]),
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: [
+                                    BoxShadow(
+                                        color: EzizaColors.kGold
+                                            .withValues(alpha: 0.35),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 3))
+                                  ],
+                                ),
+                                child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.verified_rounded,
+                                          size: 12, color: Colors.white),
+                                      SizedBox(width: 5),
+                                      Text('Confirm Receipt',
                                           style: TextStyle(
                                               fontSize: 11,
                                               fontWeight: FontWeight.w700,

@@ -6,8 +6,13 @@ import '../../constants/colors.dart';
 import 'delivery_tracking_page.dart';
 
 class CustomerDeliveryDetailPage extends StatefulWidget {
-  const CustomerDeliveryDetailPage({super.key, required this.deliveryId});
+  const CustomerDeliveryDetailPage({
+    super.key,
+    required this.deliveryId,
+    this.isRecipient = false,
+  });
   final String deliveryId;
+  final bool isRecipient;
 
   @override
   State<CustomerDeliveryDetailPage> createState() =>
@@ -210,6 +215,7 @@ class _CustomerDeliveryDetailPageState
                       child: ListView(
                         padding: const EdgeInsets.fromLTRB(16, 20, 16, 40),
                         children: [
+                          if (widget.isRecipient) _recipientBanner(),
                           _statusStepper(),
                           _actionBanner(),
                           _routeCard(),
@@ -219,7 +225,7 @@ class _CustomerDeliveryDetailPageState
                             _trackLiveButton(),
                             const SizedBox(height: 16),
                           ],
-                          _bidsSection(),
+                          if (!widget.isRecipient) _bidsSection(),
                         ],
                       ),
                     ),
@@ -372,6 +378,44 @@ class _CustomerDeliveryDetailPageState
     );
   }
 
+  // ── Recipient identity banner ─────────────────────────────────
+
+  Widget _recipientBanner() => Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: EzizaColors.kTeal.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(14),
+            border:
+                Border.all(color: EzizaColors.kTeal.withValues(alpha: 0.3)),
+          ),
+          child: const Row(children: [
+            Icon(Icons.move_to_inbox_rounded,
+                color: EzizaColors.kTeal, size: 20),
+            SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Incoming Delivery',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                          color: EzizaColors.kText)),
+                  SizedBox(height: 2),
+                  Text('This package is addressed to you.',
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: EzizaColors.kMuted,
+                          height: 1.3)),
+                ],
+              ),
+            ),
+          ]),
+        ),
+      );
+
   // ── Status stepper (vertical timeline) ───────────────────────
 
   Widget _statusStepper() {
@@ -513,6 +557,11 @@ class _CustomerDeliveryDetailPageState
 
   Widget _actionBanner() {
     final status = _delivery?['status'] as String? ?? '';
+
+    // Recipient does not manage pickup handoff
+    if (widget.isRecipient && status == 'awaiting_pickup_confirm') {
+      return const SizedBox.shrink();
+    }
 
     if (status == 'awaiting_pickup_confirm') {
       return Padding(
