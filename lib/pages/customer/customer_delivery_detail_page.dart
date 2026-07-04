@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -356,12 +357,28 @@ class _CustomerDeliveryDetailPageState
               Row(children: [
                 const Icon(Icons.tag_rounded, size: 11, color: Colors.white38),
                 const SizedBox(width: 4),
-                Text(shortId,
-                    style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.white54,
-                        letterSpacing: 1.2,
-                        fontWeight: FontWeight.w600)),
+                GestureDetector(
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(text: shortId));
+                    Get.snackbar('', 'Package ID copied!',
+                        titleText: const SizedBox.shrink(),
+                        backgroundColor: EzizaColors.kPurple,
+                        colorText: Colors.white,
+                        snackPosition: SnackPosition.BOTTOM,
+                        duration: const Duration(seconds: 2));
+                  },
+                  child: Row(children: [
+                    Text(shortId,
+                        style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.white54,
+                            letterSpacing: 1.2,
+                            fontWeight: FontWeight.w600)),
+                    const SizedBox(width: 5),
+                    const Icon(Icons.copy_rounded,
+                        size: 11, color: Colors.white30),
+                  ]),
+                ),
                 const SizedBox(width: 10),
                 Container(width: 1, height: 10, color: Colors.white24),
                 const SizedBox(width: 10),

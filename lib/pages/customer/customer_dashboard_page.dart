@@ -475,20 +475,22 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
                     RefreshIndicator(
                       color: EzizaColors.kPurpleD,
                       onRefresh: _load,
-                      child: _incoming.isEmpty
-                          ? _bigEmptyState(
+                      child: ListView(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 60),
+                        children: [
+                          _findPackageBanner(),
+                          const SizedBox(height: 16),
+                          if (_incoming.isEmpty)
+                            _bigEmptyState(
                               icon: Icons.move_to_inbox_rounded,
                               title: 'No incoming deliveries',
                               subtitle:
-                                  'Deliveries sent to your phone number will appear here.',
+                                  'Deliveries matched by phone or claimed by ID appear here.',
                             )
-                          : ListView(
-                              padding:
-                                  const EdgeInsets.fromLTRB(16, 16, 16, 60),
-                              children: _incoming
-                                  .map((d) => _incomingDeliveryCard(d))
-                                  .toList(),
-                            ),
+                          else
+                            ..._incoming.map(_incomingDeliveryCard),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -1745,6 +1747,452 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
       ),
     );
   }
+
+  // ── Find package by ID ───────────────────────────────────────
+
+  Widget _findPackageBanner() => GestureDetector(
+        onTap: _showFindPackageSheet,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+          decoration: BoxDecoration(
+            color: EzizaColors.kTeal.withValues(alpha: 0.07),
+            borderRadius: BorderRadius.circular(14),
+            border:
+                Border.all(color: EzizaColors.kTeal.withValues(alpha: 0.35)),
+          ),
+          child: Row(children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: EzizaColors.kTeal.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.search_rounded,
+                  color: EzizaColors.kTeal, size: 18),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Find Package by ID',
+                      style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: EzizaColors.kText)),
+                  SizedBox(height: 2),
+                  Text('Enter the ID the sender shared with you',
+                      style: TextStyle(
+                          fontSize: 11, color: EzizaColors.kMuted)),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios_rounded,
+                size: 12, color: EzizaColors.kMuted),
+          ]),
+        ),
+      );
+
+  void _showFindPackageSheet() {
+    final idCtrl = TextEditingController();
+    bool searching = false;
+    bool claiming  = false;
+    Map<String, dynamic>? preview;
+    String? error;
+
+    Get.bottomSheet(
+      StatefulBuilder(builder: (ctx, setS) {
+        Future<void> doSearch() async {
+          final raw = idCtrl.text.trim();
+          if (raw.isEmpty) return;
+          setS(() { searching = true; preview = null; error = null; });
+          try {
+            final res = await _db.rpc('preview_delivery', params: {'p_id': raw});
+            final data = Map<String, dynamic>.from(res as Map);
+            if (data['error'] != null) {
+              setS(() { error = data['error'] as String; searching = false; });
+            } else {
+              setS(() { preview = data; searching = false; });
+            }
+          } catch (e) {
+            setS(() {
+              error = 'Could not look up delivery. Check the ID and try again.';
+              searching = false;
+            });
+          }
+        }
+
+        Future<void> doClaim() async {
+          final delivId = preview!['delivery_id'] as String;
+          setS(() { claiming = true; error = null; });
+          try {
+            final res = await _db.rpc('claim_delivery', params: {'p_id': delivId});
+            final data = Map<String, dynamic>.from(res as Map);
+            if (data['error'] != null) {
+              setS(() { error = data['error'] as String; claiming = false; });
+            } else {
+              Get.back();
+              await _load();
+              setState(() => _tab = 1);
+              _deliveryTabController.animateTo(2);
+              Get.snackbar(
+                'Package claimed!',
+                'It\'s now in your Incoming tab.',
+                snackPosition: SnackPosition.BOTTOM,
+                backgroundColor: EzizaColors.kSuccess,
+                colorText: Colors.white,
+                duration: const Duration(seconds: 3),
+              );
+            }
+          } catch (e) {
+            setS(() {
+              error = 'Could not claim delivery. Please try again.';
+              claiming = false;
+            });
+          }
+        }
+
+        return Container(
+          padding: EdgeInsets.only(
+            left: 20, right: 20, top: 12,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 28,
+          ),
+          decoration: const BoxDecoration(
+            color: EzizaColors.kWhite,
+            borderRadius: BorderRadius.only(
+              topLeft:  Radius.circular(24),
+              topRight: Radius.circular(24),
+            ),
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Handle
+                Center(
+                  child: Container(
+                    width: 40, height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+
+                // Header
+                Row(children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: EzizaColors.kTeal.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.search_rounded,
+                        color: EzizaColors.kTeal, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Find My Package',
+                            style: TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                                color: EzizaColors.kText)),
+                        Text('Enter the ID shared by the sender',
+                            style: TextStyle(
+                                fontSize: 12, color: EzizaColors.kMuted)),
+                      ],
+                    ),
+                  ),
+                ]),
+                const SizedBox(height: 20),
+
+                // ID input + search button
+                Row(children: [
+                  Expanded(
+                    child: TextField(
+                      controller: idCtrl,
+                      style: const TextStyle(
+                          fontSize: 14,
+                          letterSpacing: 1.2,
+                          fontWeight: FontWeight.w600),
+                      textCapitalization: TextCapitalization.characters,
+                      onSubmitted: (_) => doSearch(),
+                      decoration: InputDecoration(
+                        hintText: 'e.g. A3F7B2C1 or full UUID',
+                        hintStyle: const TextStyle(
+                            color: EzizaColors.kMuted,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w400,
+                            letterSpacing: 0),
+                        filled: true,
+                        fillColor: EzizaColors.kSurface,
+                        prefixIcon: const Icon(Icons.tag_rounded,
+                            color: EzizaColors.kPurple, size: 18),
+                        contentPadding: const EdgeInsets.all(14),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide:
+                              const BorderSide(color: EzizaColors.kBorder),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide:
+                              const BorderSide(color: EzizaColors.kBorder),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                              color: EzizaColors.kPurple, width: 1.5),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  GestureDetector(
+                    onTap: searching ? null : doSearch,
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(colors: [
+                          EzizaColors.kPurple,
+                          EzizaColors.kPurpleD,
+                        ]),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                              color:
+                                  EzizaColors.kPurpleD.withValues(alpha: 0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3)),
+                        ],
+                      ),
+                      child: searching
+                          ? const SizedBox(
+                              width: 20, height: 20,
+                              child: CircularProgressIndicator(
+                                  color: Colors.white, strokeWidth: 2))
+                          : const Icon(Icons.search_rounded,
+                              color: Colors.white, size: 20),
+                    ),
+                  ),
+                ]),
+
+                // Error
+                if (error != null) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: EzizaColors.kError.withValues(alpha: 0.07),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                          color: EzizaColors.kError.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(children: [
+                      const Icon(Icons.error_outline_rounded,
+                          color: EzizaColors.kError, size: 16),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(error!,
+                            style: const TextStyle(
+                                color: EzizaColors.kError, fontSize: 12)),
+                      ),
+                    ]),
+                  ),
+                ],
+
+                // Preview card
+                if (preview != null) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: EzizaColors.kSurface,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: EzizaColors.kBorder),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          _statusChip(
+                              preview!['status'] as String? ?? 'open'),
+                          const Spacer(),
+                          Text(
+                            '#${(preview!['delivery_id'] as String).substring(0, 8).toUpperCase()}',
+                            style: const TextStyle(
+                                fontSize: 11,
+                                color: EzizaColors.kMuted,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 1.2),
+                          ),
+                        ]),
+                        const SizedBox(height: 12),
+                        _previewRoute(
+                          pickup: preview!['pickup_address'] as String? ?? '',
+                          dropoff:
+                              preview!['delivery_address'] as String? ?? '',
+                        ),
+                        if (preview!['agreed_price'] != null) ...[
+                          const SizedBox(height: 10),
+                          Row(children: [
+                            const Icon(Icons.payments_outlined,
+                                size: 13, color: EzizaColors.kMuted),
+                            const SizedBox(width: 5),
+                            Text(
+                              '₦${_fmtNum((preview!['agreed_price'] as num).toDouble())}',
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  color: EzizaColors.kPurpleD,
+                                  fontWeight: FontWeight.w700),
+                            ),
+                          ]),
+                        ],
+                        const SizedBox(height: 16),
+                        // Claim / Already-claimed button
+                        if (claiming)
+                          const Center(
+                            child: SizedBox(
+                              width: 22, height: 22,
+                              child: CircularProgressIndicator(
+                                  color: EzizaColors.kPurpleD, strokeWidth: 2),
+                            ),
+                          )
+                        else if (preview!['already_claimed'] == true)
+                          GestureDetector(
+                            onTap: () {
+                              Get.back();
+                              setState(() => _tab = 1);
+                              _deliveryTabController.animateTo(2);
+                            },
+                            child: Container(
+                              width: double.infinity,
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 13),
+                              decoration: BoxDecoration(
+                                color:
+                                    EzizaColors.kSuccess.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                    color: EzizaColors.kSuccess
+                                        .withValues(alpha: 0.4)),
+                              ),
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.check_circle_outline_rounded,
+                                      color: EzizaColors.kSuccess, size: 18),
+                                  SizedBox(width: 8),
+                                  Text('Already claimed — view in Incoming',
+                                      style: TextStyle(
+                                          color: EzizaColors.kSuccess,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 13)),
+                                ],
+                              ),
+                            ),
+                          )
+                        else
+                          GestureDetector(
+                            onTap: doClaim,
+                            child: Container(
+                              width: double.infinity,
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 14),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(colors: [
+                                  EzizaColors.kTeal,
+                                  Color(0xFF0097B2),
+                                ]),
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                      color: EzizaColors.kTeal
+                                          .withValues(alpha: 0.3),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4)),
+                                ],
+                              ),
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.bookmark_add_rounded,
+                                      color: Colors.white, size: 18),
+                                  SizedBox(width: 8),
+                                  Text('This Is Mine — Claim Delivery',
+                                      style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 14)),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      }),
+      isScrollControlled: true,
+    );
+  }
+
+  Widget _previewRoute({required String pickup, required String dropoff}) =>
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            const Icon(Icons.radio_button_checked_rounded,
+                size: 12, color: EzizaColors.kPurple),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                _shortAddr(pickup),
+                style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: EzizaColors.kText),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ]),
+          Padding(
+            padding: const EdgeInsets.only(left: 5),
+            child: Container(
+              width: 2, height: 16,
+              color: EzizaColors.kBorder,
+              margin: const EdgeInsets.symmetric(vertical: 3),
+            ),
+          ),
+          Row(children: [
+            const Icon(Icons.location_on_rounded,
+                size: 12, color: EzizaColors.kGold),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                _shortAddr(dropoff),
+                style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: EzizaColors.kText),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ]),
+        ],
+      );
 
   // ── Incoming delivery card ────────────────────────────────────
 
