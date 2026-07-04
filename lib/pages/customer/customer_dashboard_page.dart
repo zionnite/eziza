@@ -153,14 +153,32 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
       ),
       bottomNavigationBar: _buildBottomNav(),
       floatingActionButton: _tab == 0
-          ? FloatingActionButton.extended(
-              onPressed: _sendPackage,
-              backgroundColor: EzizaColors.kPurple,
-              foregroundColor: Colors.white,
-              elevation: 4,
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Send Package',
-                  style: TextStyle(fontWeight: FontWeight.w700)),
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                FloatingActionButton.extended(
+                  heroTag: 'fab_track',
+                  onPressed: _showFindPackageSheet,
+                  backgroundColor: EzizaColors.kTeal,
+                  foregroundColor: Colors.white,
+                  elevation: 3,
+                  icon: const Icon(Icons.search_rounded),
+                  label: const Text('Find Package',
+                      style: TextStyle(fontWeight: FontWeight.w700)),
+                ),
+                const SizedBox(height: 10),
+                FloatingActionButton.extended(
+                  heroTag: 'fab_send',
+                  onPressed: _sendPackage,
+                  backgroundColor: EzizaColors.kPurple,
+                  foregroundColor: Colors.white,
+                  elevation: 4,
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('Send Package',
+                      style: TextStyle(fontWeight: FontWeight.w700)),
+                ),
+              ],
             )
           : null,
     );
@@ -215,10 +233,15 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
           SliverToBoxAdapter(child: _headerWithStats()),
           SliverPadding(
             // 76 = 52px card overhang + 24px gap so nothing overlaps
-            padding: const EdgeInsets.fromLTRB(20, 76, 20, 120),
+            // 160 = extra bottom so content clears the two stacked FABs
+            padding: const EdgeInsets.fromLTRB(20, 76, 20, 160),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                _quickSendCta(),
+                Row(children: [
+                  Expanded(child: _quickSendCta()),
+                  const SizedBox(width: 12),
+                  Expanded(child: _quickTrackCta()),
+                ]),
                 const SizedBox(height: 32),
                 _sectionLabel('Active Deliveries',
                     Icons.local_shipping_rounded, EzizaColors.kPurpleD),
@@ -1351,8 +1374,7 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
   Widget _quickSendCta() => GestureDetector(
         onTap: _sendPackage,
         child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
               colors: [Color(0xFF4A1A6E), EzizaColors.kNavy],
@@ -1367,35 +1389,75 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
                   offset: const Offset(0, 5)),
             ],
           ),
-          child: Row(children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.add_box_rounded,
+                    color: EzizaColors.kGold, size: 22),
               ),
-              child: const Icon(Icons.add_box_rounded,
-                  color: EzizaColors.kGold, size: 24),
+              const SizedBox(height: 14),
+              const Text('Send a\nPackage',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      height: 1.2)),
+              const SizedBox(height: 4),
+              const Text('Fast & reliable',
+                  style: TextStyle(color: Colors.white54, fontSize: 11)),
+            ],
+          ),
+        ),
+      );
+
+  Widget _quickTrackCta() => GestureDetector(
+        onTap: _showFindPackageSheet,
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF007A8A), Color(0xFF005F6E)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            const SizedBox(width: 14),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Send a Package',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800)),
-                  SizedBox(height: 3),
-                  Text('Pick up & deliver anything, anywhere',
-                      style: TextStyle(color: Colors.white60, fontSize: 12)),
-                ],
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                  color: EzizaColors.kTeal.withValues(alpha: 0.35),
+                  blurRadius: 14,
+                  offset: const Offset(0, 5)),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.search_rounded,
+                    color: EzizaColors.kGold, size: 22),
               ),
-            ),
-            const Icon(Icons.arrow_forward_ios_rounded,
-                color: Colors.white38, size: 14),
-          ]),
+              const SizedBox(height: 14),
+              const Text('Track a\nPackage',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      height: 1.2)),
+              const SizedBox(height: 4),
+              const Text('Enter tracking code',
+                  style: TextStyle(color: Colors.white54, fontSize: 11)),
+            ],
+          ),
         ),
       );
 
