@@ -52,8 +52,13 @@ class _RiderMapPageState extends State<RiderMapPage> {
   bool _locating         = true;
   bool _actionLoading    = false;
   bool _waitingHandoff   = false; // awaiting_pickup_confirm — waiting for merchant/customer handoff
-  bool _waitingCustomer  = false; // delivered — waiting for customer receipt confirmation
+  bool _waitingCustomer  = false; // delivered — waiting for OTP confirmation
   bool _pulse            = false;
+  bool _closing          = false; // guard against double-close when both Realtime + OTP fire
+
+  // OTP state
+  bool   _otpSheetOpen   = false;
+  String _otpMaskedPhone = '';
 
   String _pickupContact  = '';
   String _pickupPhone    = '';
@@ -96,7 +101,9 @@ class _RiderMapPageState extends State<RiderMapPage> {
     if (status == 'awaiting_pickup_confirm') _waitingHandoff  = true;
     if (status == 'delivered') {
       _waitingCustomer = true;
-      _startConfirmPoll(); // start poll immediately if page opened mid-wait
+      _startConfirmPoll();
+      // Show OTP sheet immediately — rider may have reopened the page mid-wait
+      WidgetsBinding.instance.addPostFrameCallback((_) => _showOtpSheet());
     }
 
     // Contact info from delivery columns
@@ -162,22 +169,7 @@ class _RiderMapPageState extends State<RiderMapPage> {
               case 'delivered':
                 setState(() => _waitingCustomer = true);
               case 'confirmed':
-                _pollTimer?.cancel();
-                _gpsSub?.cancel();
-                _gpsSub = null;
-                FlutterForegroundTask.updateService(
-                  notificationTitle: 'Delivery Complete ✅',
-                  notificationText: 'Great work! Earnings credited.',
-                );
-                Get.back(result: 'confirmed');
-                Get.snackbar(
-                  'Delivery Complete! 🎉',
-                  'Customer confirmed receipt. Your earnings have been credited!',
-                  backgroundColor: EzizaColors.kSuccess,
-                  colorText: EzizaColors.kWhite,
-                  snackPosition: SnackPosition.BOTTOM,
-                  duration: const Duration(seconds: 5),
-                );
+                _closeMap();
             }
           })
         .subscribe();
@@ -391,16 +383,10 @@ class _RiderMapPageState extends State<RiderMapPage> {
         _startConfirmPoll();
         FlutterForegroundTask.updateService(
           notificationTitle: 'Package Delivered ✅',
-          notificationText: 'Waiting for customer to confirm receipt',
+          notificationText: 'Collect OTP from recipient to confirm.',
         );
-        Get.snackbar(
-          'Package Delivered!',
-          'Waiting for customer to confirm receipt…',
-          backgroundColor: EzizaColors.kSuccess,
-          colorText: EzizaColors.kWhite,
-          snackPosition: SnackPosition.BOTTOM,
-          duration: const Duration(seconds: 4),
-        );
+        // Show OTP sheet immediately — sends SMS and prompts rider for code
+        _showOtpSheet();
       }
     } catch (_) {
       Get.snackbar('Error', 'Could not confirm delivery. Try again.',
@@ -409,6 +395,108 @@ class _RiderMapPageState extends State<RiderMapPage> {
           snackPosition: SnackPosition.BOTTOM);
     }
     if (mounted) setState(() => _actionLoading = false);
+  }
+
+  // ── OTP confirmation ─────────────────────────────────────────────────────────
+
+  /// Single exit point — guards against double-close from Realtime + OTP paths.
+  void _closeMap() {
+    if (_closing || !mounted) return;
+    _closing = true;
+    _pollTimer?.cancel();
+    _gpsSub?.cancel();
+    _gpsSub = null;
+    FlutterForegroundTask.updateService(
+      notificationTitle: 'Delivery Complete ✅',
+      notificationText: 'Great work! Earnings credited.',
+    );
+    // If OTP sheet is open, pop it first so only the map page remains on top.
+    if (_otpSheetOpen) {
+      Get.back();
+      _otpSheetOpen = false;
+    }
+    Get.back(result: 'confirmed');
+    Get.snackbar(
+      'Delivery Complete! 🎉',
+      'Receipt confirmed. Your earnings have been credited!',
+      backgroundColor: EzizaColors.kSuccess,
+      colorText: EzizaColors.kWhite,
+      snackPosition: SnackPosition.BOTTOM,
+      duration: const Duration(seconds: 5),
+    );
+  }
+
+  /// Calls the confirm-delivery-otp edge function.
+  /// Returns the response body map, or throws on error.
+  Future<Map<String, dynamic>> _callOtp(
+      String action, {String? otp}) async {
+    final res = await _db.functions.invoke(
+      'confirm-delivery-otp',
+      body: {
+        'action':      action,
+        'delivery_id': widget.delivery['id'],
+        'otp': otp,
+      },
+    );
+    final body = (res.data as Map?)?.cast<String, dynamic>() ?? {};
+    if (res.status != 200) {
+      throw Exception(body['error'] ?? 'Request failed (${res.status})');
+    }
+    return body;
+  }
+
+  /// Sends OTP SMS and opens the entry sheet.
+  /// Called immediately after marking delivered, and when reopening the sheet.
+  Future<void> _showOtpSheet() async {
+    if (_otpSheetOpen || !mounted) return;
+    setState(() => _otpSheetOpen = true);
+
+    // Send (or resend) the OTP first so the sheet can show the masked phone.
+    String maskedPhone = _otpMaskedPhone; // reuse if already sent
+    if (maskedPhone.isEmpty) {
+      try {
+        final res = await _callOtp('send');
+        maskedPhone = res['masked_phone'] as String? ?? _dropoffPhone;
+        if (mounted) setState(() => _otpMaskedPhone = maskedPhone);
+      } catch (e) {
+        if (mounted) {
+          setState(() => _otpSheetOpen = false);
+          Get.snackbar('Could not send SMS', e.toString(),
+              backgroundColor: EzizaColors.kError,
+              colorText: EzizaColors.kWhite,
+              snackPosition: SnackPosition.BOTTOM);
+        }
+        return;
+      }
+    }
+
+    if (!mounted) { setState(() => _otpSheetOpen = false); return; }
+
+    await showModalBottomSheet<void>(
+      context:       context,
+      isDismissible: false,
+      enableDrag:    false,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => _OtpSheet(
+        maskedPhone: maskedPhone,
+        onVerify: (code) => _callOtp('verify', otp: code),
+        onResend: () async {
+          final res = await _callOtp('send');
+          final mp = res['masked_phone'] as String? ?? maskedPhone;
+          if (mounted) setState(() => _otpMaskedPhone = mp);
+          return mp;
+        },
+        onConfirmed: () {
+          // OTP sheet signals success — close map page.
+          _otpSheetOpen = false;
+          _closeMap();
+        },
+      ),
+    );
+
+    if (mounted) setState(() => _otpSheetOpen = false);
   }
 
   void _startConfirmPoll() {
@@ -422,18 +510,7 @@ class _RiderMapPageState extends State<RiderMapPage> {
             .eq('id', widget.delivery['id'])
             .maybeSingle();
         if ((row?['status'] as String?) == 'confirmed' && mounted) {
-          _pollTimer?.cancel();
-          _gpsSub?.cancel();
-          _gpsSub = null;
-          Get.back(result: 'confirmed');
-          Get.snackbar(
-            'Delivery Complete! 🎉',
-            'Customer confirmed receipt. Your earnings have been credited!',
-            backgroundColor: EzizaColors.kSuccess,
-            colorText: EzizaColors.kWhite,
-            snackPosition: SnackPosition.BOTTOM,
-            duration: const Duration(seconds: 5),
-          );
+          _closeMap();
         }
       } catch (_) {}
     });
@@ -770,26 +847,28 @@ class _RiderMapPageState extends State<RiderMapPage> {
 
       // Action button
       if (_waitingCustomer)
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-          decoration: BoxDecoration(
-            color:        const Color(0xFFDCFCE7),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-                color: EzizaColors.kSuccess.withValues(alpha: 0.4))),
-          child: const Row(mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(width: 16, height: 16,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2, color: EzizaColors.kSuccess)),
-              SizedBox(width: 12),
-              Expanded(child: Text(
-                'Package delivered — waiting for customer to confirm receipt…',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
-                    color: Color(0xFF166534)),
-              )),
-            ]),
+        GestureDetector(
+          onTap: _otpSheetOpen ? null : _showOtpSheet,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                  colors: [EzizaColors.kPurple, EzizaColors.kPurpleD]),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [BoxShadow(
+                  color: EzizaColors.kPurpleD.withValues(alpha: 0.35),
+                  blurRadius: 10, offset: const Offset(0, 4))],
+            ),
+            child: const Row(mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.pin_rounded, color: Colors.white, size: 18),
+                SizedBox(width: 10),
+                Text('Enter confirmation code',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700,
+                        color: Colors.white)),
+              ]),
+          ),
         )
       else if (_waitingHandoff)
         Container(
@@ -871,5 +950,238 @@ class _RiderMapPageState extends State<RiderMapPage> {
     final comma = addr.indexOf(',');
     final raw   = comma == -1 ? addr : addr.substring(0, comma);
     return raw.length > 22 ? '${raw.substring(0, 19)}…' : raw;
+  }
+}
+
+// ── OTP entry sheet ───────────────────────────────────────────────────────────
+
+class _OtpSheet extends StatefulWidget {
+  const _OtpSheet({
+    required this.maskedPhone,
+    required this.onVerify,
+    required this.onResend,
+    required this.onConfirmed,
+  });
+
+  final String maskedPhone;
+  final Future<Map<String, dynamic>> Function(String code) onVerify;
+  final Future<String> Function() onResend;
+  final VoidCallback onConfirmed;
+
+  @override
+  State<_OtpSheet> createState() => _OtpSheetState();
+}
+
+class _OtpSheetState extends State<_OtpSheet> {
+  final _ctrl    = TextEditingController();
+  String? _error;
+  bool    _loading    = false;
+  bool    _resending  = false;
+  int     _resendSecs = 0; // countdown before next resend
+  Timer?  _resendTimer;
+  late String _maskedPhone;
+
+  @override
+  void initState() {
+    super.initState();
+    _maskedPhone = widget.maskedPhone;
+    _startResendCooldown(30); // first send just happened — 30 s cooldown
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    _resendTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startResendCooldown(int seconds) {
+    _resendTimer?.cancel();
+    setState(() => _resendSecs = seconds);
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() { if (_resendSecs > 0) _resendSecs--; });
+      if (_resendSecs == 0) _resendTimer?.cancel();
+    });
+  }
+
+  Future<void> _submit() async {
+    final code = _ctrl.text.trim();
+    if (code.length != 6) {
+      setState(() => _error = 'Enter the full 6-digit code.');
+      return;
+    }
+    setState(() { _loading = true; _error = null; });
+    try {
+      await widget.onVerify(code);
+      // Success — signal map page and close sheet
+      widget.onConfirmed();
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) setState(() { _error = e.toString(); _loading = false; });
+    }
+  }
+
+  Future<void> _resend() async {
+    if (_resendSecs > 0 || _resending) return;
+    setState(() { _resending = true; _error = null; });
+    try {
+      final mp = await widget.onResend();
+      if (mounted) {
+        setState(() { _maskedPhone = mp; _resending = false; _ctrl.clear(); });
+        _startResendCooldown(60);
+        Get.snackbar('Code sent', 'A new code was sent to $_maskedPhone',
+            backgroundColor: EzizaColors.kSuccess,
+            colorText: Colors.white,
+            snackPosition: SnackPosition.BOTTOM);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() { _error = 'Could not resend: ${e.toString()}'; _resending = false; });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+          24, 20, 24, MediaQuery.of(context).viewInsets.bottom + 32),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        // Handle
+        Container(width: 40, height: 4,
+            decoration: BoxDecoration(
+                color: EzizaColors.kBorder,
+                borderRadius: BorderRadius.circular(2))),
+        const SizedBox(height: 20),
+
+        // Icon + title
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                  colors: [EzizaColors.kPurple, EzizaColors.kPurpleD]),
+              shape: BoxShape.circle,
+              boxShadow: [BoxShadow(
+                  color: EzizaColors.kPurpleD.withValues(alpha: 0.3),
+                  blurRadius: 12, offset: const Offset(0, 4))]),
+          child: const Icon(Icons.pin_rounded, color: Colors.white, size: 28),
+        ),
+        const SizedBox(height: 14),
+        const Text('Confirm Delivery',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800,
+                color: EzizaColors.kText)),
+        const SizedBox(height: 6),
+        Text(
+          'Ask the recipient for the code sent to\n$_maskedPhone',
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 13, color: EzizaColors.kMuted, height: 1.5),
+        ),
+        const SizedBox(height: 24),
+
+        // OTP input
+        TextField(
+          controller:    _ctrl,
+          autofocus:     true,
+          keyboardType:  TextInputType.number,
+          maxLength:     6,
+          textAlign:     TextAlign.center,
+          style: const TextStyle(
+              fontSize: 28, fontWeight: FontWeight.w800,
+              letterSpacing: 12, color: EzizaColors.kText),
+          decoration: InputDecoration(
+            counterText: '',
+            hintText:    '— — — — — —',
+            hintStyle: TextStyle(
+                fontSize: 22, letterSpacing: 8,
+                color: EzizaColors.kMuted.withValues(alpha: 0.5)),
+            filled:      true,
+            fillColor:   EzizaColors.kSurface,
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: EzizaColors.kBorder)),
+            enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: EzizaColors.kBorder)),
+            focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(
+                    color: EzizaColors.kPurple, width: 2)),
+            contentPadding: const EdgeInsets.symmetric(
+                vertical: 18, horizontal: 16),
+          ),
+          onChanged: (v) {
+            if (v.length == 6) _submit();
+          },
+        ),
+
+        // Error message
+        if (_error != null) ...[
+          const SizedBox(height: 10),
+          Text(_error!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 12, color: EzizaColors.kError,
+                  fontWeight: FontWeight.w600)),
+        ],
+
+        const SizedBox(height: 20),
+
+        // Confirm button
+        GestureDetector(
+          onTap: _loading ? null : _submit,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 15),
+            decoration: BoxDecoration(
+              gradient: _loading
+                  ? null
+                  : const LinearGradient(
+                      colors: [EzizaColors.kPurple, EzizaColors.kPurpleD]),
+              color: _loading ? EzizaColors.kBorder : null,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: _loading ? [] : [
+                BoxShadow(color: EzizaColors.kPurpleD.withValues(alpha: 0.35),
+                    blurRadius: 10, offset: const Offset(0, 4)),
+              ],
+            ),
+            child: Center(
+              child: _loading
+                  ? const SizedBox(width: 20, height: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: EzizaColors.kPurple))
+                  : const Text('Confirm Receipt',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700,
+                          color: Colors.white)),
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        // Resend button
+        GestureDetector(
+          onTap: _resendSecs > 0 || _resending ? null : _resend,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: _resending
+                ? const SizedBox(width: 16, height: 16,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: EzizaColors.kPurple))
+                : Text(
+                    _resendSecs > 0
+                        ? 'Resend code in ${_resendSecs}s'
+                        : 'Resend code',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: _resendSecs > 0
+                          ? EzizaColors.kMuted
+                          : EzizaColors.kPurpleD,
+                    ),
+                  ),
+          ),
+        ),
+      ]),
+    );
   }
 }
