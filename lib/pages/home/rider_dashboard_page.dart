@@ -12,6 +12,7 @@ import '../../controllers/auth_controller.dart';
 import '../../models/rider.dart';
 import '../../services/location_service.dart';
 import '../../services/rider_location_task.dart';
+import 'earnings_widgets.dart';
 import 'profile_page.dart';
 import 'rider_map_page.dart';
 
@@ -27,6 +28,7 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
   final _auth = Get.find<AuthController>();
   int _tab = 0;
   late final TabController _jobsTabController;
+  late final TabController _earningsTabController;
 
   Rider? get _rider => _auth.rider.value;
 
@@ -60,6 +62,7 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
   void initState() {
     super.initState();
     _jobsTabController = TabController(length: 2, vsync: this);
+    _earningsTabController = TabController(length: 2, vsync: this);
     _isOnline = _rider?.isAvailable ?? false;
     _initForegroundTask();
     _load();
@@ -98,6 +101,7 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
     if (_bidChannel    != null) _db.removeChannel(_bidChannel!);
     if (_inviteChannel != null) _db.removeChannel(_inviteChannel!);
     _jobsTabController.dispose();
+    _earningsTabController.dispose();
     super.dispose();
   }
 
@@ -1557,6 +1561,7 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
     return Column(children: [
       // ── Header with frosted stats + inner TabBar ────────────
       Container(
+        width: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [Color(0xFF4A1A6E), EzizaColors.kNavy],
@@ -1856,17 +1861,71 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
                       ),
                     ]),
                   )
-                : RefreshIndicator(
-                    color: EzizaColors.kPurpleD,
-                    onRefresh: _load,
-                    child: ListView(
-                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 40),
-                      children: [
-                        _walletCard(),
-                        _payoutHistorySection(),
-                      ],
+                : _earningsTabBody(),
+      ),
+    ]);
+  }
+
+  Widget _earningsTabBody() {
+    final earningsHistory = _jobHistory; // already status='confirmed' only
+
+    return Column(children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+        child: _walletCard(),
+      ),
+      const SizedBox(height: 4),
+      TabBar(
+        controller: _earningsTabController,
+        labelColor: EzizaColors.kPurpleD,
+        unselectedLabelColor: EzizaColors.kMuted,
+        labelStyle: const TextStyle(
+            fontWeight: FontWeight.w700, fontSize: 13),
+        unselectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.w500, fontSize: 13),
+        indicatorColor: EzizaColors.kPurpleD,
+        indicatorSize: TabBarIndicatorSize.label,
+        tabs: [
+          Tab(text: 'Earnings (${earningsHistory.length})'),
+          Tab(text: 'Payouts (${_payoutHistory.length})'),
+        ],
+      ),
+      Expanded(
+        child: TabBarView(
+          controller: _earningsTabController,
+          children: [
+            RefreshIndicator(
+              color: EzizaColors.kPurpleD,
+              onRefresh: _load,
+              child: earningsHistory.isEmpty
+                  ? earningsEmptyState(
+                      Icons.receipt_long_outlined,
+                      'No Earnings Yet',
+                      'Completed deliveries will show their earnings breakdown here.')
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: earningsHistory.length,
+                      itemBuilder: (_, i) =>
+                          earningsHistoryCard(earningsHistory[i]),
                     ),
-                  ),
+            ),
+            RefreshIndicator(
+              color: EzizaColors.kPurpleD,
+              onRefresh: _load,
+              child: _payoutHistory.isEmpty
+                  ? earningsEmptyState(
+                      Icons.account_balance_outlined,
+                      'No Payout Requests',
+                      'Requests you submit will show their status here.')
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _payoutHistory.length,
+                      itemBuilder: (_, i) =>
+                          payoutHistoryCard(_payoutHistory[i]),
+                    ),
+            ),
+          ],
+        ),
       ),
     ]);
   }
@@ -2575,79 +2634,6 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
             style: const TextStyle(fontSize: 9, color: Colors.white54,
                 fontWeight: FontWeight.w600, letterSpacing: 0.3)),
       ]));
-
-  // ── Payout history ────────────────────────────────────────────
-
-  Widget _payoutHistorySection() {
-    if (_payoutHistory.isEmpty) return const SizedBox.shrink();
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      _sectionHeader('Payment History', Icons.receipt_long_rounded, EzizaColors.kPurpleD,
-          badge: '${_payoutHistory.length}'),
-      const SizedBox(height: 12),
-      ..._payoutHistory.map((p) {
-        final status = p['status'] as String? ?? 'pending';
-        final amount = (p['amount'] as num?)?.toDouble() ?? 0;
-        final reqAt  = p['created_at'] != null
-            ? DateTime.tryParse(p['created_at'].toString())?.toLocal()
-            : null;
-        final procAt = p['paid_at'] != null
-            ? DateTime.tryParse(p['paid_at'].toString())?.toLocal()
-            : null;
-
-        final (Color sc, Color sb, IconData si, String sl) = switch (status) {
-          'pending'  => (EzizaColors.kGold,      const Color(0xFFFFF8E1),
-                         Icons.hourglass_top_rounded,        'Pending'),
-          'approved' => (const Color(0xFF0284C7), const Color(0xFFE0F2FE),
-                         Icons.check_circle_outline_rounded,  'Approved'),
-          'paid'     => (EzizaColors.kSuccess,    const Color(0xFFDCFCE7),
-                         Icons.payments_rounded,              'Paid'),
-          'rejected' => (EzizaColors.kError,      const Color(0xFFFFEDED),
-                         Icons.cancel_outlined,               'Rejected'),
-          _          => (EzizaColors.kMuted,      const Color(0xFFF5F5F5),
-                         Icons.info_outline_rounded,          status),
-        };
-
-        String fmt(DateTime? dt) =>
-            dt == null ? '' : '${dt.day}/${dt.month}/${dt.year}';
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-              color: EzizaColors.kWhite,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: EzizaColors.kBorder),
-              boxShadow: [BoxShadow(color: EzizaColors.kPurple.withValues(alpha: 0.04),
-                  blurRadius: 6, offset: const Offset(0, 2))]),
-          child: Row(children: [
-            Container(padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: sb, shape: BoxShape.circle),
-                child: Icon(si, color: sc, size: 16)),
-            const SizedBox(width: 12),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('₦${amount.toStringAsFixed(0)}',
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800,
-                      color: EzizaColors.kText)),
-              const SizedBox(height: 2),
-              Text(
-                reqAt != null
-                    ? 'Requested ${fmt(reqAt)}'
-                        '${procAt != null ? '  ·  Processed ${fmt(procAt)}' : ''}'
-                    : '',
-                style: const TextStyle(fontSize: 11, color: EzizaColors.kMuted),
-              ),
-            ])),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(color: sb, borderRadius: BorderRadius.circular(20)),
-              child: Text(sl, style: TextStyle(fontSize: 11,
-                  fontWeight: FontWeight.w700, color: sc)),
-            ),
-          ]),
-        );
-      }),
-    ]);
-  }
 
   // ── Account tab ───────────────────────────────────────────────
 

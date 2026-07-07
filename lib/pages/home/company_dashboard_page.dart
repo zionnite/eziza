@@ -5,7 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../constants/colors.dart';
 import '../../controllers/auth_controller.dart';
-import 'company_earnings_widgets.dart';
+import 'earnings_widgets.dart';
 import 'company_map_page.dart';
 
 class CompanyDashboardPage extends StatefulWidget {
@@ -1536,7 +1536,7 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
                 color: EzizaColors.kPurpleD,
                 onRefresh: _load,
                 child: earningsHistory.isEmpty
-                    ? _earningsEmptyState(
+                    ? earningsEmptyState(
                         Icons.receipt_long_outlined,
                         'No Earnings Yet',
                         'Completed deliveries will show their earnings breakdown here.')
@@ -1544,14 +1544,14 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
                         padding: const EdgeInsets.all(16),
                         itemCount: earningsHistory.length,
                         itemBuilder: (_, i) =>
-                            companyEarningsHistoryCard(earningsHistory[i]),
+                            earningsHistoryCard(earningsHistory[i]),
                       ),
               ),
               RefreshIndicator(
                 color: EzizaColors.kPurpleD,
                 onRefresh: _load,
                 child: _payoutHistory.isEmpty
-                    ? _earningsEmptyState(
+                    ? earningsEmptyState(
                         Icons.account_balance_outlined,
                         'No Payout Requests',
                         'Requests you submit will show their status here.')
@@ -1559,7 +1559,7 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
                         padding: const EdgeInsets.all(16),
                         itemCount: _payoutHistory.length,
                         itemBuilder: (_, i) =>
-                            companyPayoutHistoryCard(_payoutHistory[i]),
+                            payoutHistoryCard(_payoutHistory[i]),
                       ),
               ),
             ],
@@ -1568,43 +1568,6 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
       ],
     );
   }
-
-  Widget _earningsEmptyState(IconData icon, String title, String subtitle) =>
-      Center(
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: EzizaColors.kPurpleD.withValues(alpha: 0.07),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon,
-                    size: 48,
-                    color: EzizaColors.kPurpleD.withValues(alpha: 0.45)),
-              ),
-              const SizedBox(height: 20),
-              Text(title,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 18,
-                      color: EzizaColors.kText),
-                  textAlign: TextAlign.center),
-              const SizedBox(height: 8),
-              Text(subtitle,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      color: EzizaColors.kMuted,
-                      fontSize: 13,
-                      height: 1.4)),
-            ],
-          ),
-        ),
-      );
 
   // ── ACCOUNT TAB ───────────────────────────────────────────────
 

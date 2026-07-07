@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../constants/colors.dart';
 
-// Shared card widgets for the company Earnings tab and its "View All" detail
-// pages, so the preview list and full history stay visually identical
-// without duplicating the rendering logic in three places.
+// Shared earnings/payout card + empty-state widgets, used by both the
+// company and individual rider Earnings tabs so the two stay visually
+// identical without duplicating the rendering logic per role.
 
 String shortAddr(String addr) {
   if (addr.isEmpty) return '—';
@@ -14,7 +14,7 @@ String shortAddr(String addr) {
       : parts.first.trim();
 }
 
-Widget companyEarningsHistoryCard(Map<String, dynamic> d) {
+Widget earningsHistoryCard(Map<String, dynamic> d) {
   final gross    = (d['agreed_price']  as num?)?.toDouble() ?? 0;
   final fee      = (d['platform_fee']  as num?)?.toDouble() ?? 0;
   final net      = gross - fee;
@@ -74,14 +74,18 @@ Widget companyEarningsHistoryCard(Map<String, dynamic> d) {
   );
 }
 
-Widget companyPayoutHistoryCard(Map<String, dynamic> p) {
+// rider_payout_requests uses created_at/paid_at; company_payout_requests
+// uses requested_at/processed_at — fall back so one widget handles both.
+Widget payoutHistoryCard(Map<String, dynamic> p) {
   final status = p['status'] as String? ?? 'pending';
   final amount = (p['amount'] as num?)?.toDouble() ?? 0;
-  final reqAt  = p['requested_at'] != null
-      ? DateTime.tryParse(p['requested_at'].toString())?.toLocal()
+  final reqRaw  = p['requested_at'] ?? p['created_at'];
+  final procRaw = p['processed_at'] ?? p['paid_at'];
+  final reqAt  = reqRaw != null
+      ? DateTime.tryParse(reqRaw.toString())?.toLocal()
       : null;
-  final procAt = p['processed_at'] != null
-      ? DateTime.tryParse(p['processed_at'].toString())?.toLocal()
+  final procAt = procRaw != null
+      ? DateTime.tryParse(procRaw.toString())?.toLocal()
       : null;
 
   final (Color sc, Color sbg, IconData sicon, String slabel) =
@@ -148,3 +152,40 @@ Widget companyPayoutHistoryCard(Map<String, dynamic> p) {
     ]),
   );
 }
+
+Widget earningsEmptyState(IconData icon, String title, String subtitle) =>
+    Center(
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: EzizaColors.kPurpleD.withValues(alpha: 0.07),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon,
+                  size: 48,
+                  color: EzizaColors.kPurpleD.withValues(alpha: 0.45)),
+            ),
+            const SizedBox(height: 20),
+            Text(title,
+                style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18,
+                    color: EzizaColors.kText),
+                textAlign: TextAlign.center),
+            const SizedBox(height: 8),
+            Text(subtitle,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    color: EzizaColors.kMuted,
+                    fontSize: 13,
+                    height: 1.4)),
+          ],
+        ),
+      ),
+    );
