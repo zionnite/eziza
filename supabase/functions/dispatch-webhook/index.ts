@@ -54,22 +54,6 @@ async function sendPush(
   })
 }
 
-async function notifyRider(riderId: string, deliveryId: string): Promise<void> {
-  const { data: rider } = await supabase
-    .from('riders')
-    .select('fcm_token')
-    .eq('id', riderId)
-    .maybeSingle()
-
-  if (!rider?.fcm_token) return
-  await sendPush(
-    rider.fcm_token,
-    '🎉 Bid Accepted!',
-    'Your bid was accepted. Head to the pickup location.',
-    { type: 'bid_accepted', delivery_id: deliveryId },
-  )
-}
-
 async function notifyUser(
   authUserId: string,
   title:      string,
@@ -84,33 +68,6 @@ async function notifyUser(
 
   if (!row?.token) return
   await sendPush(row.token, title, body, data)
-}
-
-async function notifyCompanyOnBidAccepted(deliveryId: string): Promise<void> {
-  // Find the accepted bid from a company for this delivery
-  const { data: bid } = await supabase
-    .from('delivery_bids')
-    .select('company_id')
-    .eq('delivery_id', deliveryId)
-    .eq('is_accepted', true)
-    .not('company_id', 'is', null)
-    .maybeSingle()
-
-  if (!bid?.company_id) return
-
-  const { data: company } = await supabase
-    .from('companies')
-    .select('auth_user_id')
-    .eq('id', bid.company_id)
-    .maybeSingle()
-
-  if (!company?.auth_user_id) return
-  await notifyUser(
-    company.auth_user_id,
-    '🎉 Bid Accepted!',
-    'Your bid was accepted. Assign a rider to the delivery.',
-    { type: 'company_bid_accepted', delivery_id: deliveryId },
-  )
 }
 
 // ── Main handler ──────────────────────────────────────────────
@@ -187,12 +144,9 @@ serve(async (req) => {
     const customerId   = record.customer_id as string | undefined
 
     if (newStatus === 'assigned') {
-      // Notify the winning rider
-      if (record.rider_id) {
-        await notifyRider(record.rider_id as string, deliveryId).catch(() => {})
-      }
-      // Notify the winning company (if bid came from a company)
-      await notifyCompanyOnBidAccepted(deliveryId).catch(() => {})
+      // Winning rider/company is already notified by the delivery_bids
+      // UPDATE→accepted trigger (notify-bid-accepted), which correctly
+      // covers both bidder types via the current device_tokens table.
       // Notify the customer
       if (customerId) {
         await notifyUser(
