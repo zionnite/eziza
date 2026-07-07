@@ -242,6 +242,12 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
             }
           }
         });
+        // Wallet balance was just credited by the earnings trigger —
+        // refresh the profile so "Available Balance" isn't stale. _rider is
+        // a plain (non-Obx) getter here, so the refreshed value needs its
+        // own setState to actually show up on screen.
+        await _auth.refreshProfile();
+        if (mounted) setState(() {});
         _confirmedPollTimer?.cancel();
         _confirmedPollTimer = null;
         if (_activeDeliveries.isEmpty) _stopLocationBroadcast();
@@ -366,6 +372,12 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
                   _jobHistory.insert(0, d);
                 }
               });
+              // Wallet balance was just credited by the earnings trigger —
+              // refresh the profile so "Available Balance" isn't stale. _rider
+              // is a plain (non-Obx) getter here, so the refreshed value
+              // needs its own setState to actually show up on screen.
+              await _auth.refreshProfile();
+              if (mounted) setState(() {});
               _confirmedPollTimer?.cancel();
               _confirmedPollTimer = null;
               if (_activeDeliveries.isEmpty) {

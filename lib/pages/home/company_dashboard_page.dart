@@ -62,6 +62,21 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
 
   // ── Data loading ─────────────────────────────────────────────
 
+  Future<void> _refreshCompanyBalance() async {
+    final cid = _company?['id'] as String?;
+    if (cid == null) return;
+    try {
+      final row = await _db
+          .from('companies')
+          .select('wallet_balance, total_earned, paid_out')
+          .eq('id', cid)
+          .maybeSingle();
+      if (row != null && mounted) {
+        setState(() => _company = {..._company!, ...row});
+      }
+    } catch (_) {}
+  }
+
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
@@ -207,6 +222,9 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
                     _jobHistory.insert(0, d);
                   }
                 });
+                // Wallet balance was just credited by the earnings trigger —
+                // refresh it so "Available Balance" isn't stale.
+                if (status == 'confirmed') _refreshCompanyBalance();
               } else {
                 setState(() => _activeDeliveries[idx] = d);
               }

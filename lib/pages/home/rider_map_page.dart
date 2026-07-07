@@ -70,6 +70,7 @@ class _RiderMapPageState extends State<RiderMapPage> {
   RealtimeChannel? _statusChannel;
   Timer? _pulseTimer;
   Timer? _pollTimer;
+  Timer? _handoffPollTimer;
 
   @override
   void initState() {
@@ -86,6 +87,7 @@ class _RiderMapPageState extends State<RiderMapPage> {
     if (_statusChannel != null) _db.removeChannel(_statusChannel!);
     _pulseTimer?.cancel();
     _pollTimer?.cancel();
+    _handoffPollTimer?.cancel();
     super.dispose();
   }
 
@@ -99,7 +101,10 @@ class _RiderMapPageState extends State<RiderMapPage> {
     _phase = (status == 'picked_up' || status == 'delivered')
         ? 'to_dropoff'
         : 'to_pickup';
-    if (status == 'awaiting_pickup_confirm') _waitingHandoff  = true;
+    if (status == 'awaiting_pickup_confirm') {
+      _waitingHandoff = true;
+      _startHandoffPoll();
+    }
     if (status == 'delivered') {
       _waitingCustomer = true;
       _startConfirmPoll();
@@ -150,23 +155,7 @@ class _RiderMapPageState extends State<RiderMapPage> {
             final s = p.newRecord['status'] as String? ?? '';
             switch (s) {
               case 'picked_up':
-                // Customer confirmed handoff — advance the map to dropoff phase
-                setState(() {
-                  _waitingHandoff = false;
-                  _phase          = 'to_dropoff';
-                  _routePoints    = [];
-                  _etaSeconds     = null;
-                  _initialFit     = false;
-                });
-                _fetchRoute().then((_) => _fitMap());
-                Get.snackbar(
-                  'Handoff Confirmed',
-                  'Customer confirmed pickup. Head to the delivery address!',
-                  backgroundColor: EzizaColors.kPurple,
-                  colorText: Colors.white,
-                  snackPosition: SnackPosition.TOP,
-                  duration: const Duration(seconds: 3),
-                );
+                _advanceToDropoff();
               case 'delivered':
                 setState(() => _waitingCustomer = true);
               case 'confirmed':
@@ -314,6 +303,7 @@ class _RiderMapPageState extends State<RiderMapPage> {
           .eq('id', widget.delivery['id']);
       if (mounted) {
         setState(() => _waitingHandoff = true);
+        _startHandoffPoll();
         FlutterForegroundTask.updateService(
           notificationTitle: 'Awaiting Handoff Confirmation',
           notificationText: 'Waiting for merchant to confirm handoff…',
@@ -514,6 +504,48 @@ class _RiderMapPageState extends State<RiderMapPage> {
         }
       } catch (_) {}
     });
+  }
+
+  // Realtime is at-most-once and can silently miss an event (same reason
+  // rider_dashboard_page.dart polls for the 'confirmed' transition) — poll
+  // as a fallback while waiting for the merchant/customer to confirm handoff,
+  // so the rider isn't stuck on this screen until they navigate away and back.
+  void _startHandoffPoll() {
+    _handoffPollTimer?.cancel();
+    _handoffPollTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
+      if (!mounted || !_waitingHandoff) { _handoffPollTimer?.cancel(); return; }
+      try {
+        final row = await _db
+            .from('deliveries')
+            .select('status')
+            .eq('id', widget.delivery['id'])
+            .maybeSingle();
+        if ((row?['status'] as String?) == 'picked_up' && mounted) {
+          _advanceToDropoff();
+        }
+      } catch (_) {}
+    });
+  }
+
+  void _advanceToDropoff() {
+    _handoffPollTimer?.cancel();
+    _handoffPollTimer = null;
+    setState(() {
+      _waitingHandoff = false;
+      _phase          = 'to_dropoff';
+      _routePoints    = [];
+      _etaSeconds     = null;
+      _initialFit     = false;
+    });
+    _fetchRoute().then((_) => _fitMap());
+    Get.snackbar(
+      'Handoff Confirmed',
+      'Customer confirmed pickup. Head to the delivery address!',
+      backgroundColor: EzizaColors.kPurple,
+      colorText: Colors.white,
+      snackPosition: SnackPosition.TOP,
+      duration: const Duration(seconds: 3),
+    );
   }
 
   String _etaLabel() {

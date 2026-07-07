@@ -136,10 +136,16 @@ class _CustomerDeliveryDetailPageState
   Future<void> _acceptBid(Map<String, dynamic> bid) async {
     setState(() => _accepting = true);
     try {
-      final bidId   = bid['id']      as String;
-      final delivId = widget.deliveryId;
-      final amount  = bid['amount'];
-      final riderId = bid['rider_id'] as String?;
+      final bidId    = bid['id']      as String;
+      final delivId  = widget.deliveryId;
+      final amount   = bid['amount'];
+      final riderId  = bid['rider_id'] as String?;
+      // Company bids have no rider_id at bid time — the company assigns one
+      // of its own riders afterward via _assignRider. Only set rider_id here
+      // for individual-rider bids; otherwise this unconditional write can
+      // race ahead of (and clobber back to null) a company's own assignment
+      // if it happens quickly after realtime notifies them of the win.
+      final isCompanyBid = bid['company_id'] != null;
 
       await _db.from('delivery_bids')
           .update({'status': 'accepted'}).eq('id', bidId);
@@ -149,7 +155,7 @@ class _CustomerDeliveryDetailPageState
       await _db.from('deliveries').update({
         'agreed_price': amount,
         'status':       'assigned',
-        'rider_id':     riderId,
+        if (!isCompanyBid) 'rider_id': riderId,
         'assigned_at':  DateTime.now().toUtc().toIso8601String(),
       }).eq('id', delivId);
 
