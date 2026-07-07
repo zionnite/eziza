@@ -12,6 +12,8 @@ import '../../controllers/auth_controller.dart';
 import '../../models/rider.dart';
 import '../../services/location_service.dart';
 import '../../services/rider_location_task.dart';
+import '../../services/ratings_service.dart';
+import '../../widgets/rating_sheet.dart';
 import 'earnings_widgets.dart';
 import 'profile_page.dart';
 import 'rider_map_page.dart';
@@ -252,11 +254,46 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
         // own setState to actually show up on screen.
         await _auth.refreshProfile();
         if (mounted) setState(() {});
+        for (final d in confirmed) {
+          _maybeShowRateCustomerSheet(d['id'] as String);
+        }
         _confirmedPollTimer?.cancel();
         _confirmedPollTimer = null;
         if (_activeDeliveries.isEmpty) _stopLocationBroadcast();
       }
     } catch (_) {}
+  }
+
+  // Rider rates the receiver once a delivery reaches 'confirmed'. This lives
+  // here (not just in rider_map_page.dart) because the confirming customer
+  // can act long after the rider has left the map page (e.g. an SMS/OTP
+  // failure forces a delayed fallback confirm) — if nothing is listening by
+  // then, the rider never gets prompted. Dashboard is alive whenever the
+  // rider has the app open, so it's the reliable place to catch this.
+  Future<void> _maybeShowRateCustomerSheet(String deliveryId) async {
+    final already = await RatingsService.hasRated(
+        deliveryId: deliveryId, checkpoint: 'delivery', raterRole: 'rider');
+    if (already || !mounted) return;
+    final user = _db.auth.currentUser;
+    final rider = _rider;
+    if (user == null || rider == null) return;
+    if (!mounted) return;
+    showRatingSheet(
+      context,
+      title: 'Rate the Receiver',
+      subtitle: 'How was your delivery experience?',
+      onSubmit: (rating, comment) => RatingsService.submit(
+        deliveryId: deliveryId,
+        checkpoint: 'delivery',
+        raterAuthId: user.id,
+        raterRole: 'rider',
+        raterName: rider.fullName,
+        rateeRole: 'receiver',
+        rateeId: null,
+        rating: rating,
+        comment: comment,
+      ),
+    );
   }
 
   // Runs an immediate check then polls every 12 s as a fallback for missed
@@ -382,6 +419,7 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
               // needs its own setState to actually show up on screen.
               await _auth.refreshProfile();
               if (mounted) setState(() {});
+              _maybeShowRateCustomerSheet(d['id'] as String);
               _confirmedPollTimer?.cancel();
               _confirmedPollTimer = null;
               if (_activeDeliveries.isEmpty) {
