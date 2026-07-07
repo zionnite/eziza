@@ -14,6 +14,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../constants/colors.dart';
 import '../../services/location_service.dart';
+import '../../services/ratings_service.dart';
+import '../../widgets/rating_sheet.dart';
 
 const _ngDefault = LatLng(9.0820, 8.6753);
 
@@ -388,7 +390,7 @@ class _RiderMapPageState extends State<RiderMapPage> {
   // ── OTP confirmation ─────────────────────────────────────────────────────────
 
   /// Single exit point — guards against double-close from Realtime + OTP paths.
-  void _closeMap() {
+  void _closeMap() async {
     if (_closing || !mounted) return;
     _closing = true;
     _pollTimer?.cancel();
@@ -403,6 +405,9 @@ class _RiderMapPageState extends State<RiderMapPage> {
       Get.back();
       _otpSheetOpen = false;
     }
+    // Show (and wait out) the rate-receiver prompt while the page is still
+    // mounted — it needs to finish before we pop this page away.
+    await _maybeShowRateCustomerSheet(ratingRole: 'receiver');
     Get.back(result: 'confirmed');
     Get.snackbar(
       'Delivery Complete! 🎉',
@@ -545,6 +550,47 @@ class _RiderMapPageState extends State<RiderMapPage> {
       colorText: Colors.white,
       snackPosition: SnackPosition.TOP,
       duration: const Duration(seconds: 3),
+    );
+    _maybeShowRateCustomerSheet(ratingRole: 'sender');
+  }
+
+  // Rider rates sender at handoff, rider rates receiver at delivery — same
+  // widget/service, only role + prompt copy differ.
+  Future<void> _maybeShowRateCustomerSheet({required String ratingRole}) async {
+    final deliveryId = widget.delivery['id'] as String;
+    final checkpoint = ratingRole == 'sender' ? 'handoff' : 'delivery';
+    final already = await RatingsService.hasRated(
+        deliveryId: deliveryId, checkpoint: checkpoint, raterRole: 'rider');
+    if (already || !mounted) return;
+    final user = _db.auth.currentUser;
+    if (user == null) return;
+    String? riderName;
+    try {
+      final row = await _db
+          .from('riders')
+          .select('full_name')
+          .eq('id', widget.riderId)
+          .maybeSingle();
+      riderName = row?['full_name'] as String?;
+    } catch (_) {}
+    if (!mounted) return;
+    showRatingSheet(
+      context,
+      title: ratingRole == 'sender' ? 'Rate the Sender' : 'Rate the Receiver',
+      subtitle: ratingRole == 'sender'
+          ? 'How was your pickup experience?'
+          : 'How was your delivery experience?',
+      onSubmit: (rating, comment) => RatingsService.submit(
+        deliveryId: deliveryId,
+        checkpoint: checkpoint,
+        raterAuthId: user.id,
+        raterRole: 'rider',
+        raterName: riderName,
+        rateeRole: ratingRole,
+        rateeId: null,
+        rating: rating,
+        comment: comment,
+      ),
     );
   }
 

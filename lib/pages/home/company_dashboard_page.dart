@@ -7,6 +7,7 @@ import '../../constants/colors.dart';
 import '../../controllers/auth_controller.dart';
 import 'earnings_widgets.dart';
 import 'company_map_page.dart';
+import 'company_rider_ratings_page.dart';
 
 class CompanyDashboardPage extends StatefulWidget {
   const CompanyDashboardPage({super.key});
@@ -2275,57 +2276,79 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
 
   Widget _riderCard(Map<String, dynamic> rider) {
     final isAvailable = rider['is_available'] as bool? ?? false;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-          color: EzizaColors.kWhite,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: EzizaColors.kBorder)),
-      child: Row(children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                  colors: [EzizaColors.kPurple, EzizaColors.kPurpleD]),
-              shape: BoxShape.circle),
-          child: const Icon(Icons.two_wheeler_rounded,
-              color: Colors.white, size: 18),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-            Text(rider['full_name'] as String? ?? '',
-                style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: EzizaColors.kText)),
-            Text(rider['vehicle_type'] as String? ?? '',
-                style: const TextStyle(
-                    fontSize: 12, color: EzizaColors.kMuted)),
-          ]),
-        ),
-        Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
+    final ratingAvg   = (rider['rating_avg'] as num?)?.toDouble() ?? 0.0;
+    final ratingCount = (rider['rating_count'] as num?)?.toInt() ?? 0;
+    final riderName   = rider['full_name'] as String? ?? '';
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => CompanyRiderRatingsPage(
+              riderId: rider['id'] as String, riderName: riderName))),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+            color: EzizaColors.kWhite,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: EzizaColors.kBorder)),
+        child: Row(children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                    colors: [EzizaColors.kPurple, EzizaColors.kPurpleD]),
+                shape: BoxShape.circle),
+            child: const Icon(Icons.two_wheeler_rounded,
+                color: Colors.white, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+              Text(riderName,
+                  style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: EzizaColors.kText)),
+              Row(children: [
+                Text(rider['vehicle_type'] as String? ?? '',
+                    style: const TextStyle(
+                        fontSize: 12, color: EzizaColors.kMuted)),
+                if (ratingCount > 0) ...[
+                  const SizedBox(width: 8),
+                  const Icon(Icons.star_rounded,
+                      size: 13, color: EzizaColors.kGold),
+                  const SizedBox(width: 2),
+                  Text('${ratingAvg.toStringAsFixed(1)} ($ratingCount)',
+                      style: const TextStyle(
+                          fontSize: 12, color: EzizaColors.kMuted)),
+                ],
+              ]),
+            ]),
+          ),
+          Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                  color: isAvailable
+                      ? EzizaColors.kSuccess
+                      : EzizaColors.kMuted,
+                  shape: BoxShape.circle)),
+          const SizedBox(width: 6),
+          Text(
+            isAvailable ? 'Online' : 'Offline',
+            style: TextStyle(
+                fontSize: 11,
                 color: isAvailable
                     ? EzizaColors.kSuccess
                     : EzizaColors.kMuted,
-                shape: BoxShape.circle)),
-        const SizedBox(width: 6),
-        Text(
-          isAvailable ? 'Online' : 'Offline',
-          style: TextStyle(
-              fontSize: 11,
-              color: isAvailable
-                  ? EzizaColors.kSuccess
-                  : EzizaColors.kMuted,
-              fontWeight: FontWeight.w600),
-        ),
-      ]),
+                fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(width: 4),
+          const Icon(Icons.chevron_right_rounded,
+              size: 18, color: EzizaColors.kMuted),
+        ]),
+      ),
     );
   }
 

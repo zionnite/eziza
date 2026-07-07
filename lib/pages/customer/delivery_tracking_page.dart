@@ -12,6 +12,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../constants/colors.dart';
+import '../../services/ratings_service.dart';
+import '../../widgets/rating_sheet.dart';
 
 const _ngDefault = LatLng(9.0820, 8.6753);
 
@@ -363,6 +365,7 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
             colorText: EzizaColors.kWhite,
             snackPosition: SnackPosition.BOTTOM,
             duration: const Duration(seconds: 4));
+        _maybeShowRateRiderSheet();
       }
     } catch (_) {
       Get.snackbar('Error', 'Could not confirm. Try again.',
@@ -371,6 +374,39 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
           snackPosition: SnackPosition.BOTTOM);
       if (mounted) setState(() => _confirmLoading = false);
     }
+  }
+
+  // Receiver rates rider at the delivery checkpoint. rater_role='receiver'
+  // is used even without a distinct claimed recipient (sender is then the
+  // de facto receiver); RLS on delivery_ratings allows either.
+  Future<void> _maybeShowRateRiderSheet() async {
+    final riderId = _delivery?['rider_id'] as String?;
+    if (riderId == null || !mounted) return;
+    final already = await RatingsService.hasRated(
+        deliveryId: widget.deliveryId,
+        checkpoint: 'delivery',
+        raterRole: 'receiver');
+    if (already || !mounted) return;
+    final user = _db.auth.currentUser;
+    if (user == null) return;
+    final name = user.userMetadata?['full_name'] as String? ?? '';
+    if (!mounted) return;
+    showRatingSheet(
+      context,
+      title: 'Rate Your Rider',
+      subtitle: 'How was your delivery experience?',
+      onSubmit: (rating, comment) => RatingsService.submit(
+        deliveryId: widget.deliveryId,
+        checkpoint: 'delivery',
+        raterAuthId: user.id,
+        raterRole: 'receiver',
+        raterName: name,
+        rateeRole: 'rider',
+        rateeId: riderId,
+        rating: rating,
+        comment: comment,
+      ),
+    );
   }
 
   Future<void> _confirmHandoff() async {

@@ -4,6 +4,8 @@ import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../constants/colors.dart';
+import '../../services/ratings_service.dart';
+import '../../widgets/rating_sheet.dart';
 import 'delivery_tracking_page.dart';
 
 class CustomerDeliveryDetailPage extends StatefulWidget {
@@ -174,6 +176,7 @@ class _CustomerDeliveryDetailPageState
           .update({'status': 'picked_up'}).eq('id', widget.deliveryId);
       _snack('Handoff confirmed! Rider is on the way.');
       await _load();
+      _maybeShowRateRiderSheet(checkpoint: 'handoff', raterRole: 'sender');
     } catch (_) {
       _snack('Could not confirm handoff. Please try again.');
     }
@@ -189,10 +192,50 @@ class _CustomerDeliveryDetailPageState
       }).eq('id', widget.deliveryId);
       _snack('Receipt confirmed. Thank you!');
       await _load();
+      _maybeShowRateRiderSheet(checkpoint: 'delivery', raterRole: 'receiver');
     } catch (_) {
       _snack('Could not confirm. Please try again.');
     }
     if (mounted) setState(() => _confirming = false);
+  }
+
+  // Sender rates rider at handoff, receiver rates rider at delivery — same
+  // widget/service, only checkpoint+role differ. rater_role='receiver' is
+  // used even when there's no distinct claimed recipient (the sender is
+  // then the de facto receiver); RLS on delivery_ratings allows either.
+  Future<void> _maybeShowRateRiderSheet({
+    required String checkpoint,
+    required String raterRole,
+  }) async {
+    final riderId = _delivery?['rider_id'] as String?;
+    if (riderId == null || !mounted) return;
+    final already = await RatingsService.hasRated(
+        deliveryId: widget.deliveryId,
+        checkpoint: checkpoint,
+        raterRole: raterRole);
+    if (already || !mounted) return;
+    final user = _db.auth.currentUser;
+    if (user == null) return;
+    final name = user.userMetadata?['full_name'] as String? ?? '';
+    if (!mounted) return;
+    showRatingSheet(
+      context,
+      title: 'Rate Your Rider',
+      subtitle: checkpoint == 'handoff'
+          ? 'How was the pickup experience?'
+          : 'How was your delivery experience?',
+      onSubmit: (rating, comment) => RatingsService.submit(
+        deliveryId: widget.deliveryId,
+        checkpoint: checkpoint,
+        raterAuthId: user.id,
+        raterRole: raterRole,
+        raterName: name,
+        rateeRole: 'rider',
+        rateeId: riderId,
+        rating: rating,
+        comment: comment,
+      ),
+    );
   }
 
   void _snack(String msg) => Get.snackbar('', msg,
