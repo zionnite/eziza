@@ -257,6 +257,13 @@ Before this, `riders.wallet_balance`/`companies.wallet_balance` were never writt
 - [ ] Admin earnings dashboard — blocked on `eziza-admin` (no admin panel exists yet at all)
 - [ ] Tenant billing ledger — no real invoicing/payment-collection mechanism from tenants exists yet; likely just a reporting view over `earnings_ledger` grouped by tenant until then
 
+### Multi-party delivery ratings — COMPLETE (not yet live-verified)
+Replaced the old unused `delivery_ratings` (single rider/customer rating pair) with a checkpoint-based model covering all 4 directions: sender↔rider at handoff, receiver↔rider at delivery. `riders.rating_count` added (didn't exist, unlike `companies`). Each rating snapshots `rater_name` so a company can trace a bad rating on one of their riders back to the specific customer — new `CompanyRiderRatingsPage`, opened by tapping a rider in the My Riders tab, lists this per rider.
+- [x] Migration `20260707250000_multi_party_ratings.sql` — new schema, `credit_rider_rating()` aggregation trigger, RLS (insert scoped to your actual role on the delivery; select scoped to your own ratings, ratings about you, or — for companies — ratings about riders linked via `company_rider_invites`)
+- [x] `lib/widgets/rating_sheet.dart` + `lib/services/ratings_service.dart` — shared skippable 5-star sheet + submit/already-rated-check helpers
+- [x] Wired into `customer_delivery_detail_page.dart`, `delivery_tracking_page.dart` (both live, both need it independently), `rider_map_page.dart`
+- [ ] **Not yet live-verified** — deployed and compiles clean, but no real rating has been submitted through the actual app yet (RLS enforcement, the aggregation trigger, and the company viewing page are all unverified against a live session, only reasoned through)
+
 ---
 
 ## 🚧 Pending / Not Yet Tested
