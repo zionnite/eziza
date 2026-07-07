@@ -23,7 +23,7 @@ serve(async (req) => {
       .from('deliveries')
       .select(`
         *,
-        rider:riders(id, full_name, phone, vehicle_type, vehicle_plate, rating_avg)
+        rider:riders(id, auth_user_id, full_name, phone, vehicle_type, vehicle_plate, rating_avg)
       `)
       .eq('id', deliveryId)
       .eq('tenant_id', auth.tenantId)
@@ -31,13 +31,16 @@ serve(async (req) => {
 
     if (error || !delivery) return json({ error: 'Delivery not found' }, 404)
 
-    // Include live rider location if package is in transit
+    // Include live rider location once a rider is assigned and active.
+    // rider_locations.rider_id is the rider's auth.uid() (by design), not
+    // riders.id — use the joined rider's auth_user_id to look it up.
     let riderLocation = null
-    if (delivery.rider_id && delivery.status === 'picked_up') {
+    const riderAuthUserId = delivery.rider?.auth_user_id as string | undefined
+    if (riderAuthUserId && ['assigned', 'awaiting_pickup_confirm', 'picked_up'].includes(delivery.status)) {
       const { data: loc } = await supabase
         .from('rider_locations')
-        .select('lat, lng, updated_at')
-        .eq('rider_id', delivery.rider_id)
+        .select('latitude, longitude, updated_at')
+        .eq('rider_id', riderAuthUserId)
         .single()
       riderLocation = loc
     }

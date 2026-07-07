@@ -2105,7 +2105,8 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
                         const SizedBox(height: 14),
                         // Status + route
                         Row(children: [
-                          _statusChip(result!['status'] as String? ?? 'open'),
+                          _statusChip(result!['status'] as String? ?? 'open',
+                              isRecipient: true),
                         ]),
                         const SizedBox(height: 12),
                         _previewRoute(
@@ -2362,7 +2363,7 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-                                _statusChip(status),
+                                _statusChip(status, isRecipient: true),
                               ],
                             ),
                             const SizedBox(height: 12),
@@ -2633,7 +2634,7 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
       .replaceAllMapped(
           RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},');
 
-  Widget _statusChip(String status) {
+  Widget _statusChip(String status, {bool isRecipient = false}) {
     final (Color text, Color bg) = switch (status) {
       'open'                    => (EzizaColors.kPurpleD,    const Color(0xFFF3E5F5)),
       'assigned'                => (const Color(0xFF0284C7), const Color(0xFFE0F2FE)),
@@ -2647,7 +2648,7 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
     final label = switch (status) {
       'open'                    => 'Awaiting Bids',
       'assigned'                => 'Rider Assigned',
-      'awaiting_pickup_confirm' => 'Confirm Handoff',
+      'awaiting_pickup_confirm' => isRecipient ? 'Awaiting Handoff' : 'Confirm Handoff',
       'picked_up'               => 'In Transit',
       'delivered'               => 'Delivered',
       'confirmed'               => 'Completed',

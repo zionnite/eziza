@@ -452,10 +452,18 @@ class _CustomerDeliveryDetailPageState
     final steps = [
       ('open',                  'Request Placed',    'Your delivery is open for bids',          Icons.receipt_long_outlined),
       ('assigned',              'Rider Assigned',    'A rider is heading to the pickup point',   Icons.two_wheeler_rounded),
-      ('awaiting_pickup_confirm','Rider at Pickup',  'Rider arrived — confirm the handoff',      Icons.handshake_outlined),
+      ('awaiting_pickup_confirm','Rider at Pickup',
+          widget.isRecipient
+              ? 'Rider is at sender\'s location, awaiting handoff'
+              : 'Rider arrived — confirm the handoff',
+          Icons.handshake_outlined),
       ('picked_up',             'Package Collected', 'Your package is in transit',               Icons.local_shipping_outlined),
       ('delivered',             'Delivered',         'Package delivered — confirm receipt',       Icons.home_outlined),
-      ('confirmed',             'Confirmed',         'Delivery complete. Thank you!',             Icons.verified_rounded),
+      ('confirmed',             'Confirmed',
+          widget.isRecipient
+              ? 'You confirmed receipt. Delivery complete!'
+              : 'Receiver confirmed receipt. Delivery complete!',
+          Icons.verified_rounded),
     ];
 
     final statusOrder = steps.map((s) => s.$1).toList();
@@ -586,9 +594,49 @@ class _CustomerDeliveryDetailPageState
   Widget _actionBanner() {
     final status = _delivery?['status'] as String? ?? '';
 
-    // Recipient does not manage pickup handoff
+    // Recipient does not manage pickup handoff — show info only, no action
     if (widget.isRecipient && status == 'awaiting_pickup_confirm') {
-      return const SizedBox.shrink();
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF8E1),
+            borderRadius: BorderRadius.circular(16),
+            border:
+                Border.all(color: EzizaColors.kGold.withValues(alpha: 0.4)),
+          ),
+          child: Row(children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                  color: EzizaColors.kGold.withValues(alpha: 0.15),
+                  shape: BoxShape.circle),
+              child: const Icon(Icons.two_wheeler_rounded,
+                  color: Color(0xFFD97706), size: 20),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                Text('Rider at Sender\'s Location',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                        color: Color(0xFF92400E))),
+                SizedBox(height: 3),
+                Text(
+                    'Rider is at the sender\'s location, awaiting handoff.',
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF92400E),
+                        height: 1.3)),
+              ]),
+            ),
+          ]),
+        ),
+      );
     }
 
     if (status == 'awaiting_pickup_confirm') {
@@ -791,22 +839,25 @@ class _CustomerDeliveryDetailPageState
                 end: Alignment.bottomRight),
             borderRadius: BorderRadius.circular(16),
           ),
-          child: const Row(children: [
-            Icon(Icons.verified_rounded,
+          child: Row(children: [
+            const Icon(Icons.verified_rounded,
                 color: EzizaColors.kGold, size: 28),
-            SizedBox(width: 14),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                Text('Delivery Complete',
+                const Text('Delivery Complete',
                     style: TextStyle(
                         fontWeight: FontWeight.w800,
                         fontSize: 14,
                         color: Colors.white)),
-                SizedBox(height: 2),
-                Text('Thank you for using Eziza!',
-                    style: TextStyle(fontSize: 12, color: Colors.white60)),
+                const SizedBox(height: 2),
+                Text(
+                    widget.isRecipient
+                        ? 'You confirmed receipt. Thank you for using Eziza!'
+                        : 'Receiver has confirmed receipt. Thank you for using Eziza!',
+                    style: const TextStyle(fontSize: 12, color: Colors.white60)),
               ]),
             ),
           ]),
@@ -1641,10 +1692,14 @@ class _CustomerDeliveryDetailPageState
   String _statusSubtitle(String s) => switch (s) {
         'open'                    => 'Waiting for bids',
         'assigned'                => 'Rider heading to pickup',
-        'awaiting_pickup_confirm' => 'Confirm handoff to rider',
+        'awaiting_pickup_confirm' => widget.isRecipient
+            ? 'Rider at sender\'s location, awaiting handoff'
+            : 'Confirm handoff to rider',
         'picked_up'               => 'Package in transit',
         'delivered'               => 'Confirm receipt',
-        'confirmed'               => 'Delivery complete',
+        'confirmed'               => widget.isRecipient
+            ? 'You confirmed receipt'
+            : 'Receiver confirmed receipt',
         _                         => '',
       };
 }

@@ -210,8 +210,8 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
   Future<void> _resolveAndApplyCoords(Map<String, dynamic> d) async {
     final pLat = (d['pickup_lat']  as num?)?.toDouble();
     final pLng = (d['pickup_lng']  as num?)?.toDouble();
-    final dLat = (d['dropoff_lat'] as num?)?.toDouble();
-    final dLng = (d['dropoff_lng'] as num?)?.toDouble();
+    final dLat = (d['delivery_lat'] as num?)?.toDouble();
+    final dLng = (d['delivery_lng'] as num?)?.toDouble();
 
     final resolvedPickup = (pLat != null && pLng != null)
         ? LatLng(pLat, pLng)
@@ -325,8 +325,12 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
             });
             if (s == 'awaiting_pickup_confirm') {
               Get.snackbar(
-                '📍 Rider Has Arrived',
-                'Your rider is at the pickup location — please confirm the handoff.',
+                widget.isRecipient
+                    ? '📍 Rider at Sender\'s Location'
+                    : '📍 Rider Has Arrived',
+                widget.isRecipient
+                    ? 'Rider is at the sender\'s location, awaiting handoff.'
+                    : 'Your rider is at the pickup location — please confirm the handoff.',
                 backgroundColor: const Color(0xFFD97706),
                 colorText: Colors.white,
                 snackPosition: SnackPosition.TOP,
@@ -1005,12 +1009,15 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
             color:        const Color(0xFFDCFCE7),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: const Color(0xFF86EFAC))),
-          child: const Row(children: [
-            Icon(Icons.check_circle_rounded,
+          child: Row(children: [
+            const Icon(Icons.check_circle_rounded,
                 color: Color(0xFF16A34A), size: 18),
-            SizedBox(width: 8),
-            Text('You confirmed receipt — delivery complete!',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+            const SizedBox(width: 8),
+            Text(
+                widget.isRecipient
+                    ? 'You confirmed receipt — delivery complete!'
+                    : 'Receiver has confirmed receipt — delivery complete!',
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
                     color: Color(0xFF166534))),
           ]),
         ),

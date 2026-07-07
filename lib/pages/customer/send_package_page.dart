@@ -144,8 +144,8 @@ class _SendPackagePageState extends State<SendPackagePage>
             ? null
             : _pickupPhoneCtrl.text.trim(),
         'delivery_address':       _dropoffAddress,
-        'dropoff_lat':            _dropoffLat,
-        'dropoff_lng':            _dropoffLng,
+        'delivery_lat':           _dropoffLat,
+        'delivery_lng':           _dropoffLng,
         'delivery_contact_name':  _deliveryContactCtrl.text.trim().isEmpty
             ? null
             : _deliveryContactCtrl.text.trim(),

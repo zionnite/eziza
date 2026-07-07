@@ -23,10 +23,19 @@ class LocationService {
       return await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 8),
         ),
       );
     } catch (_) {
-      return null;
+      // High-accuracy fix failed (weak signal, cold GPS start, indoors) —
+      // fall back to the device's last cached fix so tracking doesn't go
+      // silent for the whole 10s cycle. The next cycle will retry for a
+      // fresh high-accuracy fix regardless.
+      try {
+        return await Geolocator.getLastKnownPosition();
+      } catch (_) {
+        return null;
+      }
     }
   }
 

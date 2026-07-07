@@ -13,6 +13,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../constants/colors.dart';
+import '../../services/location_service.dart';
 
 const _ngDefault = LatLng(9.0820, 8.6753);
 
@@ -115,8 +116,8 @@ class _RiderMapPageState extends State<RiderMapPage> {
     // Resolve pickup / dropoff GPS
     final pLat = (d['pickup_lat']   as num?)?.toDouble();
     final pLng = (d['pickup_lng']   as num?)?.toDouble();
-    final dLat = (d['dropoff_lat'] as num?)?.toDouble();
-    final dLng = (d['dropoff_lng'] as num?)?.toDouble();
+    final dLat = (d['delivery_lat'] as num?)?.toDouble();
+    final dLng = (d['delivery_lng'] as num?)?.toDouble();
 
     final resolvedPickup = (pLat != null && pLng != null)
         ? LatLng(pLat, pLng)
@@ -187,11 +188,8 @@ class _RiderMapPageState extends State<RiderMapPage> {
 
     final uid = _db.auth.currentUser?.id;
 
-    try {
-      final pos = await Geolocator.getCurrentPosition(
-        locationSettings:
-            const LocationSettings(accuracy: LocationAccuracy.high),
-      ).timeout(const Duration(seconds: 10));
+    final pos = await LocationService.getCurrentPosition();
+    if (pos != null) {
       if (mounted) {
         setState(() {
           _myLocation = LatLng(pos.latitude, pos.longitude);
@@ -211,7 +209,7 @@ class _RiderMapPageState extends State<RiderMapPage> {
           });
         } catch (_) {}
       }
-    } catch (_) {
+    } else {
       if (mounted) setState(() => _locating = false);
     }
 

@@ -55,9 +55,18 @@ class DeliveryController extends GetxController {
           .maybeSingle();
       if (row != null) {
         activeDelivery.value = Delivery.fromJson(row);
-        if (activeDelivery.value!.status == 'picked_up') {
+        // Track continuously for the whole en-route window — merchants and
+        // buyers need to see the rider heading to pickup too, not only
+        // after they've picked up the package.
+        const enRoute = ['assigned', 'awaiting_pickup_confirm', 'picked_up'];
+        if (enRoute.contains(activeDelivery.value!.status)) {
           LocationService.startTracking(_riderId!);
+        } else {
+          LocationService.stopTracking();
         }
+      } else {
+        activeDelivery.value = null;
+        LocationService.stopTracking();
       }
     } catch (_) {}
   }
@@ -105,12 +114,8 @@ class DeliveryController extends GetxController {
           .update({'status': status})
           .eq('id', deliveryId);
 
-      if (status == 'picked_up' && _riderId != null) {
-        LocationService.startTracking(_riderId!);
-      }
-      if (status == 'delivered') {
-        LocationService.stopTracking();
-      }
+      // _loadActive() decides whether tracking should be running based on
+      // the delivery's current status — no need to duplicate that logic here.
       await _loadActive();
       return 'true';
     } catch (e) {

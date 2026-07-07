@@ -159,8 +159,8 @@ class _CompanyMapPageState extends State<CompanyMapPage> {
       return;
     }
     if (status == 'picked_up') {
-      final dLat  = (row['dropoff_lat'] as num?)?.toDouble();
-      final dLng  = (row['dropoff_lng'] as num?)?.toDouble();
+      final dLat  = (row['delivery_lat'] as num?)?.toDouble();
+      final dLng  = (row['delivery_lng'] as num?)?.toDouble();
       final dAddr = row['delivery_address'] as String?;
       if (dLat == null || dLng == null) return;
       final dest = LatLng(dLat, dLng);
@@ -215,7 +215,7 @@ class _CompanyMapPageState extends State<CompanyMapPage> {
           .from('deliveries')
           .select('rider_id, status, '
               'pickup_lat, pickup_lng, pickup_address, '
-              'dropoff_lat, dropoff_lng, delivery_address')
+              'delivery_lat, delivery_lng, delivery_address')
           .inFilter('rider_id', riderIds)
           .inFilter('status', ['assigned', 'picked_up']);
 
@@ -268,8 +268,8 @@ class _CompanyMapPageState extends State<CompanyMapPage> {
             destLabel = 'Pickup';
             destAddr  = assign['pickup_address'] as String?;
           } else {
-            final dLat = (assign['dropoff_lat'] as num?)?.toDouble();
-            final dLng = (assign['dropoff_lng'] as num?)?.toDouble();
+            final dLat = (assign['delivery_lat'] as num?)?.toDouble();
+            final dLng = (assign['delivery_lng'] as num?)?.toDouble();
             if (dLat != null && dLng != null) destination = LatLng(dLat, dLng);
             destLabel = 'Dropoff';
             destAddr  = assign['delivery_address'] as String?;

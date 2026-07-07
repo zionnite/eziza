@@ -10,6 +10,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../constants/colors.dart';
 import '../../controllers/auth_controller.dart';
 import '../../models/rider.dart';
+import '../../services/location_service.dart';
 import '../../services/rider_location_task.dart';
 import 'profile_page.dart';
 import 'rider_map_page.dart';
@@ -326,7 +327,24 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
 
             // Update active delivery row in-place (picked_up, delivered, etc.)
             final idx = _activeDeliveries.indexWhere((r) => r['id'] == d['id']);
-            if (idx == -1) return;
+            if (idx == -1) {
+              // This row matches our rider_id filter (so it's genuinely ours)
+              // but wasn't caught by the "just assigned" branch above — e.g.
+              // a company assigning us to a job it already won, where the
+              // earlier 'assigned' event had rider_id still null and only
+              // this later update actually set it to us. Don't just drop
+              // it silently: if it's a trackable en-route status, adopt it
+              // the same way, so location broadcasting still starts.
+              const enRoute = ['assigned', 'awaiting_pickup_confirm', 'picked_up'];
+              if (enRoute.contains(newStatus)) {
+                setState(() {
+                  _openDeliveries.removeWhere((r) => r['id'] == d['id']);
+                  _activeDeliveries.insert(0, d);
+                });
+                if (_locationSub == null) _startLocationBroadcast();
+              }
+              return;
+            }
             if (newStatus == 'confirmed') {
               setState(() {
                 _activeDeliveries.removeAt(idx);
@@ -568,13 +586,8 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
     final uid = _db.auth.currentUser?.id;
     if (uid == null) return;
 
-    try {
-      final pos = await Geolocator.getCurrentPosition(
-        locationSettings:
-            const LocationSettings(accuracy: LocationAccuracy.best),
-      ).timeout(const Duration(seconds: 10));
-      await _upsertLocation(uid, pos);
-    } catch (_) {}
+    final initialPos = await LocationService.getCurrentPosition();
+    if (initialPos != null) await _upsertLocation(uid, initialPos);
 
     _locationSub = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
@@ -586,13 +599,8 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
     _heartbeatTimer?.cancel();
     _heartbeatTimer =
         Timer.periodic(const Duration(seconds: 30), (_) async {
-      try {
-        final pos = await Geolocator.getCurrentPosition(
-          locationSettings:
-              const LocationSettings(accuracy: LocationAccuracy.high),
-        ).timeout(const Duration(seconds: 8));
-        await _upsertLocation(uid, pos);
-      } catch (_) {}
+      final pos = await LocationService.getCurrentPosition();
+      if (pos != null) await _upsertLocation(uid, pos);
     });
 
     await _startForegroundService(uid);

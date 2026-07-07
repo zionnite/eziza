@@ -19,6 +19,7 @@ serve(async (req) => {
     const {
       external_order_id,
       external_ref,
+      pickup_state,
       pickup_address,
       pickup_lat,
       pickup_lng,
@@ -56,6 +57,7 @@ serve(async (req) => {
         tenant_id: auth.tenantId,
         external_order_id,
         external_ref,
+        pickup_state,
         pickup_address,
         pickup_lat,
         pickup_lng,

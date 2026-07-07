@@ -1,6 +1,7 @@
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'location_service.dart';
 
 /// Called by the Android foreground service / iOS background task.
 /// Runs in a separate Dart isolate — initialises its own Supabase instance.
@@ -37,11 +38,14 @@ class RiderLocationTaskHandler extends TaskHandler {
     final uid    = client?.auth.currentUser?.id;
     if (client == null || uid == null) return;
 
-    try {
-      final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
-      ).timeout(const Duration(seconds: 8));
+    // Same high-accuracy-with-fallback logic as the foreground map/tracking
+    // paths — falls back to the last cached fix instead of skipping the
+    // push entirely when a fresh fix can't be acquired in time (weak
+    // signal, cold GPS start, phone in a pocket while backgrounded).
+    final pos = await LocationService.getCurrentPosition();
+    if (pos == null) return;
 
+    try {
       await client.from('rider_locations').upsert({
         'rider_id':   uid,
         'latitude':   pos.latitude,
