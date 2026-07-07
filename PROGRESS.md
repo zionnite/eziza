@@ -239,6 +239,26 @@
 
 ---
 
+### Monetisation — Phase 1 (Foundation) COMPLETE
+
+Before this, `riders.wallet_balance`/`companies.wallet_balance` were never written to anywhere (companies didn't even have the columns — `company_dashboard_page.dart` was reading them off a raw Map with a silent `?? 0.0` fallback), and `settings.platform_fee_pct`/`deliveries.platform_fee` existed but were never applied. Riders/companies would have kept 100% of every bid with zero commission taken.
+
+- [x] Migration `20260707190000_monetisation_foundation.sql`:
+  - Added `deliveries.delivery_fee_breakdown JSONB`
+  - Added `companies.wallet_balance`/`total_earned`/`paid_out` (didn't exist at all — real gap, not just unused)
+  - New `earnings_ledger` table — itemized, auditable record of every delivery's gross/commission/net split, RLS-scoped per rider/company
+  - `credit_delivery_earnings()` trigger, fires once per delivery on the `-> confirmed` transition: reads `platform_fee_pct` from `settings`, computes commission + net, writes the fee breakdown back onto the delivery, inserts one `earnings_ledger` row, and credits the winning party's `wallet_balance` — the winning party is whoever's bid was `accepted` (a company, if a company won, even though it may internally assign one of its own riders to actually do the job — that rider isn't paid directly through the platform)
+  - One-time backfill for pre-existing `confirmed` deliveries in the same migration (verified against 10 real historical deliveries — commission math checked out on both the individual-rider and company-won paths)
+- [x] `company_dashboard_page.dart` — added a "Recent Earnings" itemized section to the Earnings tab (`_earningsHistoryCard`), same gross/commission/net breakdown pattern the rider's `earnings_page.dart` already had (that page needed zero changes — it already read `platform_fee`/`agreed_price` directly, just had nothing populating them until now)
+- [ ] **Not yet verified**: the live trigger firing on an actual real-time status transition (only the one-time backfill script's identical logic has been confirmed against real data so far — same function body, different invocation path)
+
+### Monetisation — Phases 2+ (not started)
+- [ ] Markup on external carrier quotes — blocked on Shipbubble integration (deferred)
+- [ ] Admin earnings dashboard — blocked on `eziza-admin` (no admin panel exists yet at all)
+- [ ] Tenant billing ledger — no real invoicing/payment-collection mechanism from tenants exists yet; likely just a reporting view over `earnings_ledger` grouped by tenant until then
+
+---
+
 ## 🚧 Pending / Not Yet Tested
 
 ### Immediate — Test These First
@@ -257,10 +277,10 @@
 
 ### ZeeFashion ↔ Eziza Integration — now complete, see the dedicated section above
 - [ ] **Notifications reported as not firing at all** in latest live testing, despite the notification wiring for all 4 key events (ready-for-pickup, bid placed, bid accepted, rider arrival) being verified correct in code on both the internal and Eziza paths. Needs device-level debugging next: confirm `device_tokens`/FCM token registration actually happened for the test accounts, check `send-notification`'s logs for the actual FCM API response (not just that it was invoked), and check the Firebase project's APNs/FCM config is still valid. Do not assume the earlier code fixes are wrong until this is isolated — they closed real gaps, but something upstream (or the test device's token) is likely still broken.
-- [x] ~~Pass buyer phone number when ZeeFashion creates Eziza delivery~~ — already done: `store_update_tracking.dart` forwards both `pickup_contact_phone` and `delivery_contact_phone` through `logistics-gateway` to Eziza's `create-delivery`
-- [ ] ~~Wire ZeeFashion merchant handoff confirm → Eziza `picked_up`~~ — done
-- [ ] ~~Extend `dispatch-webhook` — on `delivered`, fire tenant webhook so buyer sees confirm prompt~~ — done
-- [ ] ~~ZeeFashion `packageReceived()` calls back to Eziza → `confirmed`~~ — done
+- [x] Pass buyer phone number when ZeeFashion creates Eziza delivery — `store_update_tracking.dart` forwards both `pickup_contact_phone` and `delivery_contact_phone` through `logistics-gateway` to Eziza's `create-delivery`
+- [x] Wire ZeeFashion merchant handoff confirm → Eziza `picked_up`
+- [x] Extend `dispatch-webhook` — on `delivered`, fire tenant webhook so buyer sees confirm prompt
+- [x] ZeeFashion `packageReceived()` calls back to Eziza → `confirmed`
 
 ### External Carriers / Shipbubble
 - [ ] `external_carriers` + `external_carrier_rates` + `external_carrier_bookings` DB migration

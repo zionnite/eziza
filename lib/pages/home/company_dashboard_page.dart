@@ -1376,6 +1376,23 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
                     ],
                   ]),
                 ),
+                if (_jobHistory.any((d) => d['status'] == 'confirmed')) ...[
+                  const SizedBox(height: 20),
+                  const Row(children: [
+                    Icon(Icons.receipt_long_rounded,
+                        size: 16, color: EzizaColors.kPurpleD),
+                    SizedBox(width: 8),
+                    Text('Recent Earnings',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                            color: EzizaColors.kPurpleD)),
+                  ]),
+                  const SizedBox(height: 10),
+                  ..._jobHistory
+                      .where((d) => d['status'] == 'confirmed')
+                      .map(_earningsHistoryCard),
+                ],
                 if (_payoutHistory.isNotEmpty) ...[
                   const SizedBox(height: 20),
                   const Row(children: [
@@ -2061,6 +2078,66 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
           ],
         ]),
       );
+
+  Widget _earningsHistoryCard(Map<String, dynamic> d) {
+    final gross    = (d['agreed_price']  as num?)?.toDouble() ?? 0;
+    final fee      = (d['platform_fee']  as num?)?.toDouble() ?? 0;
+    final net      = gross - fee;
+    final pickup   = d['pickup_address']   as String? ?? '';
+    final delivery = d['delivery_address'] as String? ?? '';
+    final date     = d['confirmed_at'] as String? ?? d['created_at'] as String? ?? '';
+    final dateLabel = date.length >= 10 ? date.substring(0, 10) : date;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+          color: EzizaColors.kWhite,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: EzizaColors.kBorder)),
+      child: Row(children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+              color: EzizaColors.kSuccess.withValues(alpha: 0.1),
+              shape: BoxShape.circle),
+          child: const Icon(Icons.check_rounded,
+              size: 16, color: EzizaColors.kSuccess),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+            Text('${_shortAddr(pickup)} → ${_shortAddr(delivery)}',
+                style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: EzizaColors.kText),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 2),
+            Text(dateLabel,
+                style: const TextStyle(
+                    fontSize: 11, color: EzizaColors.kMuted)),
+          ]),
+        ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text('₦${net.toStringAsFixed(0)}',
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: EzizaColors.kText)),
+            if (fee > 0)
+              Text('–₦${fee.toStringAsFixed(0)} fee',
+                  style: const TextStyle(
+                      color: EzizaColors.kMuted, fontSize: 11)),
+          ],
+        ),
+      ]),
+    );
+  }
 
   Widget _historyCard(Map<String, dynamic> d) {
     final price    = (d['agreed_price'] as num?)?.toDouble() ?? 0;
