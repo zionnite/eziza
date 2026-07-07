@@ -181,6 +181,64 @@
 
 ---
 
+### ZeeFashion ↔ Eziza Integration — COMPLETE (was "designed, not wired" — now fully live)
+
+#### Full outsourcing model
+- [x] `FeatureFlags.eziza` toggle (ZeeFashion admin → App Settings): when on, orders are fully outsourced — ZeeFashion's own internal riders/companies never see them, zero disruption to internal flow when toggled back off
+- [x] `delivery_requests.routed_to` column (`internal` | `eziza`), decided client-side at creation from the flag (migration `20260705000000`)
+- [x] Internal job boards (`rider_dashboard_page.dart`, `company_dashboard_page.dart` in ZeeFashion) filter on `routed_to = 'internal'`
+- [x] `reject_bids_on_eziza_requests` trigger — defense-in-depth backstop against a client inserting an internal bid on an `eziza`-routed request by guessed ID
+
+#### Buyer-facing Eziza bidding
+- [x] `eziza_delivery_bids` table (isolated from internal `delivery_bids`) — migration `20260705010000`
+- [x] `logistics-gateway` inbound `bid.placed` handler upserts into it, relayed from Eziza's `dispatch-bid-webhook`
+- [x] `track_order.dart` shows/accepts/pays Eziza bids exactly like internal ones (wallet + Paystack)
+- [x] `precheck_accept_eziza_bid` / `finalize_accept_eziza_bid` RPCs (migration `20260706000000`) — validates via caller's own JWT, calls Eziza's `accept-bid`, commits payment only after Eziza confirms, compensating `cancel-delivery` call on finalize failure
+
+#### Live rider-location sharing with ZeeFashion
+- [x] `eziza_rider/supabase/functions/dispatch-location-webhook` — DB webhook on `rider_locations` UPDATE, relays to tenant's `logistics-gateway`, looking up `riders.id` from `auth_user_id` first (see ID-system note below)
+- [x] `delivery_requests.eziza_rider_lat/lng/eziza_rider_location_updated_at` columns (migration `20260707000000`, ZeeFashion side) — rides the same realtime channel already open for status, no new subscription needed
+- [x] `delivery_map_page.dart` (ZeeFashion) — identical live map/polyline/ETA experience for Eziza-routed deliveries as internal ones, for both merchant and buyer
+- [x] 2-minute staleness check on the relayed location — once a rider goes offline (their `rider_locations` row deleted), the relayed column doesn't sit there looking live forever
+- [x] Map-consistency fixes: zoom-level parity with rider's own map (`_fitMap` only includes pickup pin during `to_pickup` phase), thicker/haloed polyline for visibility, rider marker + route cleared (not just left stale) once buyer confirms receipt
+
+#### Handoff / receipt relay
+- [x] Merchant "Confirm Handoff" (`store_order.dart`, `delivery_map_page.dart` isMerchant) → Eziza `confirm-pickup`, fire-and-forget
+- [x] Buyer "Confirm Receipt" (`order_controller.dart::packageReceived`, `delivery_map_page.dart`) → Eziza `confirm-receipt`, fire-and-forget
+- [x] New Eziza edge functions: `confirm-pickup`, `confirm-receipt`, `accept-bid`, `dispatch-bid-webhook`, `dispatch-location-webhook`
+
+#### Notifications (see also Pending — one open issue below)
+- [x] Ready-for-Pickup → matched riders/companies, both internal (`store_update_tracking.dart`) and Eziza (`notify-new-job` trigger on `deliveries` INSERT, coverage-state or 50km GPS match)
+- [x] Bid placed → buyer, both internal individual-rider bids (already working), internal company bids (`company_dashboard_page.dart::_placeBid` — was missing, now fixed) and Eziza bids (`logistics-gateway`'s `bid.placed` handler — was missing, now fixed)
+- [x] Bid accepted → winning rider/company, both sides (Eziza's `notify-bid-accepted` trigger is the single source of truth now — removed a broken/duplicate path in `dispatch-webhook` that queried a non-existent `is_accepted` column and used a legacy `fcm_token` field)
+- [x] Rider arrival at pickup → merchant, both sides (Eziza: `awaiting_pickup_confirm` → `dispatch-webhook` → `logistics-gateway`'s `_notify`)
+- [ ] **OPEN ISSUE:** despite all of the above being correctly wired in code (verified via audit + fixes), live testing reports notifications not firing at all. Needs a fresh device-level investigation — FCM delivery, `device_tokens` registration, or `send-notification` itself — not just the specific gaps already patched. (Tracked as a pending task in the ZeeFashion Claude Code session.)
+
+#### Root-cause bugs found and fixed this round
+- [x] JWT verification was blocking Eziza's tenant-facing endpoints — all 5 tenant functions redeployed `--no-verify-jwt`
+- [x] `logistics-gateway` inbound handler silently broke ALL status-sync — selected a non-existent `rider_id` column on `delivery_requests` (real column is `assigned_rider_id`) and didn't check the error
+- [x] `get-delivery` selected `lat, lng` instead of the real `latitude, longitude` columns on `rider_locations` — always returned `rider_location: null`
+- [x] **Core ID-system bug:** `rider_locations.rider_id` is the rider's `auth.uid()` by design, but `deliveries.rider_id` is a different PK (`riders.id`) — `dispatch-location-webhook` and `get-delivery` compared them directly, so the location relay silently never matched an active delivery. Fixed by looking up `riders.auth_user_id` first in both places.
+- [x] `track_order.dart::_pushDeliveryGps` was silently overwriting `delivery_requests.delivery_lat/lng` with the buyer's live phone GPS every time they opened the tracking screen, clobbering a merchant-resolved custom map-pin delivery address — now only seeds when the destination is still unresolved
+- [x] Two more RLS subquery-reliability bugs, same class as the FK issue above: `deliveries_rider_select`'s `rider_id IN (subquery)` clause (migration `20260707100000` — denormalized to `rider_auth_user_id` direct column) and its company-visibility clause `id IN (SELECT _auth_company_bid_delivery_ids())` (migration `20260707180000` — denormalized to `bidder_company_auth_ids UUID[]` direct array-containment check). Supabase Realtime's `postgres_changes` authorization does not reliably evaluate subquery/function-wrapped RLS predicates — direct column comparisons are required. Symptom before the fix: riders never saw live rider-location updates for others' deliveries reliably, and companies saw deliveries stuck showing "open for bid" forever after being assigned elsewhere.
+- [x] Individual rider dashboard: the open-job-board realtime channel had no UPDATE handler at all (only INSERT), so a delivery a rider bid on and lost had no code path to ever remove it from the list — added the missing handler
+- [x] Individual rider dashboard: duplicate active-delivery card — two separate realtime channels (`deliveries` UPDATE and `delivery_bids` UPDATE→accepted) both insert into `_activeDeliveries` for the same bid-accepted transition; the second one checked "not already present" before an `await` and inserted unconditionally after, racing with the first channel's synchronous insert. Fixed with a re-check after the await.
+- [x] `dropoff_lat`/`dropoff_lng` dead-column bug — four files (`rider_map_page.dart`, `company_map_page.dart`, `delivery_tracking_page.dart`, `send_package_page.dart`) read/wrote these instead of the real `delivery_lat`/`delivery_lng` columns, meaning riders/companies always fell back to re-geocoding the address text (or, for the company fleet map, skipped the dropoff pin entirely) instead of using the precise stored coordinate
+- [x] `store_location_page.dart` (ZeeFashion, merchant's own store GPS) — GPS fetch had no timeout, could hang indefinitely on simulator making the "Update GPS Location" button look permanently disabled; added a 10s timeout with an explicit error (no silent last-known-location fallback, per explicit preference)
+- [x] `delivery_map_page.dart` — "delivery confirmed" banner said "You confirmed receipt" to BOTH merchant and buyer regardless of who actually confirmed; now viewer-aware
+- [x] `track_order.dart` — the map's own customised "Package Delivered" dialog and this page's simpler `SmartPopup` dialog could both fire and stack, since this page stays mounted underneath the pushed map page; now suppressed while the map is open, re-offered after it closes if still unconfirmed
+
+#### New migrations this round (Eziza project)
+- `20260706000000_dispatch_bid_webhook_trigger.sql`
+- `20260707000000_dispatch_location_webhook_trigger.sql`
+- `20260707100000_fix_deliveries_realtime_rls.sql` — `rider_auth_user_id` denormalization
+- `20260707120000_fix_riders_vehicle_type_check.sql` — widened CHECK to 5 vehicle types the app actually offers
+- `20260707170000_revert_rider_locations_own_policy.sql` — reverted an incorrect mid-investigation RLS change back to the original correct design
+- `20260707180000_fix_company_bid_realtime_rls.sql` — `bidder_company_auth_ids` denormalization
+- (Various numbered debug migrations between 20260706010000–20260707160000 were temporary diagnostics, applied and dropped in the same session — not meaningful history)
+
+---
+
 ## 🚧 Pending / Not Yet Tested
 
 ### Immediate — Test These First
@@ -197,11 +255,12 @@
 - [ ] **Custom domain for API** — replace raw Supabase URL with `api.eziza.com`
 - [ ] **Admin dashboard** — approve riders/companies, manage `locations`, view all deliveries, manage payouts
 
-### ZeeFashion ↔ Eziza Integration (Designed — not yet wired)
-- [ ] Pass buyer phone number when ZeeFashion creates Eziza delivery (`logistics-gateway`)
-- [ ] Wire ZeeFashion merchant handoff confirm → Eziza `picked_up`
-- [ ] Extend `dispatch-webhook` — on `delivered`, fire tenant webhook so buyer sees confirm prompt
-- [ ] ZeeFashion `packageReceived()` calls back to Eziza → `confirmed`
+### ZeeFashion ↔ Eziza Integration — now complete, see the dedicated section above
+- [ ] **Notifications reported as not firing at all** in latest live testing, despite the notification wiring for all 4 key events (ready-for-pickup, bid placed, bid accepted, rider arrival) being verified correct in code on both the internal and Eziza paths. Needs device-level debugging next: confirm `device_tokens`/FCM token registration actually happened for the test accounts, check `send-notification`'s logs for the actual FCM API response (not just that it was invoked), and check the Firebase project's APNs/FCM config is still valid. Do not assume the earlier code fixes are wrong until this is isolated — they closed real gaps, but something upstream (or the test device's token) is likely still broken.
+- [ ] Pass buyer phone number when ZeeFashion creates Eziza delivery (`logistics-gateway`) — still not done, low priority
+- [ ] ~~Wire ZeeFashion merchant handoff confirm → Eziza `picked_up`~~ — done
+- [ ] ~~Extend `dispatch-webhook` — on `delivered`, fire tenant webhook so buyer sees confirm prompt~~ — done
+- [ ] ~~ZeeFashion `packageReceived()` calls back to Eziza → `confirmed`~~ — done
 
 ### External Carriers / Shipbubble
 - [ ] `external_carriers` + `external_carrier_rates` + `external_carrier_bookings` DB migration
