@@ -5,10 +5,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../constants/colors.dart';
 import '../../controllers/auth_controller.dart';
-import 'company_earnings_history_page.dart';
 import 'company_earnings_widgets.dart';
 import 'company_map_page.dart';
-import 'company_payout_history_page.dart';
 
 class CompanyDashboardPage extends StatefulWidget {
   const CompanyDashboardPage({super.key});
@@ -21,6 +19,7 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
     with TickerProviderStateMixin {
   final _db = Supabase.instance.client;
   late final TabController _deliveriesTabController;
+  late final TabController _earningsTabController;
 
   int _tab = 0;
 
@@ -49,6 +48,7 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
   void initState() {
     super.initState();
     _deliveriesTabController = TabController(length: 2, vsync: this);
+    _earningsTabController = TabController(length: 2, vsync: this);
     _load();
   }
 
@@ -56,6 +56,7 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
   void dispose() {
     if (_channel != null) _db.removeChannel(_channel!);
     _deliveriesTabController.dispose();
+    _earningsTabController.dispose();
     _phoneCtrl.dispose();
     _emailCtrl.dispose();
     _bidCtrl.dispose();
@@ -1239,6 +1240,8 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
         .fold<double>(0, (sum, p) => sum + ((p['amount'] as num?)?.toDouble() ?? 0));
     final hasPending   = pendingPayout > 0;
     final balance      = (rawBalance - pendingPayout).clamp(0, double.infinity);
+    final earningsHistory =
+        _jobHistory.where((d) => d['status'] == 'confirmed').toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1292,165 +1295,214 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
             ),
           ),
         ),
-        Expanded(
-          child: RefreshIndicator(
-            color: EzizaColors.kPurpleD,
-            onRefresh: _load,
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                          colors: [Color(0xFF3D1A6E), EzizaColors.kNavy],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                            color:
-                                EzizaColors.kPurpleD.withValues(alpha: 0.3),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4))
-                      ]),
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                    const Text('Wallet Balance',
-                        style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.white54,
-                            fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 4),
-                    Text('₦${balance.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white)),
-                    if (hasPending) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                          '₦${pendingPayout.toStringAsFixed(2)} held for pending payout',
-                          style: const TextStyle(
-                              fontSize: 11, color: Colors.white54)),
-                    ],
-                    const SizedBox(height: 12),
-                    Row(children: [
-                      _walletStat('Total Earned',
-                          '₦${(company['total_earned'] as num?)?.toStringAsFixed(0) ?? '0'}'),
-                      const SizedBox(width: 20),
-                      _walletStat('Paid Out',
-                          '₦${(company['paid_out'] as num?)?.toStringAsFixed(0) ?? '0'}'),
-                    ]),
-                    if (balance > 0 || hasPending) ...[
-                      const SizedBox(height: 14),
-                      hasPending
-                          ? Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 11),
-                              decoration: BoxDecoration(
-                                  color: EzizaColors.kGold
-                                      .withValues(alpha: 0.2),
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                      color: EzizaColors.kGold
-                                          .withValues(alpha: 0.5))),
-                              child: const Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.center,
-                                  children: [
-                                Icon(Icons.hourglass_top_rounded,
-                                    color: EzizaColors.kGold, size: 15),
-                                SizedBox(width: 7),
-                                Text(
-                                    'Payment Requested — Awaiting Approval',
-                                    style: TextStyle(
-                                        color: EzizaColors.kGold,
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 12)),
-                              ]),
-                            )
-                          : GestureDetector(
-                              onTap: company['account_number'] != null
-                                  ? _showPayoutSheet
-                                  : () => _snack(
-                                        'Add bank details during registration to request payouts.',
-                                      ),
-                              child: Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: 11),
-                                decoration: BoxDecoration(
-                                    color: Colors.white
-                                        .withValues(alpha: 0.15),
-                                    borderRadius:
-                                        BorderRadius.circular(10),
-                                    border: Border.all(
-                                        color: Colors.white
-                                            .withValues(alpha: 0.2))),
-                                child: const Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.center,
-                                    children: [
-                                  Icon(Icons.account_balance_rounded,
-                                      color: Colors.white, size: 15),
-                                  SizedBox(width: 7),
-                                  Text('Request Payout',
-                                      style: TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 13)),
-                                ]),
-                              ),
-                            ),
-                    ],
-                  ]),
-                ),
-                if (_jobHistory.any((d) => d['status'] == 'confirmed')) ...[
-                  const SizedBox(height: 20),
-                  _earningsSection(
-                    title: 'Recent Earnings',
-                    items: _jobHistory
-                        .where((d) => d['status'] == 'confirmed')
-                        .toList(),
-                    cardBuilder: companyEarningsHistoryCard,
-                    onViewAll: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) =>
-                            CompanyEarningsHistoryPage(
-                                deliveries: _jobHistory
-                                    .where((d) => d['status'] == 'confirmed')
-                                    .toList()))),
-                  ),
-                ],
-                if (_payoutHistory.isNotEmpty) ...[
-                  const SizedBox(height: 20),
-                  _earningsSection(
-                    title: 'Payment History',
-                    items: _payoutHistory,
-                    cardBuilder: companyPayoutHistoryCard,
-                    onViewAll: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) =>
-                            CompanyPayoutHistoryPage(
-                                payouts: _payoutHistory))),
-                  ),
-                ],
-                const SizedBox(height: 12),
-                _statCard(
-                    'Rating',
-                    '${company['rating_avg'] ?? 0} ★  (${company['rating_count'] ?? 0} reviews)',
-                    Icons.star_rounded,
-                    EzizaColors.kGold,
-                    const Color(0xFFFFF8E1)),
-                const SizedBox(height: 40),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                    colors: [Color(0xFF3D1A6E), EzizaColors.kNavy],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                      color:
+                          EzizaColors.kPurpleD.withValues(alpha: 0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4))
+                ]),
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+              const Text('Wallet Balance',
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white54,
+                      fontWeight: FontWeight.w600)),
+              const SizedBox(height: 4),
+              Text('₦${balance.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white)),
+              if (hasPending) ...[
+                const SizedBox(height: 2),
+                Text(
+                    '₦${pendingPayout.toStringAsFixed(2)} held for pending payout',
+                    style: const TextStyle(
+                        fontSize: 11, color: Colors.white54)),
               ],
-            ),
+              const SizedBox(height: 12),
+              Row(children: [
+                _walletStat('Total Earned',
+                    '₦${(company['total_earned'] as num?)?.toStringAsFixed(0) ?? '0'}'),
+                const SizedBox(width: 20),
+                _walletStat('Paid Out',
+                    '₦${(company['paid_out'] as num?)?.toStringAsFixed(0) ?? '0'}'),
+                const SizedBox(width: 20),
+                _walletStat('Rating',
+                    '${company['rating_avg'] ?? 0} ★'),
+              ]),
+              if (balance > 0 || hasPending) ...[
+                const SizedBox(height: 14),
+                hasPending
+                    ? Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 11),
+                        decoration: BoxDecoration(
+                            color: EzizaColors.kGold
+                                .withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                                color: EzizaColors.kGold
+                                    .withValues(alpha: 0.5))),
+                        child: const Row(
+                            mainAxisAlignment:
+                                MainAxisAlignment.center,
+                            children: [
+                          Icon(Icons.hourglass_top_rounded,
+                              color: EzizaColors.kGold, size: 15),
+                          SizedBox(width: 7),
+                          Text(
+                              'Payment Requested — Awaiting Approval',
+                              style: TextStyle(
+                                  color: EzizaColors.kGold,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12)),
+                        ]),
+                      )
+                    : GestureDetector(
+                        onTap: company['account_number'] != null
+                            ? _showPayoutSheet
+                            : () => _snack(
+                                  'Add bank details during registration to request payouts.',
+                                ),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 11),
+                          decoration: BoxDecoration(
+                              color: Colors.white
+                                  .withValues(alpha: 0.15),
+                              borderRadius:
+                                  BorderRadius.circular(10),
+                              border: Border.all(
+                                  color: Colors.white
+                                      .withValues(alpha: 0.2))),
+                          child: const Row(
+                              mainAxisAlignment:
+                                  MainAxisAlignment.center,
+                              children: [
+                            Icon(Icons.account_balance_rounded,
+                                color: Colors.white, size: 15),
+                            SizedBox(width: 7),
+                            Text('Request Payout',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13)),
+                          ]),
+                        ),
+                      ),
+              ],
+            ]),
+          ),
+        ),
+        const SizedBox(height: 4),
+        TabBar(
+          controller: _earningsTabController,
+          labelColor: EzizaColors.kPurpleD,
+          unselectedLabelColor: EzizaColors.kMuted,
+          labelStyle: const TextStyle(
+              fontWeight: FontWeight.w700, fontSize: 13),
+          unselectedLabelStyle: const TextStyle(
+              fontWeight: FontWeight.w500, fontSize: 13),
+          indicatorColor: EzizaColors.kPurpleD,
+          indicatorSize: TabBarIndicatorSize.label,
+          tabs: [
+            Tab(text: 'Earnings (${earningsHistory.length})'),
+            Tab(text: 'Payouts (${_payoutHistory.length})'),
+          ],
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _earningsTabController,
+            children: [
+              RefreshIndicator(
+                color: EzizaColors.kPurpleD,
+                onRefresh: _load,
+                child: earningsHistory.isEmpty
+                    ? _earningsEmptyState(
+                        Icons.receipt_long_outlined,
+                        'No Earnings Yet',
+                        'Completed deliveries will show their earnings breakdown here.')
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: earningsHistory.length,
+                        itemBuilder: (_, i) =>
+                            companyEarningsHistoryCard(earningsHistory[i]),
+                      ),
+              ),
+              RefreshIndicator(
+                color: EzizaColors.kPurpleD,
+                onRefresh: _load,
+                child: _payoutHistory.isEmpty
+                    ? _earningsEmptyState(
+                        Icons.account_balance_outlined,
+                        'No Payout Requests',
+                        'Requests you submit will show their status here.')
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _payoutHistory.length,
+                        itemBuilder: (_, i) =>
+                            companyPayoutHistoryCard(_payoutHistory[i]),
+                      ),
+              ),
+            ],
           ),
         ),
       ],
     );
   }
+
+  Widget _earningsEmptyState(IconData icon, String title, String subtitle) =>
+      Center(
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: EzizaColors.kPurpleD.withValues(alpha: 0.07),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon,
+                    size: 48,
+                    color: EzizaColors.kPurpleD.withValues(alpha: 0.45)),
+              ),
+              const SizedBox(height: 20),
+              Text(title,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 18,
+                      color: EzizaColors.kText),
+                  textAlign: TextAlign.center),
+              const SizedBox(height: 8),
+              Text(subtitle,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      color: EzizaColors.kMuted,
+                      fontSize: 13,
+                      height: 1.4)),
+            ],
+          ),
+        ),
+      );
 
   // ── ACCOUNT TAB ───────────────────────────────────────────────
 
@@ -2107,57 +2159,6 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
         ]),
       );
 
-  // Capped preview (4 items) + "View All" link into a dedicated full-list
-  // page, wrapped in its own shaded card for visual separation — the tab
-  // previously dumped every earnings/payout row inline with no grouping,
-  // which became an unbounded wall of identical-looking cards.
-  Widget _earningsSection({
-    required String title,
-    required List<Map<String, dynamic>> items,
-    required Widget Function(Map<String, dynamic>) cardBuilder,
-    required VoidCallback onViewAll,
-  }) {
-    const previewCount = 4;
-    final preview = items.take(previewCount).toList();
-    final hasMore = items.length > previewCount;
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: EzizaColors.kSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: EzizaColors.kBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            const Icon(Icons.receipt_long_rounded,
-                size: 16, color: EzizaColors.kPurpleD),
-            const SizedBox(width: 8),
-            Text(title,
-                style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14,
-                    color: EzizaColors.kPurpleD)),
-            const Spacer(),
-            if (hasMore)
-              GestureDetector(
-                onTap: onViewAll,
-                child: const Text('View All',
-                    style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: EzizaColors.kPurpleD)),
-              ),
-          ]),
-          const SizedBox(height: 10),
-          ...preview.map(cardBuilder),
-        ],
-      ),
-    );
-  }
-
   Widget _historyCard(Map<String, dynamic> d) {
     final price    = (d['agreed_price'] as num?)?.toDouble() ?? 0;
     final pickup   = d['pickup_address']   as String? ?? '';
@@ -2705,39 +2706,6 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
                 fontWeight: FontWeight.w700,
                 color: Colors.white)),
       ]);
-
-  Widget _statCard(String label, String value, IconData icon,
-          Color color, Color bg) =>
-      Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-            color: EzizaColors.kWhite,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: EzizaColors.kBorder)),
-        child: Row(children: [
-          Container(
-              padding: const EdgeInsets.all(12),
-              decoration:
-                  BoxDecoration(color: bg, shape: BoxShape.circle),
-              child: Icon(icon, size: 22, color: color)),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-              Text(label,
-                  style: const TextStyle(
-                      fontSize: 12, color: EzizaColors.kMuted)),
-              const SizedBox(height: 2),
-              Text(value,
-                  style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: EzizaColors.kText)),
-            ]),
-          ),
-        ]),
-      );
 
   // ── Status helpers ────────────────────────────────────────────
 
