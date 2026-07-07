@@ -1229,9 +1229,13 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
 
   Widget _earningsTab() {
     if (_company == null) return _noCompany();
-    final company    = _company!;
-    final balance    = (company['wallet_balance'] as num?)?.toDouble() ?? 0.0;
-    final hasPending = _payoutHistory.any((p) => p['status'] == 'pending');
+    final company      = _company!;
+    final rawBalance   = (company['wallet_balance'] as num?)?.toDouble() ?? 0.0;
+    final pendingPayout = _payoutHistory
+        .where((p) => ['pending', 'approved'].contains(p['status']))
+        .fold<double>(0, (sum, p) => sum + ((p['amount'] as num?)?.toDouble() ?? 0));
+    final hasPending   = pendingPayout > 0;
+    final balance      = (rawBalance - pendingPayout).clamp(0, double.infinity);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1321,6 +1325,13 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
                             fontSize: 28,
                             fontWeight: FontWeight.w800,
                             color: Colors.white)),
+                    if (hasPending) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                          '₦${pendingPayout.toStringAsFixed(2)} held for pending payout',
+                          style: const TextStyle(
+                              fontSize: 11, color: Colors.white54)),
+                    ],
                     const SizedBox(height: 12),
                     Row(children: [
                       _walletStat('Total Earned',
@@ -2374,8 +2385,12 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
   // ── Bottom sheets ─────────────────────────────────────────────
 
   void _showPayoutSheet() {
+    final pendingPayout = _payoutHistory
+        .where((p) => ['pending', 'approved'].contains(p['status']))
+        .fold<double>(0, (sum, p) => sum + ((p['amount'] as num?)?.toDouble() ?? 0));
     final balance =
-        (_company?['wallet_balance'] as num?)?.toDouble() ?? 0.0;
+        (((_company?['wallet_balance'] as num?)?.toDouble() ?? 0.0) - pendingPayout)
+            .clamp(0, double.infinity);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,

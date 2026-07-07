@@ -187,7 +187,7 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
           .from('rider_payout_requests')
           .select()
           .eq('rider_id', riderId)
-          .order('requested_at', ascending: false);
+          .order('created_at', ascending: false);
       _payoutHistory = List<Map<String, dynamic>>.from(payoutRes);
     } catch (_) {}
 
@@ -781,7 +781,11 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
 
   void _showPayoutSheet() {
     final amtCtrl = TextEditingController();
-    final balance = _rider?.walletBalance ?? 0.0;
+    final pendingPayout = _payoutHistory
+        .where((p) => ['pending', 'approved'].contains(p['status']))
+        .fold<double>(0, (sum, p) => sum + ((p['amount'] as num?)?.toDouble() ?? 0));
+    final balance = ((_rider?.walletBalance ?? 0.0) - pendingPayout)
+        .clamp(0, double.infinity);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -2439,7 +2443,11 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
   Widget _walletCard() {
     final balance        = _rider?.walletBalance ?? 0.0;
     final hasBankDetails = _rider?.accountNumber != null;
-    final hasPending     = _payoutHistory.any((p) => p['status'] == 'pending');
+    final pendingPayout  = _payoutHistory
+        .where((p) => ['pending', 'approved'].contains(p['status']))
+        .fold<double>(0, (sum, p) => sum + ((p['amount'] as num?)?.toDouble() ?? 0));
+    final hasPending     = pendingPayout > 0;
+    final available      = (balance - pendingPayout).clamp(0, double.infinity);
     final totalEarned    = _jobHistory.fold<double>(
         0, (sum, d) => sum + ((d['agreed_price'] as num?)?.toDouble() ?? 0));
 
@@ -2465,10 +2473,17 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
                     fontWeight: FontWeight.w600, letterSpacing: 0.5)),
             const SizedBox(height: 6),
             Text(
-              '₦${balance.toStringAsFixed(0).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => ',')}',
+              '₦${available.toStringAsFixed(0).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => ',')}',
               style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w900,
                   color: EzizaColors.kWhite, letterSpacing: -1.5),
             ),
+            if (hasPending) ...[
+              const SizedBox(height: 4),
+              Text(
+                '₦${pendingPayout.toStringAsFixed(0).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => ',')} held for pending payout',
+                style: const TextStyle(fontSize: 11, color: Colors.white54),
+              ),
+            ],
             const SizedBox(height: 16),
             // Stats row
             Container(
@@ -2572,11 +2587,11 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
       ..._payoutHistory.map((p) {
         final status = p['status'] as String? ?? 'pending';
         final amount = (p['amount'] as num?)?.toDouble() ?? 0;
-        final reqAt  = p['requested_at'] != null
-            ? DateTime.tryParse(p['requested_at'].toString())?.toLocal()
+        final reqAt  = p['created_at'] != null
+            ? DateTime.tryParse(p['created_at'].toString())?.toLocal()
             : null;
-        final procAt = p['processed_at'] != null
-            ? DateTime.tryParse(p['processed_at'].toString())?.toLocal()
+        final procAt = p['paid_at'] != null
+            ? DateTime.tryParse(p['paid_at'].toString())?.toLocal()
             : null;
 
         final (Color sc, Color sb, IconData si, String sl) = switch (status) {
