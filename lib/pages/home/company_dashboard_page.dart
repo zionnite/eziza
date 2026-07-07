@@ -759,6 +759,7 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
+          width: double.infinity,
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               colors: [Color(0xFF3D1A6E), EzizaColors.kNavy],
@@ -1188,6 +1189,7 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
+            width: double.infinity,
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 colors: [Color(0xFF3D1A6E), EzizaColors.kNavy],
@@ -1346,6 +1348,7 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
+          width: double.infinity,
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               colors: [Color(0xFF3D1A6E), EzizaColors.kNavy],
