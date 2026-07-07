@@ -61,7 +61,7 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
   @override
   void initState() {
     super.initState();
-    _jobsTabController = TabController(length: 2, vsync: this);
+    _jobsTabController = TabController(length: 3, vsync: this);
     _earningsTabController = TabController(length: 2, vsync: this);
     _isOnline = _rider?.isAvailable ?? false;
     _initForegroundTask();
@@ -1657,6 +1657,7 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
                       _jTabBadge('$historyCount', Colors.white54),
                     ],
                   ])),
+                  const Tab(text: 'Rating'),
                 ],
               ),
             ]),
@@ -1818,10 +1819,62 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
                                     _jobHistory.map(_jobHistoryCard).toList(),
                               ),
                       ),
+                      // ── Rating tab ──────────────────────────────────
+                      RefreshIndicator(
+                        color: EzizaColors.kPurpleD,
+                        onRefresh: _load,
+                        child: _ratingSubTab(),
+                      ),
                     ],
                   ),
       ),
     ]);
+  }
+
+  Widget _ratingSubTab() {
+    final avg = _rider?.ratingAvg ?? 0.0;
+
+    if (avg <= 0) {
+      return earningsEmptyState(
+          Icons.star_outline_rounded,
+          'No Ratings Yet',
+          'Ratings from customers will appear here once you complete deliveries.');
+    }
+
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 60),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+            color: EzizaColors.kWhite,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: EzizaColors.kBorder)),
+        child: Column(children: [
+          Text(avg.toStringAsFixed(1),
+              style: const TextStyle(
+                  fontSize: 44,
+                  fontWeight: FontWeight.w900,
+                  color: EzizaColors.kText)),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(5, (i) {
+              final filled = i < avg.round();
+              return Icon(
+                  filled ? Icons.star_rounded : Icons.star_outline_rounded,
+                  color: EzizaColors.kGold,
+                  size: 26);
+            }),
+          ),
+          const SizedBox(height: 10),
+          Text('Average rating from completed deliveries',
+              style: const TextStyle(
+                  fontSize: 13, color: EzizaColors.kMuted),
+              textAlign: TextAlign.center),
+        ]),
+      ),
+    );
   }
 
   Widget _earningsTab() {
