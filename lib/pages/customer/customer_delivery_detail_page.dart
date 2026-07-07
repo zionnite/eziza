@@ -203,9 +203,17 @@ class _CustomerDeliveryDetailPageState
   // widget/service, only checkpoint+role differ. rater_role='receiver' is
   // used even when there's no distinct claimed recipient (the sender is
   // then the de facto receiver); RLS on delivery_ratings allows either.
+  //
+  // Ratings aren't gated behind any confirm action — this same helper backs
+  // both the automatic post-confirm prompt (silent: true, skips quietly if
+  // already rated) and the manual "Rate Rider" button on the rider card
+  // (silent: false, tells the user if they've already rated), so either
+  // party can rate whenever they like, independent of the other party's
+  // actions or the delivery's current status.
   Future<void> _maybeShowRateRiderSheet({
     required String checkpoint,
     required String raterRole,
+    bool silent = true,
   }) async {
     final riderId = _delivery?['rider_id'] as String?;
     if (riderId == null || !mounted) return;
@@ -213,7 +221,11 @@ class _CustomerDeliveryDetailPageState
         deliveryId: widget.deliveryId,
         checkpoint: checkpoint,
         raterRole: raterRole);
-    if (already || !mounted) return;
+    if (!mounted) return;
+    if (already) {
+      if (!silent) _snack('You already rated this rider.');
+      return;
+    }
     final user = _db.auth.currentUser;
     if (user == null) return;
     final name = user.userMetadata?['full_name'] as String? ?? '';
@@ -1197,30 +1209,59 @@ class _CustomerDeliveryDetailPageState
             ]),
           ]),
         ),
-        Container(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-                colors: [EzizaColors.kPurple, EzizaColors.kPurpleD]),
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                  color: EzizaColors.kPurpleD.withValues(alpha: 0.25),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3))
-            ],
+        Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                  colors: [EzizaColors.kPurple, EzizaColors.kPurpleD]),
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                    color: EzizaColors.kPurpleD.withValues(alpha: 0.25),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3))
+              ],
+            ),
+            child: const Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.phone_rounded, size: 14, color: Colors.white),
+              SizedBox(width: 5),
+              Text('Call',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700)),
+            ]),
           ),
-          child: const Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.phone_rounded, size: 14, color: Colors.white),
-            SizedBox(width: 5),
-            Text('Call',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700)),
-          ]),
-        ),
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: () => _maybeShowRateRiderSheet(
+              checkpoint: widget.isRecipient ? 'delivery' : 'handoff',
+              raterRole:  widget.isRecipient ? 'receiver' : 'sender',
+              silent: false,
+            ),
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: EzizaColors.kGold.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                    color: EzizaColors.kGold.withValues(alpha: 0.4)),
+              ),
+              child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.star_rounded, size: 14, color: EzizaColors.kGold),
+                SizedBox(width: 5),
+                Text('Rate Rider',
+                    style: TextStyle(
+                        color: EzizaColors.kText,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700)),
+              ]),
+            ),
+          ),
+        ]),
       ]),
     );
   }

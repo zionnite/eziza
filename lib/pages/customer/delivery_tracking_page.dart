@@ -376,17 +376,35 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
     }
   }
 
-  // Receiver rates rider at the delivery checkpoint. rater_role='receiver'
-  // is used even without a distinct claimed recipient (sender is then the
-  // de facto receiver); RLS on delivery_ratings allows either.
-  Future<void> _maybeShowRateRiderSheet() async {
+  // Sender rates rider at handoff, receiver rates rider at delivery — same
+  // widget/service, only checkpoint+role differ. rater_role='receiver' is
+  // used even without a distinct claimed recipient (sender is then the de
+  // facto receiver); RLS on delivery_ratings allows either.
+  //
+  // Not gated behind any confirm action — backs both the automatic
+  // post-confirm prompt (silent: true) and the manual "Rate Rider" button
+  // on the live-tracking card (silent: false), so either party can rate
+  // whenever, independent of the other party's actions or delivery status.
+  void _snack(String msg) => Get.snackbar('', msg,
+      titleText: const SizedBox.shrink(),
+      backgroundColor: EzizaColors.kPurple,
+      colorText: EzizaColors.kWhite,
+      snackPosition: SnackPosition.BOTTOM);
+
+  Future<void> _maybeShowRateRiderSheet({bool silent = true}) async {
     final riderId = _delivery?['rider_id'] as String?;
     if (riderId == null || !mounted) return;
+    final checkpoint = widget.isRecipient ? 'delivery' : 'handoff';
+    final raterRole  = widget.isRecipient ? 'receiver' : 'sender';
     final already = await RatingsService.hasRated(
         deliveryId: widget.deliveryId,
-        checkpoint: 'delivery',
-        raterRole: 'receiver');
-    if (already || !mounted) return;
+        checkpoint: checkpoint,
+        raterRole: raterRole);
+    if (!mounted) return;
+    if (already) {
+      if (!silent) _snack('You already rated this rider.');
+      return;
+    }
     final user = _db.auth.currentUser;
     if (user == null) return;
     final name = user.userMetadata?['full_name'] as String? ?? '';
@@ -394,12 +412,14 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
     showRatingSheet(
       context,
       title: 'Rate Your Rider',
-      subtitle: 'How was your delivery experience?',
+      subtitle: widget.isRecipient
+          ? 'How was your delivery experience?'
+          : 'How was the pickup experience?',
       onSubmit: (rating, comment) => RatingsService.submit(
         deliveryId: widget.deliveryId,
-        checkpoint: 'delivery',
+        checkpoint: checkpoint,
         raterAuthId: user.id,
-        raterRole: 'receiver',
+        raterRole: raterRole,
         raterName: name,
         rateeRole: 'rider',
         rateeId: riderId,
@@ -417,6 +437,7 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
         'picked_up_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', widget.deliveryId);
       if (mounted) setState(() => _confirmHandoffLoading = false);
+      _maybeShowRateRiderSheet();
     } catch (_) {
       Get.snackbar('Error', 'Could not confirm handoff. Try again.',
           backgroundColor: EzizaColors.kError,
@@ -877,6 +898,17 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
           Text(phaseLabel,
               style: const TextStyle(fontSize: 12, color: EzizaColors.kMuted)),
         ])),
+        GestureDetector(
+          onTap: () => _maybeShowRateRiderSheet(silent: false),
+          child: Container(
+              margin: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                  color: EzizaColors.kGold.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10)),
+              child: const Icon(Icons.star_rounded,
+                  color: EzizaColors.kGold, size: 20)),
+        ),
         if (phone.isNotEmpty)
           GestureDetector(
             onTap: () => launchUrl(Uri.parse('tel:$phone')),

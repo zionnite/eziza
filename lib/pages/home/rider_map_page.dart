@@ -556,12 +556,29 @@ class _RiderMapPageState extends State<RiderMapPage> {
 
   // Rider rates sender at handoff, rider rates receiver at delivery — same
   // widget/service, only role + prompt copy differ.
-  Future<void> _maybeShowRateCustomerSheet({required String ratingRole}) async {
+  //
+  // Not gated behind any status transition — backs both the automatic
+  // post-transition prompt (silent: true) and the manual "Rate" menu
+  // available at any time from the top bar (silent: false), so the rider
+  // can rate either party whenever, independent of what stage the delivery
+  // is at.
+  Future<void> _maybeShowRateCustomerSheet(
+      {required String ratingRole, bool silent = true}) async {
     final deliveryId = widget.delivery['id'] as String;
     final checkpoint = ratingRole == 'sender' ? 'handoff' : 'delivery';
     final already = await RatingsService.hasRated(
         deliveryId: deliveryId, checkpoint: checkpoint, raterRole: 'rider');
-    if (already || !mounted) return;
+    if (!mounted) return;
+    if (already) {
+      if (!silent) {
+        Get.snackbar('', 'You already rated this ${ratingRole == 'sender' ? 'sender' : 'receiver'}.',
+            titleText: const SizedBox.shrink(),
+            backgroundColor: EzizaColors.kPurple,
+            colorText: EzizaColors.kWhite,
+            snackPosition: SnackPosition.BOTTOM);
+      }
+      return;
+    }
     final user = _db.auth.currentUser;
     if (user == null) return;
     String? riderName;
@@ -590,6 +607,50 @@ class _RiderMapPageState extends State<RiderMapPage> {
         rateeId: null,
         rating: rating,
         comment: comment,
+      ),
+    );
+  }
+
+  void _showRateMenu() {
+    showModalBottomSheet<void>(
+      context:       context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+                width: 40, height: 4,
+                margin: const EdgeInsets.only(bottom: 18),
+                decoration: BoxDecoration(
+                    color: EzizaColors.kBorder,
+                    borderRadius: BorderRadius.circular(2))),
+            ListTile(
+              leading: const Icon(Icons.star_rounded,
+                  color: EzizaColors.kGold),
+              title: const Text('Rate Sender',
+                  style: TextStyle(fontWeight: FontWeight.w700)),
+              onTap: () {
+                Get.back();
+                _maybeShowRateCustomerSheet(
+                    ratingRole: 'sender', silent: false);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.star_rounded,
+                  color: EzizaColors.kGold),
+              title: const Text('Rate Receiver',
+                  style: TextStyle(fontWeight: FontWeight.w700)),
+              onTap: () {
+                Get.back();
+                _maybeShowRateCustomerSheet(
+                    ratingRole: 'receiver', silent: false);
+              },
+            ),
+          ]),
+        ),
       ),
     );
   }
@@ -778,6 +839,20 @@ class _RiderMapPageState extends State<RiderMapPage> {
                             fontWeight: FontWeight.w700)),
                   ]),
                 )),
+                const SizedBox(width: 10),
+                GestureDetector(
+                  onTap: _showRateMenu,
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color:        Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow:    [BoxShadow(
+                          color:     Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 8)]),
+                    child: const Icon(Icons.star_rounded,
+                        size: 18, color: EzizaColors.kGold)),
+                ),
               ]),
             ),
           )),
