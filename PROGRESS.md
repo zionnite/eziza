@@ -257,7 +257,7 @@
 
 ### ZeeFashion ↔ Eziza Integration — now complete, see the dedicated section above
 - [ ] **Notifications reported as not firing at all** in latest live testing, despite the notification wiring for all 4 key events (ready-for-pickup, bid placed, bid accepted, rider arrival) being verified correct in code on both the internal and Eziza paths. Needs device-level debugging next: confirm `device_tokens`/FCM token registration actually happened for the test accounts, check `send-notification`'s logs for the actual FCM API response (not just that it was invoked), and check the Firebase project's APNs/FCM config is still valid. Do not assume the earlier code fixes are wrong until this is isolated — they closed real gaps, but something upstream (or the test device's token) is likely still broken.
-- [ ] Pass buyer phone number when ZeeFashion creates Eziza delivery (`logistics-gateway`) — still not done, low priority
+- [x] ~~Pass buyer phone number when ZeeFashion creates Eziza delivery~~ — already done: `store_update_tracking.dart` forwards both `pickup_contact_phone` and `delivery_contact_phone` through `logistics-gateway` to Eziza's `create-delivery`
 - [ ] ~~Wire ZeeFashion merchant handoff confirm → Eziza `picked_up`~~ — done
 - [ ] ~~Extend `dispatch-webhook` — on `delivered`, fire tenant webhook so buyer sees confirm prompt~~ — done
 - [ ] ~~ZeeFashion `packageReceived()` calls back to Eziza → `confirmed`~~ — done
