@@ -287,6 +287,20 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
               setState(() => _openDeliveries.insert(0, d));
             }
           })
+        // Someone else won this delivery (or it was cancelled) — Channel B
+        // only catches rows assigned to THIS rider, so a delivery this rider
+        // bid on and lost would otherwise sit in _openDeliveries forever.
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'deliveries',
+          callback: (payload) {
+            final d = Map<String, dynamic>.from(payload.newRecord);
+            if (!mounted) return;
+            if (d['status'] != 'open') {
+              setState(() => _openDeliveries.removeWhere((r) => r['id'] == d['id']));
+            }
+          })
         .subscribe();
 
     // ── Channel B: this rider's active delivery updates ───────────────────────
@@ -414,6 +428,11 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
                 .eq('id', delivId)
                 .maybeSingle();
             if (delivery == null || !mounted) return;
+            // Re-check after the await: Channel B (deliveries UPDATE) listens
+            // for the same "bid accepted" transition and can win the race
+            // while this fetch was in flight, inserting the same delivery
+            // first — without this, both channels would insert a duplicate.
+            if (_activeDeliveries.any((r) => r['id'] == delivId)) return;
             final d = Map<String, dynamic>.from(delivery);
             setState(() {
               _openDeliveries.removeWhere((r) => r['id'] == delivId);
