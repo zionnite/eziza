@@ -47,7 +47,7 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
   @override
   void initState() {
     super.initState();
-    _deliveriesTabController = TabController(length: 2, vsync: this);
+    _deliveriesTabController = TabController(length: 3, vsync: this);
     _earningsTabController = TabController(length: 2, vsync: this);
     _load();
   }
@@ -899,6 +899,21 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
                             ],
                           ),
                         ),
+                        Tab(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text('Rating'),
+                              if ((_company?['rating_count'] as num?) != null &&
+                                  (_company!['rating_count'] as num) > 0) ...[
+                                const SizedBox(width: 6),
+                                _jTabBadge(
+                                    '${_company!['rating_count']}',
+                                    Colors.white54),
+                              ],
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ],
@@ -1037,10 +1052,94 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
                         children: _jobHistory.map(_historyCard).toList(),
                       ),
               ),
+              // ── Rating sub-tab ──
+              RefreshIndicator(
+                color: EzizaColors.kPurpleD,
+                onRefresh: _load,
+                child: _ratingSubTab(),
+              ),
             ],
           ),
         ),
       ],
+    );
+  }
+
+  Widget _ratingSubTab() {
+    final avg   = (_company?['rating_avg'] as num?)?.toDouble() ?? 0.0;
+    final count = (_company?['rating_count'] as num?)?.toInt() ?? 0;
+
+    if (count == 0) {
+      return Center(
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: EzizaColors.kPurpleD.withValues(alpha: 0.07),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.star_outline_rounded,
+                    size: 48,
+                    color: EzizaColors.kPurpleD.withValues(alpha: 0.45)),
+              ),
+              const SizedBox(height: 20),
+              const Text('No Ratings Yet',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 18,
+                      color: EzizaColors.kText),
+                  textAlign: TextAlign.center),
+              const SizedBox(height: 8),
+              const Text(
+                  'Ratings from customers will appear here once you complete deliveries.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      color: EzizaColors.kMuted,
+                      fontSize: 13,
+                      height: 1.4)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 60),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+            color: EzizaColors.kWhite,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: EzizaColors.kBorder)),
+        child: Column(children: [
+          Text(avg.toStringAsFixed(1),
+              style: const TextStyle(
+                  fontSize: 44,
+                  fontWeight: FontWeight.w900,
+                  color: EzizaColors.kText)),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(5, (i) {
+              final filled = i < avg.round();
+              return Icon(
+                  filled ? Icons.star_rounded : Icons.star_outline_rounded,
+                  color: EzizaColors.kGold,
+                  size: 26);
+            }),
+          ),
+          const SizedBox(height: 10),
+          Text('Based on $count review${count == 1 ? '' : 's'}',
+              style: const TextStyle(
+                  fontSize: 13, color: EzizaColors.kMuted)),
+        ]),
+      ),
     );
   }
 
