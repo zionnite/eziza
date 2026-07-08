@@ -355,9 +355,7 @@ New repo at `/Users/zionnite/StudioProjects/eziza-admin` (sibling to `eziza_ride
 - [x] **Webhook registered and confirmed working 2026-07-08**: 8 real top-ups (₦1,000–₦15,000, ₦35,000 total) credited correctly and automatically after registration, including a full live test of the final embedded-WebView checkout page — auto-closed back into the app with no manual tap, balance refreshed immediately. Phase 3's payment flow is fully live-verified end-to-end now, not just at the RPC level.
 - [ ] **Two ₦10,000 top-ups from before the webhook was registered are still uncredited** (`topup_a8612a04_1783495293774`, `topup_a8612a04_1783495222949` — found via the admin-only `paystack-list-recent` function, predate registration, Paystack's retry window has likely passed). Deliberately **not credited** — pending the user confirming these payments are actually theirs, since crediting a wallet is real money movement.
 
-Phases 4-6 below were scoped out in full but not started as of 2026-07-10. Each deliberately mirrors an existing ZeeFashion admin/Flutter pattern (same tables, same file structure) rather than inventing new conventions, except where explicitly called out.
-
-### Phase 4 — Security (customer-only) — in progress
+### Phase 4 — Security (customer-only) — BUILT 2026-07-12
 
 **Cross-cutting security fix found and applied first (2026-07-12), not specific to Phase 4:** while adding the `customers` UPDATE policy needed for the PIN feature, discovered that Supabase's default privileges grant `authenticated` a blanket table-level UPDATE (all columns) on every table, which silently coexists with any RLS UPDATE policy scoping to "own row." A column-scoped `GRANT` alone does nothing — `GRANT` is purely additive and never narrows a broader existing grant; `REVOKE` is required first. Confirmed empirically (throwaway test rider account) that riders/companies could directly PATCH their own `wallet_balance`, `rating_avg`/`rating_count`, and `is_approved`/`status` — bypassing the admin-approval flow (Phase 2's whole reason for existing) and every rating/earnings trigger — and that a customer could tamper with `deliveries.agreed_price`/`platform_fee`/`payment_status` the same way.
 
@@ -367,11 +365,17 @@ Phases 4-6 below were scoped out in full but not started as of 2026-07-10. Each 
 - [x] Confirmed zero impact on the ZeeFashion/tenant integration — every tenant-facing edge function uses the service-role key exclusively, which bypasses RLS and every GRANT/REVOKE restriction
 - [ ] **Worth checking in ZeeFashion's own Supabase project too** — this is a Supabase-platform-wide default-privilege behavior, not something specific to how Eziza's schema was set up, so the same gap plausibly exists there (`profiles.current_balance`, etc.). Not investigated — separate live app, out of scope here. See [[project_zeefashion_paystack_security]] memory.
 
-**PIN/biometric feature itself:**
-- Add `local_auth` to `pubspec.yaml`
-- 2-step PIN flow (`change_transaction_pin.dart` → `verify_transaction_pin.dart`, `OtpTextField`) writing to `customers.pin`/`pin_set` — matches ZeeFashion's exact **plaintext-storage pattern unless told otherwise**
-- `pin_verification_sheet.dart` equivalent wired into wallet-spend actions
-- Biometric toggle via `SharedPreferences['fingerprintAuth']` + a `local_auth_services.dart` wrapper — mirrors ZeeFashion's implementation directly
+**PIN/biometric feature itself — BUILT 2026-07-12, not yet live-verified in the app UI:**
+- [x] `local_auth`/`local_auth_android`/`local_auth_darwin`/`flutter_otp_text_field`/`shared_preferences` added to `pubspec.yaml`
+- [x] `lib/services/local_auth_services.dart` — same `LocalAuth.authenticate()` wrapper as ZeeFashion
+- [x] `lib/widgets/pin_verification_sheet.dart` — reads `customers.pin` directly and compares (simpler than an RPC — matches ZeeFashion's own working fallback path), shows a biometric shortcut when `fingerprintAuth` is on
+- [x] `lib/pages/customer/change_transaction_pin.dart` → `verify_transaction_pin.dart` — 2-step set-PIN flow (`OtpTextField`), final save writes `customers.pin`/`pin_set` directly, protected by the column-grant fix above
+- [x] `lib/pages/customer/security_page.dart` — new "Security" tile in the Account tab: Change Transaction PIN + biometric toggle
+- [x] `customer_delivery_detail_page.dart::_acceptBid()` — checks `pin_set` first (prompts to set one if missing, matching ZeeFashion's exact messaging), gates payment behind `PinVerificationSheet.verify()` before calling `pay_and_accept_delivery_bid` — same wiring point ZeeFashion uses in `track_order.dart`
+- [x] `flutter analyze` clean across the whole `lib/` tree
+- [ ] Not yet run through the actual Flutter app UI — only the DB layer (column grants, `customers.pin`/`pin_set` writes) has been live-verified so far
+
+Phases 5-6 below were scoped out in full but not started as of 2026-07-10. Each deliberately mirrors an existing ZeeFashion admin/Flutter pattern (same tables, same file structure) rather than inventing new conventions, except where explicitly called out.
 
 ### Phase 5 — Change Password, Profile, Bank Account (all 3 roles)
 - **Change Password**: one shared page matching ZeeFashion's `change_password.dart` exactly (current/new/confirm fields, same non-verification-of-current-password behavior, same `auth.updateUser` call) — wired into all 3 dashboards' Account tabs, replacing rider/customer's ad-hoc bottom sheets and adding the missing company path
