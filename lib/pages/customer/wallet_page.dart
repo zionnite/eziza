@@ -5,10 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../constants/colors.dart';
 import '../../services/wallet_service.dart';
+import 'paystack_checkout_page.dart';
 
 class WalletPage extends StatefulWidget {
   const WalletPage({super.key});
@@ -98,8 +98,18 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
         amount: amount,
       );
       if (mounted) Navigator.pop(context);
+      if (!mounted) return;
+      // Embedded WebView (not an external browser) — its own navigation
+      // delegate detects the paystack-return callback and pops with
+      // `true` automatically, no OS-level scheme handoff or button tap
+      // needed. _awaitingTopUp/AppLinks stay wired as a defensive
+      // fallback in case navigation is ever missed.
       _awaitingTopUp = true;
-      await launchUrl(Uri.parse(url), mode: LaunchMode.inAppBrowserView);
+      final completed = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(builder: (_) => PaystackCheckoutPage(authorizationUrl: url)),
+      );
+      if (completed == true) await _onReturnedFromPayment();
     } catch (e) {
       _snack('Could not start payment: ${e.toString().replaceFirst('Exception: ', '')}');
     }
