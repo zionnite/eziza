@@ -7,6 +7,7 @@ import '../../controllers/auth_controller.dart';
 import 'customer_delivery_detail_page.dart';
 import 'delivery_tracking_page.dart';
 import 'send_package_page.dart';
+import 'security_page.dart';
 import 'wallet_page.dart';
 
 class CustomerDashboardPage extends StatefulWidget {
@@ -601,6 +602,15 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
                     title: 'Wallet',
                     subtitle: 'Top up and pay for deliveries',
                     onTap: () => Get.to(() => const WalletPage()),
+                  ),
+                  _tileDivider(),
+                  _settingsTile(
+                    icon: Icons.security_rounded,
+                    iconColor: EzizaColors.kPurpleD,
+                    iconBg: EzizaColors.kPurpleD.withValues(alpha: 0.1),
+                    title: 'Security',
+                    subtitle: 'Transaction PIN and biometric login',
+                    onTap: () => Get.to(() => const SecurityPage()),
                   ),
                   _tileDivider(),
                   _settingsTile(

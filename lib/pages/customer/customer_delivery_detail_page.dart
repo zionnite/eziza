@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../constants/colors.dart';
 import '../../services/ratings_service.dart';
 import '../../services/wallet_service.dart';
+import '../../widgets/pin_verification_sheet.dart';
 import '../../widgets/rating_sheet.dart';
 import 'delivery_tracking_page.dart';
 import 'wallet_page.dart';
@@ -141,6 +142,19 @@ class _CustomerDeliveryDetailPageState
   Future<void> _acceptBid(Map<String, dynamic> bid) async {
     final user = _db.auth.currentUser;
     if (user == null) return;
+
+    final customer =
+        await _db.from('customers').select('pin_set').eq('id', user.id).maybeSingle();
+    if (!mounted) return;
+    if (customer?['pin_set'] != true) {
+      _snack('Please set your transaction PIN in Security settings first.');
+      return;
+    }
+
+    final amount = (bid['amount'] as num?)?.toDouble() ?? 0;
+    final verified =
+        await PinVerificationSheet.verify(context, amount: amount, label: 'for delivery fee');
+    if (verified != true || !mounted) return;
 
     setState(() => _accepting = true);
     try {
