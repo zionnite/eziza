@@ -6,21 +6,19 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 // navigation attempted). This real https:// page is what Paystack actually
 // redirects to.
 //
-// From here, automatic navigation to eziza://wallet-topup-complete (via
-// meta-refresh or JS) is NOT reliable on iOS — Safari/SFSafariViewController
-// deliberately blocks non-user-gesture navigation to unrecognized URL
-// schemes as an anti-malicious-redirect measure. This is a WebKit platform
-// restriction, not something fixable from the page itself. The reliable
-// fix is a real tappable button (a genuine user gesture WebKit allows
-// through) that auto-taps itself via a synthetic click on load — synthetic
-// clicks don't count as user gestures either, so the automatic attempts
-// below are a bonus for platforms where they do work (Android is more
-// permissive), with the visible button as the fallback that always works.
+// Deliberately does NOT attempt an automatic redirect (no meta-refresh, no
+// inline script navigation): (1) iOS Safari blocks non-user-gesture
+// navigation to unrecognized URL schemes anyway, so it never helped there,
+// and (2) live-tested it caused a WebView rendering glitch — the instant
+// (content="0") meta-refresh raced the initial paint and the browser fell
+// back to showing raw page source as plain text instead of rendering it.
+// A plain visible button avoids both problems: a real tap is a genuine
+// user gesture that reliably triggers the scheme handoff, and there's no
+// redirect race to trip over.
 const html = `<!DOCTYPE html>
 <html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="refresh" content="0;url=eziza://wallet-topup-complete">
   <style>
     body { font-family: -apple-system, sans-serif; display: flex; flex-direction: column;
            align-items: center; justify-content: center; height: 100vh; margin: 0;
@@ -33,16 +31,11 @@ const html = `<!DOCTYPE html>
   </style>
 </head>
 <body>
-  <div class="check">✅</div>
+  <div class="check">&#9989;</div>
   <h1>Payment Successful</h1>
   <p>Tap below to return to the Eziza app.</p>
-  <a class="btn" id="returnBtn" href="eziza://wallet-topup-complete">Return to Eziza</a>
-  <script>
-    // Best-effort automatic attempts — works on some platforms (Android),
-    // harmless where it's blocked (iOS just ignores it and shows the button).
-    window.location.href = 'eziza://wallet-topup-complete';
-  </script>
+  <a class="btn" href="eziza://wallet-topup-complete">Return to Eziza</a>
 </body>
 </html>`
 
-serve(() => new Response(html, { headers: { 'Content-Type': 'text/html' } }))
+serve(() => new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } }))
