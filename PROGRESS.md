@@ -357,7 +357,17 @@ New repo at `/Users/zionnite/StudioProjects/eziza-admin` (sibling to `eziza_ride
 
 Phases 4-6 below were scoped out in full but not started as of 2026-07-10. Each deliberately mirrors an existing ZeeFashion admin/Flutter pattern (same tables, same file structure) rather than inventing new conventions, except where explicitly called out.
 
-### Phase 4 — Security (customer-only)
+### Phase 4 — Security (customer-only) — in progress
+
+**Cross-cutting security fix found and applied first (2026-07-12), not specific to Phase 4:** while adding the `customers` UPDATE policy needed for the PIN feature, discovered that Supabase's default privileges grant `authenticated` a blanket table-level UPDATE (all columns) on every table, which silently coexists with any RLS UPDATE policy scoping to "own row." A column-scoped `GRANT` alone does nothing — `GRANT` is purely additive and never narrows a broader existing grant; `REVOKE` is required first. Confirmed empirically (throwaway test rider account) that riders/companies could directly PATCH their own `wallet_balance`, `rating_avg`/`rating_count`, and `is_approved`/`status` — bypassing the admin-approval flow (Phase 2's whole reason for existing) and every rating/earnings trigger — and that a customer could tamper with `deliveries.agreed_price`/`platform_fee`/`payment_status` the same way.
+
+- [x] Migration `20260712000000_customer_pin.sql` — `customers.pin`/`pin_set` (boolean, not ZeeFashion's TEXT 'yes' flag — cleaner typing, same plaintext-PIN behavior) + the `customers` UPDATE policy/grant fix
+- [x] Migration `20260712070000_lock_down_sensitive_columns.sql` — same fix applied to `riders` (allowlist: profile fields, `is_available`, `fcm_token`, application docs — mapped from every real `from('riders').update()` call site in the app), `companies` (blanket revoke, nothing re-granted — no app code updates a company row post-registration at all yet), `deliveries` (blocklist — just the financial columns, since this table's legitimate direct-write surface is large and already correctly scoped by existing RLS)
+- [x] Live-verified: legitimate writes (rider toggling `is_available`, `pay_and_accept_delivery_bid` setting `agreed_price`/`payment_status` via its `SECURITY DEFINER` context) still work; all tested tampering attempts (wallet_balance, self-approval, rating inflation) correctly rejected with 403, rows confirmed unchanged
+- [x] Confirmed zero impact on the ZeeFashion/tenant integration — every tenant-facing edge function uses the service-role key exclusively, which bypasses RLS and every GRANT/REVOKE restriction
+- [ ] **Worth checking in ZeeFashion's own Supabase project too** — this is a Supabase-platform-wide default-privilege behavior, not something specific to how Eziza's schema was set up, so the same gap plausibly exists there (`profiles.current_balance`, etc.). Not investigated — separate live app, out of scope here. See [[project_zeefashion_paystack_security]] memory.
+
+**PIN/biometric feature itself:**
 - Add `local_auth` to `pubspec.yaml`
 - 2-step PIN flow (`change_transaction_pin.dart` → `verify_transaction_pin.dart`, `OtpTextField`) writing to `customers.pin`/`pin_set` — matches ZeeFashion's exact **plaintext-storage pattern unless told otherwise**
 - `pin_verification_sheet.dart` equivalent wired into wallet-spend actions
