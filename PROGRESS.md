@@ -375,12 +375,22 @@ New repo at `/Users/zionnite/StudioProjects/eziza-admin` (sibling to `eziza_ride
 - [x] `flutter analyze` clean across the whole `lib/` tree
 - [ ] Not yet run through the actual Flutter app UI — only the DB layer (column grants, `customers.pin`/`pin_set` writes) has been live-verified so far
 
-Phases 5-6 below were scoped out in full but not started as of 2026-07-10. Each deliberately mirrors an existing ZeeFashion admin/Flutter pattern (same tables, same file structure) rather than inventing new conventions, except where explicitly called out.
+### Phase 5 — Change Password, Profile, Bank Account (all 3 roles) — BUILT 2026-07-13
 
-### Phase 5 — Change Password, Profile, Bank Account (all 3 roles)
-- **Change Password**: one shared page matching ZeeFashion's `change_password.dart` exactly (current/new/confirm fields, same non-verification-of-current-password behavior, same `auth.updateUser` call) — wired into all 3 dashboards' Account tabs, replacing rider/customer's ad-hoc bottom sheets and adding the missing company path
-- **Profile**: rebuilt per role matching `profile_page.dart` (display) + `edit_profile.dart` (edit). Photo upload uses **Eziza's own Bunny CDN zone** (`lib/services/bunny_service.dart`, `eziza.b-cdn.net`, already used for rider docs at `rider-docs/<uid>/...`) — **correction 2026-07-13**: briefly built a Supabase Storage bucket + RLS policies for this before realizing Eziza already has its own Bunny zone (an earlier note in this doc wrongly said it didn't); reverted that (migration `20260713010000`) in favor of `BunnyService.upload()`. Company gets its first-ever post-registration edit capability (`companies` table currently only ever gets inserted, never updated)
-- **Bank Account**: split out of Profile into its own page/section for rider and company (currently embedded in rider's profile form; never editable at all for company post-registration)
+**Scope discovery before building**: riders already had a complete, working `ProfilePage` (personal info + vehicle + bank details, all wired to a real `updateProfile` call) — Phase 5 for riders turned out to just be "add a photo," not a rebuild. Companies had genuinely zero edit capability of any kind, matching the roadmap's note exactly.
+
+- [x] `lib/pages/shared/change_password_page.dart` — one shared page for all 3 roles, replacing 2 duplicated bottom sheets (customer, rider) and adding the missing company path. Mirrors ZeeFashion's `change_password.dart` exactly, including "current password" being collected/validated as non-empty but never actually verified against the account (`auth.updateUser()` doesn't require it) — matched intentionally per the roadmap's note.
+- [x] `lib/pages/customer/edit_profile_page.dart` — replaces the old ad-hoc bottom sheet, which only ever wrote to `auth.user_metadata` and never the `customers` table (a real gap since Phase 3 — anything reading `customers.full_name`/`phone` was stale after an edit). Now writes to `customers` as the source of truth, keeps auth metadata in sync for other read sites. Photo upload added.
+- [x] `lib/pages/home/profile_page.dart` (rider) — added avatar upload to the existing page rather than rebuilding it; added `Rider.avatarUrl` to the model.
+- [x] `lib/pages/home/company_profile_page.dart` — new, company's first-ever post-registration edit page: hero header with status badge, Company Info, Location, Bank Details (reuses the same `BankService` bank picker as registration, so `bank_code` is captured correctly for payouts — not just free-text like rider's page), photo upload. Wired "Edit Profile" + "Change Password" tiles into the Account tab for the first time.
+- [x] **Photo upload uses Eziza's own Bunny CDN zone** (`lib/services/bunny_service.dart`, `eziza.b-cdn.net`, already used for rider docs at `rider-docs/<uid>/...`) — **correction 2026-07-13**: briefly built a Supabase Storage bucket + RLS policies for this before realizing Eziza already had its own Bunny zone (an earlier note in this doc wrongly said it didn't); reverted that (migration `20260713010000`) in favor of `BunnyService.upload()`.
+- [x] Migration `20260713020000` — `avatar_url` on `riders`/`companies`, and `companies`' first-ever column-level UPDATE grant (previously zero — nothing could update a company row post-registration at all)
+- [x] **Bank Account**: ended up as its own clearly-labeled section within each role's profile page (matching how it already worked for riders) rather than a fully separate page — same practical effect, one less page to navigate through
+- [x] `flutter analyze` clean across the whole `lib/` tree
+- [x] **Live-verified 2026-07-13** with throwaway test accounts: full company field set (name/contact_person/phone/cac_number/state/city/bank_name/bank_code/account_number/account_name/avatar_url) updates correctly in one request; `wallet_balance`/`is_approved`/`status` confirmed untouched by the same request
+- [ ] Not yet clicked through in the actual app UI (photo picker, bank dropdown, save flows for all 3 roles) — only the DB-layer writes are live-verified
+
+Phase 6 below was scoped out in full but not started as of 2026-07-10. It deliberately mirrors an existing ZeeFashion pattern rather than inventing a new one.
 
 ### Phase 6 — Support Tickets (all 3 roles + admin reply)
 - New migration porting ZeeFashion's `support_tickets`/`support_messages` schema near-verbatim (including the undocumented-but-live `support_messages.image_url` column), adapted to reference `auth.users` directly (Eziza has no unified `profiles` table)
