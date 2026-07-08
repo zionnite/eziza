@@ -308,9 +308,12 @@ Replaced the old unused `delivery_ratings` (single rider/customer rating pair) w
 
 ---
 
-## 🗺️ Roadmap — Phases 2-6 (designed, not built)
+## 🗺️ Roadmap — Phases 1-6
 
-Phase 1 (rider/company/customer core app, monetisation foundation, multi-party ratings) is complete and live-verified above. The phases below were scoped out in full but not started as of 2026-07-09. Each deliberately mirrors an existing ZeeFashion admin/Flutter pattern (same tables, same file structure) rather than inventing new conventions, except where explicitly called out.
+### Phase 1 — Monetisation Foundation — COMPLETE, live-verified 2026-07-09
+Full design + schema is documented above under "Monetisation — Phase 1 (Foundation) COMPLETE" — `earnings_ledger` table, `credit_delivery_earnings()` trigger (fires on `-> confirmed`, incremental-crediting pattern matching ZeeFashion's `wallet_transaction` trigger — nothing else should ever directly `UPDATE riders/companies SET wallet_balance = ...`), backfill for pre-existing confirmed deliveries, itemized history on `earnings_page.dart`. Verification checklist (manual status flip, idempotency check, both individual-rider and company-won paths, itemized history render) — all passed. The one real bug found along the way (missing `SECURITY DEFINER`, silently blocking the trigger's writes for any non-service-role confirming user) is documented in that section too.
+
+Phases 2-6 below were scoped out in full but not started as of 2026-07-09. Each deliberately mirrors an existing ZeeFashion admin/Flutter pattern (same tables, same file structure) rather than inventing new conventions, except where explicitly called out.
 
 ### Phase 2 — eziza-admin (new standalone Next.js app)
 New repo/directory, structurally mirrors `zeefashion-admin` (App Router, client-side Supabase calls, `admin_profiles` table + `is_active` flag for auth gating, `Sidebar.tsx` nav pattern) — but does **not** copy zeefashion-admin's one real flaw: the service-role key stays server-only (Route Handlers/Server Actions), never shipped to the browser under `NEXT_PUBLIC_`.
