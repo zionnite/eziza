@@ -26,6 +26,16 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- Paystack top-up callback — see paystack-initialize's callback_url
+                 and wallet_page.dart's AppLinks listener. Navigating to
+                 eziza://wallet-topup-complete after payment hands control back to
+                 the app instead of leaving the user stuck on Paystack's page. -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="eziza"/>
+            </intent-filter>
         </activity>
         <service
             android:name="com.pravera.flutter_foreground_task.service.ForegroundTaskService"

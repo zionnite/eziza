@@ -42,6 +42,12 @@ serve(async (req) => {
         currency: 'NGN',
         reference,
         metadata: { customer_id, purpose: 'wallet_topup' },
+        // Paystack redirects here after payment. The app registers the
+        // `eziza://` scheme (see AndroidManifest.xml / Info.plist), so the OS
+        // hands control back to it automatically instead of leaving the user
+        // stuck on Paystack's own post-payment page — see wallet_page.dart's
+        // AppLinks listener.
+        callback_url: 'eziza://wallet-topup-complete',
       }),
     })
 

@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -14,18 +17,49 @@ class WalletPage extends StatefulWidget {
   State<WalletPage> createState() => _WalletPageState();
 }
 
-class _WalletPageState extends State<WalletPage> {
+class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
   final _db = Supabase.instance.client;
+  final _appLinks = AppLinks();
+  StreamSubscription<Uri>? _linkSub;
 
   double _balance = 0;
   List<Map<String, dynamic>> _transactions = [];
   bool _loading = true;
   bool _topUpLoading = false;
+  bool _awaitingTopUp = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _load();
+    // Paystack redirects to eziza://wallet-topup-complete after payment —
+    // the OS hands control back to the app and this stream fires. Falls
+    // back to a lifecycle-resume refresh below in case the redirect is
+    // ever missed (e.g. the user backs out of the browser manually).
+    _linkSub = _appLinks.uriLinkStream.listen((uri) {
+      if (uri.scheme == 'eziza') _onReturnedFromPayment();
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _awaitingTopUp) {
+      _onReturnedFromPayment();
+    }
+  }
+
+  Future<void> _onReturnedFromPayment() async {
+    _awaitingTopUp = false;
+    _snack('Checking your payment…');
+    await _load();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _linkSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -64,8 +98,8 @@ class _WalletPageState extends State<WalletPage> {
         amount: amount,
       );
       if (mounted) Navigator.pop(context);
+      _awaitingTopUp = true;
       await launchUrl(Uri.parse(url), mode: LaunchMode.inAppBrowserView);
-      _snack('Complete your payment, then pull to refresh — it can take a few seconds to reflect.');
     } catch (e) {
       _snack('Could not start payment: ${e.toString().replaceFirst('Exception: ', '')}');
     }
