@@ -329,16 +329,30 @@ New repo at `/Users/zionnite/StudioProjects/eziza-admin` (sibling to `eziza_ride
 - [x] **Live-verified 2026-07-10**: real login → real access token → every `/api/admin/*` route hit with it and returned correct live data (5 riders, 90 `earnings_ledger` rows, billing correctly split ₦39,823.80 commission for Eziza Direct vs ₦3,638 for ZeeFashion, settings returned `platform_fee_pct: 0.10`); confirmed the same request without a token gets 401
 - [ ] Not deployed anywhere yet (local only — `npm run dev` on the developer's machine)
 
-Phases 3-6 below were scoped out in full but not started as of 2026-07-10. Each deliberately mirrors an existing ZeeFashion admin/Flutter pattern (same tables, same file structure) rather than inventing new conventions, except where explicitly called out.
+### Phase 3 — Customer Wallet — BUILT + live-verified 2026-07-10
 
-### Phase 3 — Customer Wallet
-New `customers` table — customers currently have zero DB row (identity lives only in `auth.users` metadata); this table becomes the home for `wallet_balance` and later Phase 4's `pin`/`pin_set` and an avatar URL:
-`id UUID PK REFERENCES auth.users(id), full_name, phone, avatar_url, wallet_balance NUMERIC DEFAULT 0, created_at`
+**Scope grew beyond the original bullet list**: deliveries had zero payment step at all before this — accepting a bid just set `status='assigned'` with nothing ever collected from the customer, while `credit_delivery_earnings()` still credited the winning rider/company. Discovered mid-phase, confirmed with the user, and wired the wallet in as the actual payment method for accepting a bid (not just a top-up/balance feature sitting unused).
 
-- New `wallet_transactions` ledger + credit/debit trigger, mirroring ZeeFashion's `wallet_transaction` type-set pattern (credit/debit/refunded at minimum)
-- New Eziza `paystack-webhook` edge function (Eziza's own Paystack keys, already in hand) for `charge.success` → credit
-- New `wallet_page.dart` mirroring ZeeFashion's `wallet.dart` (hero balance, top-up sheet via `pay_with_paystack` package — needs adding to `pubspec.yaml`, transaction list)
-- Refund path: cancelling a paid delivery inserts a `type='refunded'` row
+**Security deviation from the original plan (deliberate, checked directly against source):** the original bullet said to use the `pay_with_paystack` package "mirroring ZeeFashion's `wallet.dart`". Reading `pay_with_paystack`'s actual source (`~/.pub-cache/hosted/pub.dev/pay_with_paystack-1.0.10/lib/src/paystack_pay_now.dart`) shows it calls `api.paystack.co` directly from the client with `Authorization: Bearer <secretKey>` — and ZeeFashion's `wallet.dart`/`check_out_payment.dart`/`subscription_plans_page.dart` all fetch that real secret key client-side via the `paystack-key` edge function (`sec_key` in the response) and pass it straight into the package. **This means ZeeFashion is currently shipping its live Paystack secret key to every authenticated client** — same class of issue as `zeefashion-admin`'s `NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY`, just in the mobile app instead of the admin panel. Flagging this here since it's a real, separate, already-shipped vulnerability — not touched as part of this phase (different codebase/session), but should be fixed. Eziza does **not** use `pay_with_paystack` — see below for what it does instead.
+
+- [x] Migration `20260711000000_customers_table.sql` — `customers` table (`id, full_name, phone, avatar_url, wallet_balance, created_at`), auto-created for every `auth.users` insert via a trigger, backfilled for existing users (riders/companies/admin included — anyone can be a sender)
+- [x] Migration `20260711010000_wallet_transactions.sql` — ledger + `credit_wallet_transaction()` trigger (`SECURITY DEFINER` from the start this time, learning from the earlier `credit_delivery_earnings()`/`credit_rider_rating()`/`sync_deliveries_bidder_company_auth_ids()` bugs — all three were missing it and silently failed under the acting user's own RLS). Types: `credit`/`debit`/`refunded`. Unique index on `reference` (where not null) for idempotency against Paystack's webhook retries.
+- [x] Migration `20260711020000_deliveries_payment_columns.sql` — `payment_source`/`payment_ref`/`payment_status` (default `'unpaid'`)
+- [x] Migration `20260711030000_pay_and_accept_delivery_bid.sql` — atomic RPC: verifies caller, checks balance, debits, accepts the bid + rejects the others, marks the delivery paid. `RAISE EXCEPTION 'Insufficient wallet balance'` on shortfall (caught client-side, shown as a dialog linking to the wallet page)
+- [x] Migration `20260711040000_cancel_delivery_with_refund.sql` — same cancellable scope as the existing `cancel-delivery` edge function (`open`/`assigned`); refunds the wallet if the delivery was paid
+- [x] Edge function `paystack-webhook` — verifies Paystack's HMAC-SHA512 signature, credits the wallet on `charge.success`, idempotent via the reference unique index
+- [x] Edge function `paystack-initialize` — the only thing that touches `PAYSTACK_SECRET_KEY`; verifies the caller's own JWT and that `customer_id` matches before calling Paystack's `/transaction/initialize`
+- [x] Edge function `paystack-public-key` — serves the public key to the app at runtime (no auth needed — public keys are meant to be client-side), so it can rotate without an app release
+- [x] `lib/services/wallet_service.dart` + `lib/pages/customer/wallet_page.dart` (balance hero, top-up sheet with quick-amount chips, transaction history) — top-up opens Paystack's hosted checkout in an in-app browser view (`url_launcher`, already a dependency — no new package added)
+- [x] New "Wallet" tile in the customer Account tab
+- [x] `customer_delivery_detail_page.dart::_acceptBid()` now calls `pay_and_accept_delivery_bid` instead of an unconditional status update; insufficient balance shows a dialog linking to the wallet page
+- [x] New "Cancel Delivery" action (open/assigned only) with a refund-aware confirmation dialog, calling `cancel_delivery_with_refund`
+- [x] `flutter analyze` clean across the whole `lib/` tree
+- [x] **Live-verified 2026-07-10** via real RPC calls under an actual customer JWT (not service role): insufficient-balance correctly rejected → credited wallet 1000 → bid-accept correctly debited 500, set `status='assigned'`, `payment_status='paid'`, `agreed_price`, `rider_id` → cancel correctly refunded 500 → final ledger exactly right (credit 1000 → debit 500 → refund 500 → balance back to 1000). Test data cleaned up afterward.
+- [ ] **Not yet done**: register `https://nvwpsccleewgirlwokys.supabase.co/functions/v1/paystack-webhook` as the webhook URL in the Paystack dashboard for the account owning `PAYSTACK_SECRET_KEY` — without this, `charge.success` events never reach Eziza and top-ups will never actually credit (the RPC-level flow is fully verified, but a *real* card payment end-to-end through the Paystack hosted checkout has not been tested)
+- [ ] Not tested in the actual Flutter app UI (only via direct RPC/API calls) — wallet page rendering, top-up sheet, insufficient-balance dialog, and cancel-delivery flow all need a real run-through
+
+Phases 4-6 below were scoped out in full but not started as of 2026-07-10. Each deliberately mirrors an existing ZeeFashion admin/Flutter pattern (same tables, same file structure) rather than inventing new conventions, except where explicitly called out.
 
 ### Phase 4 — Security (customer-only)
 - Add `local_auth` to `pubspec.yaml`
