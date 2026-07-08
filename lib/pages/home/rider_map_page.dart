@@ -56,6 +56,7 @@ class _RiderMapPageState extends State<RiderMapPage> {
   bool _actionLoading    = false;
   bool _waitingHandoff   = false; // awaiting_pickup_confirm — waiting for merchant/customer handoff
   bool _waitingCustomer  = false; // delivered — waiting for OTP confirmation
+  bool _confirmed        = false; // customer has confirmed — delivery fully done
   bool _pulse            = false;
   bool _closing          = false; // guard against double-close when both Realtime + OTP fire
 
@@ -113,6 +114,11 @@ class _RiderMapPageState extends State<RiderMapPage> {
       // Show OTP sheet immediately — rider may have reopened the page mid-wait
       WidgetsBinding.instance.addPostFrameCallback((_) => _showOtpSheet());
     }
+    // Customer may have already confirmed by the time the rider (re)opens
+    // this page — show the confirmed state instead of a stale OTP prompt.
+    if (status == 'confirmed') {
+      _confirmed = true;
+    }
 
     // Contact info from delivery columns
     _pickupContact  = d['pickup_contact_name']   as String? ?? '';
@@ -160,7 +166,9 @@ class _RiderMapPageState extends State<RiderMapPage> {
                 _advanceToDropoff();
               case 'delivered':
                 setState(() => _waitingCustomer = true);
+                _startConfirmPoll();
               case 'confirmed':
+                setState(() { _waitingCustomer = false; _confirmed = true; });
                 _closeMap();
             }
           })
@@ -505,6 +513,7 @@ class _RiderMapPageState extends State<RiderMapPage> {
             .eq('id', widget.delivery['id'])
             .maybeSingle();
         if ((row?['status'] as String?) == 'confirmed' && mounted) {
+          setState(() { _waitingCustomer = false; _confirmed = true; });
           _closeMap();
         }
       } catch (_) {}
@@ -999,7 +1008,25 @@ class _RiderMapPageState extends State<RiderMapPage> {
       const SizedBox(height: 14),
 
       // Action button
-      if (_waitingCustomer)
+      if (_confirmed)
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+          decoration: BoxDecoration(
+            color:        const Color(0xFFDCFCE7),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFF86EFAC))),
+          child: const Row(mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.check_circle_rounded,
+                  color: Color(0xFF16A34A), size: 18),
+              SizedBox(width: 10),
+              Text('Package has been confirmed',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700,
+                      color: Color(0xFF15803D))),
+            ]),
+        )
+      else if (_waitingCustomer)
         GestureDetector(
           onTap: _otpSheetOpen ? null : _showOtpSheet,
           child: Container(
