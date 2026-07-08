@@ -1,0 +1,11 @@
+-- Same class of bug as credit_delivery_earnings() and credit_rider_rating():
+-- sync_deliveries_bidder_company_auth_ids() runs as the bidding company's
+-- own session, but companies have no UPDATE grant on deliveries — so its
+-- UPDATE deliveries SET bidder_company_auth_ids = ... silently affected 0
+-- rows. That array is exactly what deliveries_rider_select's
+-- "auth.uid() = ANY(bidder_company_auth_ids)" clause depends on to let a
+-- bidding company see the delivery once it's no longer 'open' — so the
+-- moment a sender accepted a company's bid, the delivery vanished from
+-- that company's view entirely (no SELECT policy covered it anymore),
+-- which is why "assign to a rider" never appeared.
+ALTER FUNCTION public.sync_deliveries_bidder_company_auth_ids() SECURITY DEFINER SET search_path = public;
