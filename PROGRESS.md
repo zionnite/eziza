@@ -250,19 +250,22 @@ Before this, `riders.wallet_balance`/`companies.wallet_balance` were never writt
   - `credit_delivery_earnings()` trigger, fires once per delivery on the `-> confirmed` transition: reads `platform_fee_pct` from `settings`, computes commission + net, writes the fee breakdown back onto the delivery, inserts one `earnings_ledger` row, and credits the winning party's `wallet_balance` — the winning party is whoever's bid was `accepted` (a company, if a company won, even though it may internally assign one of its own riders to actually do the job — that rider isn't paid directly through the platform)
   - One-time backfill for pre-existing `confirmed` deliveries in the same migration (verified against 10 real historical deliveries — commission math checked out on both the individual-rider and company-won paths)
 - [x] `company_dashboard_page.dart` — added a "Recent Earnings" itemized section to the Earnings tab (`_earningsHistoryCard`), same gross/commission/net breakdown pattern the rider's `earnings_page.dart` already had (that page needed zero changes — it already read `platform_fee`/`agreed_price` directly, just had nothing populating them until now)
-- [ ] **Not yet verified**: the live trigger firing on an actual real-time status transition (only the one-time backfill script's identical logic has been confirmed against real data so far — same function body, different invocation path)
+- [x] **Live-verified 2026-07-09**: real bug found in the process — `credit_delivery_earnings()` wasn't `SECURITY DEFINER`, so its writes to `earnings_ledger`/`riders`/`companies` ran under the *confirming user's own* RLS grants and were silently rejected (no INSERT policy on `earnings_ledger` at all), rolling back the whole delivery confirmation. Fixed + backfilled. Full flow now confirmed working end-to-end through the real app.
 
 ### Monetisation — Phases 2+ (not started)
 - [ ] Markup on external carrier quotes — blocked on Shipbubble integration (deferred)
 - [ ] Admin earnings dashboard — blocked on `eziza-admin` (no admin panel exists yet at all)
 - [ ] Tenant billing ledger — no real invoicing/payment-collection mechanism from tenants exists yet; likely just a reporting view over `earnings_ledger` grouped by tenant until then
 
-### Multi-party delivery ratings — COMPLETE (not yet live-verified)
-Replaced the old unused `delivery_ratings` (single rider/customer rating pair) with a checkpoint-based model covering all 4 directions: sender↔rider at handoff, receiver↔rider at delivery. `riders.rating_count` added (didn't exist, unlike `companies`). Each rating snapshots `rater_name` so a company can trace a bad rating on one of their riders back to the specific customer — new `CompanyRiderRatingsPage`, opened by tapping a rider in the My Riders tab, lists this per rider.
+### Multi-party delivery ratings — COMPLETE, live-verified 2026-07-09
+Replaced the old unused `delivery_ratings` (single rider/customer rating pair) with a checkpoint-based model covering all 4 directions: sender↔rider at handoff, receiver↔rider at delivery. `riders.rating_count` added (didn't exist, unlike `companies`). Each rating snapshots `rater_name` so a company can trace a bad rating on one of their riders back to the specific customer — `CompanyRiderRatingsPage`, opened by tapping a rider in the My Riders tab, lists this per rider.
 - [x] Migration `20260707250000_multi_party_ratings.sql` — new schema, `credit_rider_rating()` aggregation trigger, RLS (insert scoped to your actual role on the delivery; select scoped to your own ratings, ratings about you, or — for companies — ratings about riders linked via `company_rider_invites`)
 - [x] `lib/widgets/rating_sheet.dart` + `lib/services/ratings_service.dart` — shared skippable 5-star sheet + submit/already-rated-check helpers
 - [x] Wired into `customer_delivery_detail_page.dart`, `delivery_tracking_page.dart` (both live, both need it independently), `rider_map_page.dart`
-- [ ] **Not yet live-verified** — deployed and compiles clean, but no real rating has been submitted through the actual app yet (RLS enforcement, the aggregation trigger, and the company viewing page are all unverified against a live session, only reasoned through)
+- [x] Decoupled from status-transition ordering — manual "Rate Rider"/"Rate Sender"/"Rate Receiver" entry points added (assigned-rider card, live-tracking card, rider map's top-bar "Rate" menu) so any party can rate any time, not just right after a specific confirm action
+- [x] `credit_rider_rating()` also needed `SECURITY DEFINER` (same bug class as the earnings trigger) — fixed + backfilled
+- [x] Companies are now also credited from their riders' ratings (`companies.rating_avg/rating_count`), with a full reviews list (rater, role, stars, comment, which rider) on both the company's own Rating tab and the individual rider's Rating tab
+- [x] Live-verified end-to-end through the real app, including company-employed rider flow
 
 ---
 
@@ -302,6 +305,51 @@ Replaced the old unused `delivery_ratings` (single rider/customer rating pair) w
 - [ ] `delivery_fee_breakdown` jsonb column on `deliveries`
 - [ ] Admin earnings dashboard
 - [ ] Tenant billing ledger
+
+---
+
+## 🗺️ Roadmap — Phases 2-6 (designed, not built)
+
+Phase 1 (rider/company/customer core app, monetisation foundation, multi-party ratings) is complete and live-verified above. The phases below were scoped out in full but not started as of 2026-07-09. Each deliberately mirrors an existing ZeeFashion admin/Flutter pattern (same tables, same file structure) rather than inventing new conventions, except where explicitly called out.
+
+### Phase 2 — eziza-admin (new standalone Next.js app)
+New repo/directory, structurally mirrors `zeefashion-admin` (App Router, client-side Supabase calls, `admin_profiles` table + `is_active` flag for auth gating, `Sidebar.tsx` nav pattern) — but does **not** copy zeefashion-admin's one real flaw: the service-role key stays server-only (Route Handlers/Server Actions), never shipped to the browser under `NEXT_PUBLIC_`.
+
+Sections:
+- **Riders/Companies approval queues** — direct template: ZeeFashion admin's `logistics/page.tsx` pending-first-section + approve/reject/suspend pattern with push+email on status change
+- **Deliveries**
+- **Earnings** — reads `earnings_ledger` + `tenants`, aggregate commission over time/per-tenant (the "admin earnings dashboard" backlog item)
+- **Tenant Billing** — summary view over `earnings_ledger` grouped by tenant/period; real invoicing/collection out of scope until there's an actual payment-collection mechanism from tenants
+- **Settings** — `platform_fee_pct` editor
+- **Support** — ticket reply UI, built alongside Phase 6's ticket schema
+
+### Phase 3 — Customer Wallet
+New `customers` table — customers currently have zero DB row (identity lives only in `auth.users` metadata); this table becomes the home for `wallet_balance` and later Phase 4's `pin`/`pin_set` and an avatar URL:
+`id UUID PK REFERENCES auth.users(id), full_name, phone, avatar_url, wallet_balance NUMERIC DEFAULT 0, created_at`
+
+- New `wallet_transactions` ledger + credit/debit trigger, mirroring ZeeFashion's `wallet_transaction` type-set pattern (credit/debit/refunded at minimum)
+- New Eziza `paystack-webhook` edge function (Eziza's own Paystack keys, already in hand) for `charge.success` → credit
+- New `wallet_page.dart` mirroring ZeeFashion's `wallet.dart` (hero balance, top-up sheet via `pay_with_paystack` package — needs adding to `pubspec.yaml`, transaction list)
+- Refund path: cancelling a paid delivery inserts a `type='refunded'` row
+
+### Phase 4 — Security (customer-only)
+- Add `local_auth` to `pubspec.yaml`
+- 2-step PIN flow (`change_transaction_pin.dart` → `verify_transaction_pin.dart`, `OtpTextField`) writing to `customers.pin`/`pin_set` — matches ZeeFashion's exact **plaintext-storage pattern unless told otherwise**
+- `pin_verification_sheet.dart` equivalent wired into wallet-spend actions
+- Biometric toggle via `SharedPreferences['fingerprintAuth']` + a `local_auth_services.dart` wrapper — mirrors ZeeFashion's implementation directly
+
+### Phase 5 — Change Password, Profile, Bank Account (all 3 roles)
+- **Change Password**: one shared page matching ZeeFashion's `change_password.dart` exactly (current/new/confirm fields, same non-verification-of-current-password behavior, same `auth.updateUser` call) — wired into all 3 dashboards' Account tabs, replacing rider/customer's ad-hoc bottom sheets and adding the missing company path
+- **Profile**: rebuilt per role matching `profile_page.dart` (display) + `edit_profile.dart` (edit). Photo upload uses **Supabase Storage, not Bunny CDN** — Eziza has no Bunny account of its own; using ZeeFashion's would upload into the wrong brand's storage. Company gets its first-ever post-registration edit capability (`companies` table currently only ever gets inserted, never updated)
+- **Bank Account**: split out of Profile into its own page/section for rider and company (currently embedded in rider's profile form; never editable at all for company post-registration)
+
+### Phase 6 — Support Tickets (all 3 roles + admin reply)
+- New migration porting ZeeFashion's `support_tickets`/`support_messages` schema near-verbatim (including the undocumented-but-live `support_messages.image_url` column), adapted to reference `auth.users` directly (Eziza has no unified `profiles` table)
+- Flutter: `support_tickets_page.dart`/`create_ticket_page.dart`/`ticket_thread_page.dart` ported per ZeeFashion's structure, wired into all 3 roles' "Help & Support" tiles (replacing the current WhatsApp/"Coming Soon" stub)
+- Image attachments via Supabase Storage (same reasoning as Phase 5, not Bunny)
+- Admin reply UI in eziza-admin mirrors ZeeFashion admin's two-pane list+thread+realtime page
+
+**Note:** the notification bug in the Pending section above is a separate track from these phases — it's a live bug in already-shipped Phase 1 functionality, not new scope. Worth fixing before or alongside Phase 2, since an admin dashboard doesn't help if the underlying app can't notify anyone.
 
 ---
 
