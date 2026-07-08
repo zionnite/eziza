@@ -6,12 +6,12 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../constants/colors.dart';
-import '../../services/bank_service.dart';
 import '../../services/bunny_service.dart';
 
 /// Company's first-ever post-registration profile editor — mirrors the
-/// rider's ProfilePage structure (Personal/Company Info + Bank Details in
-/// one page), adapted to the companies table's own columns.
+/// rider's ProfilePage structure (Personal/Company Info), adapted to the
+/// companies table's own columns. Bank details live in their own detached
+/// BankAccountPage, not here.
 class CompanyProfilePage extends StatefulWidget {
   const CompanyProfilePage({super.key});
 
@@ -29,15 +29,11 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
   final _cacCtrl = TextEditingController();
   final _stateCtrl = TextEditingController();
   final _cityCtrl = TextEditingController();
-  final _accountNumberCtrl = TextEditingController();
-  final _accountNameCtrl = TextEditingController();
 
   String? _companyId;
   String? _email;
   String? _avatarUrl;
   String? _status;
-  List<Bank> _banks = [];
-  Bank? _selectedBank;
 
   bool _loading = true;
   bool _saving = false;
@@ -57,8 +53,6 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
     _cacCtrl.dispose();
     _stateCtrl.dispose();
     _cityCtrl.dispose();
-    _accountNumberCtrl.dispose();
-    _accountNameCtrl.dispose();
     super.dispose();
   }
 
@@ -67,7 +61,6 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
     if (uid == null) return;
     try {
       final row = await _db.from('companies').select().eq('auth_user_id', uid).single();
-      final banks = await BankService.fetchBanks();
 
       _companyId = row['id'] as String;
       _email = row['email'] as String?;
@@ -79,14 +72,6 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
       _cacCtrl.text = row['cac_number'] as String? ?? '';
       _stateCtrl.text = row['state'] as String? ?? '';
       _cityCtrl.text = row['city'] as String? ?? '';
-      _accountNumberCtrl.text = row['account_number'] as String? ?? '';
-      _accountNameCtrl.text = row['account_name'] as String? ?? '';
-      _banks = banks;
-      final bankCode = row['bank_code'] as String?;
-      if (bankCode != null) {
-        _selectedBank = banks.firstWhereOrNull((b) => b.code == bankCode) ??
-            Bank(name: row['bank_name'] as String? ?? '', code: bankCode);
-      }
     } catch (_) {}
     if (mounted) setState(() => _loading = false);
   }
@@ -130,10 +115,6 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
         'cac_number': _cacCtrl.text.trim().isEmpty ? null : _cacCtrl.text.trim(),
         'state': _stateCtrl.text.trim(),
         'city': _cityCtrl.text.trim().isEmpty ? null : _cityCtrl.text.trim(),
-        'bank_name': _selectedBank?.name,
-        'bank_code': _selectedBank?.code,
-        'account_number': _accountNumberCtrl.text.trim().isEmpty ? null : _accountNumberCtrl.text.trim(),
-        'account_name': _accountNameCtrl.text.trim().isEmpty ? null : _accountNameCtrl.text.trim(),
       }).eq('id', _companyId!);
       if (!mounted) return;
       _snack('Profile updated.');
@@ -191,24 +172,6 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
                           validator: (v) => (v?.trim().isEmpty ?? true) ? 'Required' : null),
                       const SizedBox(height: 12),
                       _field(_cityCtrl, 'City (optional)', Icons.location_city_outlined),
-                      const SizedBox(height: 24),
-                      _sectionLabel('Bank Details'),
-                      const SizedBox(height: 12),
-                      _bankPicker(),
-                      const SizedBox(height: 12),
-                      _field(_accountNumberCtrl, 'Account Number', Icons.tag_rounded,
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                            LengthLimitingTextInputFormatter(10),
-                          ],
-                          validator: (v) {
-                            final val = v?.trim() ?? '';
-                            if (val.isNotEmpty && val.length != 10) return 'Must be exactly 10 digits';
-                            return null;
-                          }),
-                      const SizedBox(height: 12),
-                      _field(_accountNameCtrl, 'Account Name', Icons.person_outline_rounded),
                       const SizedBox(height: 28),
                       SizedBox(
                         width: double.infinity,
@@ -343,32 +306,6 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
 
   Widget _sectionLabel(String label) =>
       Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: EzizaColors.kText));
-
-  Widget _bankPicker() {
-    return DropdownButtonFormField<Bank>(
-      initialValue: _selectedBank,
-      isExpanded: true,
-      items: _banks
-          .map((b) => DropdownMenuItem(value: b, child: Text(b.name, overflow: TextOverflow.ellipsis)))
-          .toList(),
-      onChanged: (b) => setState(() => _selectedBank = b),
-      decoration: InputDecoration(
-        labelText: 'Bank',
-        labelStyle: const TextStyle(color: EzizaColors.kMuted),
-        prefixIcon: const Icon(Icons.account_balance_outlined, color: EzizaColors.kMuted, size: 20),
-        filled: true,
-        fillColor: EzizaColors.kSurface,
-        border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: EzizaColors.kBorder)),
-        enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: EzizaColors.kBorder)),
-        focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: EzizaColors.kPurple, width: 1.5)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      ),
-    );
-  }
 
   Widget _readOnlyField(String label, String value, IconData icon) => TextFormField(
         initialValue: value,

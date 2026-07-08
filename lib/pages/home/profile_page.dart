@@ -31,9 +31,6 @@ class _ProfilePageState extends State<ProfilePage> {
   final _fullName      = TextEditingController();
   final _phone         = TextEditingController();
   final _plate         = TextEditingController();
-  final _bankName      = TextEditingController();
-  final _accountNumber = TextEditingController();
-  final _accountName   = TextEditingController();
   String _vehicleType  = 'bike';
 
   bool _saving = false;
@@ -50,9 +47,6 @@ class _ProfilePageState extends State<ProfilePage> {
     _fullName.text      = rider.fullName;
     _phone.text         = rider.phone;
     _plate.text         = rider.vehiclePlate ?? '';
-    _bankName.text      = rider.bankName ?? '';
-    _accountNumber.text = rider.accountNumber ?? '';
-    _accountName.text   = rider.accountName ?? '';
     _vehicleType        = rider.vehicleType;
   }
 
@@ -61,9 +55,6 @@ class _ProfilePageState extends State<ProfilePage> {
     _fullName.dispose();
     _phone.dispose();
     _plate.dispose();
-    _bankName.dispose();
-    _accountNumber.dispose();
-    _accountName.dispose();
     super.dispose();
   }
 
@@ -72,13 +63,10 @@ class _ProfilePageState extends State<ProfilePage> {
     setState(() => _saving = true);
     try {
       final result = await _auth.updateProfile(
-        fullName:      _fullName.text.trim(),
-        phone:         _phone.text.trim(),
-        vehicleType:   _vehicleType,
-        vehiclePlate:  _plate.text.trim(),
-        bankName:      _bankName.text.trim(),
-        accountNumber: _accountNumber.text.trim(),
-        accountName:   _accountName.text.trim(),
+        fullName:     _fullName.text.trim(),
+        phone:        _phone.text.trim(),
+        vehicleType:  _vehicleType,
+        vehiclePlate: _plate.text.trim(),
       );
       if (!mounted) return;
       if (result == 'true') {
@@ -248,38 +236,6 @@ class _ProfilePageState extends State<ProfilePage> {
                             RegExp(r'[A-Za-z0-9\-]')),
                         LengthLimitingTextInputFormatter(10),
                       ],
-                    ),
-                    const SizedBox(height: 24),
-                    _sectionLabel('Bank Details'),
-                    const SizedBox(height: 12),
-                    _field(
-                      controller: _bankName,
-                      label: 'Bank Name',
-                      icon: Icons.account_balance_outlined,
-                    ),
-                    const SizedBox(height: 12),
-                    _field(
-                      controller: _accountNumber,
-                      label: 'Account Number',
-                      icon: Icons.tag_rounded,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                        LengthLimitingTextInputFormatter(10),
-                      ],
-                      validator: (v) {
-                        final val = v?.trim() ?? '';
-                        if (val.isNotEmpty && val.length != 10) {
-                          return 'Must be exactly 10 digits';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    _field(
-                      controller: _accountName,
-                      label: 'Account Name',
-                      icon: Icons.person_outline_rounded,
                     ),
                   ],
                 ),

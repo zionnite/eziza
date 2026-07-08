@@ -14,6 +14,7 @@ import '../../services/location_service.dart';
 import '../../services/rider_location_task.dart';
 import '../../services/ratings_service.dart';
 import '../../widgets/rating_sheet.dart';
+import '../shared/bank_account_page.dart';
 import '../shared/change_password_page.dart';
 import 'earnings_widgets.dart';
 import 'profile_page.dart';
@@ -2766,11 +2767,7 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
                 : GestureDetector(
                     onTap: hasBankDetails
                         ? _showPayoutSheet
-                        : () => Get.snackbar('No Bank Details',
-                              'Add your bank details in your rider profile to request payouts.',
-                              backgroundColor: Colors.orange,
-                              colorText: EzizaColors.kWhite,
-                              snackPosition: SnackPosition.BOTTOM),
+                        : () => Get.to(() => const BankAccountPage(role: BankAccountRole.rider)),
                     child: Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(vertical: 13),
@@ -2842,8 +2839,19 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
                     iconColor: EzizaColors.kPurpleD,
                     iconBg: EzizaColors.kPurpleD.withValues(alpha: 0.1),
                     title: 'Edit Profile',
-                    subtitle: 'Personal info, vehicle & bank details',
+                    subtitle: 'Personal info & vehicle',
                     onTap: () => Get.to(() => const ProfilePage()),
+                  ),
+                  _acctDivider(),
+                  _acctTile(
+                    icon: Icons.account_balance_outlined,
+                    iconColor: EzizaColors.kPurpleD,
+                    iconBg: EzizaColors.kPurpleD.withValues(alpha: 0.1),
+                    title: 'Bank Account',
+                    subtitle: rider.accountNumber != null
+                        ? '${rider.bankName ?? ''} · ${rider.accountNumber}'
+                        : 'Not set up yet',
+                    onTap: () => Get.to(() => const BankAccountPage(role: BankAccountRole.rider)),
                   ),
                   _acctDivider(),
                   _acctTile(

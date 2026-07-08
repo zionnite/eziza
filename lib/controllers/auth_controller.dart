@@ -171,6 +171,26 @@ class AuthController extends GetxController {
     required String phone,
     required String vehicleType,
     required String vehiclePlate,
+  }) async {
+    final id = rider.value?.id;
+    if (id == null) return 'Not logged in';
+    loading.value = true;
+    try {
+      final result = await SupabaseService.updateRiderProfile(
+        riderId:      id,
+        fullName:     fullName,
+        phone:        phone,
+        vehicleType:  vehicleType,
+        vehiclePlate: vehiclePlate,
+      );
+      if (result == 'true') await _loadProfile();
+      return result;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  Future<String> updateBankDetails({
     required String bankName,
     required String accountNumber,
     required String accountName,
@@ -179,12 +199,8 @@ class AuthController extends GetxController {
     if (id == null) return 'Not logged in';
     loading.value = true;
     try {
-      final result = await SupabaseService.updateRiderProfile(
+      final result = await SupabaseService.updateRiderBankDetails(
         riderId:       id,
-        fullName:      fullName,
-        phone:         phone,
-        vehicleType:   vehicleType,
-        vehiclePlate:  vehiclePlate,
         bankName:      bankName,
         accountNumber: accountNumber,
         accountName:   accountName,

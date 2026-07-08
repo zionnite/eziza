@@ -240,9 +240,6 @@ class SupabaseService {
     required String phone,
     required String vehicleType,
     required String vehiclePlate,
-    required String bankName,
-    required String accountNumber,
-    required String accountName,
   }) async {
     try {
       await _client.from('riders').update({
@@ -250,9 +247,26 @@ class SupabaseService {
         'phone':           phone,
         'vehicle_type':    vehicleType,
         'vehicle_plate':   vehiclePlate.isEmpty ? null : vehiclePlate,
-        'bank_name':       bankName.isEmpty ? null : bankName,
-        'account_number':  accountNumber.isEmpty ? null : accountNumber,
-        'account_name':    accountName.isEmpty ? null : accountName,
+      }).eq('id', riderId);
+      return 'true';
+    } on PostgrestException catch (e) {
+      return e.message;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  static Future<String> updateRiderBankDetails({
+    required String riderId,
+    required String bankName,
+    required String accountNumber,
+    required String accountName,
+  }) async {
+    try {
+      await _client.from('riders').update({
+        'bank_name':      bankName.isEmpty ? null : bankName,
+        'account_number': accountNumber.isEmpty ? null : accountNumber,
+        'account_name':   accountName.isEmpty ? null : accountName,
       }).eq('id', riderId);
       return 'true';
     } on PostgrestException catch (e) {

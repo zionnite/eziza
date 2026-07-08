@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../constants/colors.dart';
 import '../../controllers/auth_controller.dart';
+import '../shared/bank_account_page.dart';
 import '../shared/change_password_page.dart';
 import 'earnings_widgets.dart';
 import 'company_map_page.dart';
@@ -1584,9 +1585,7 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
                     : GestureDetector(
                         onTap: company['account_number'] != null
                             ? _showPayoutSheet
-                            : () => _snack(
-                                  'Add bank details during registration to request payouts.',
-                                ),
+                            : () => Get.to(() => const BankAccountPage(role: BankAccountRole.company)),
                         child: Container(
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(
@@ -1744,9 +1743,23 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
                     iconColor: EzizaColors.kPurpleD,
                     iconBg: EzizaColors.kPurpleD.withValues(alpha: 0.1),
                     title: 'Edit Profile',
-                    subtitle: 'Company info & bank details',
+                    subtitle: 'Company info',
                     onTap: () async {
                       await Get.to(() => const CompanyProfilePage());
+                      _load();
+                    },
+                  ),
+                  _acctDivider(),
+                  _acctTile(
+                    icon: Icons.account_balance_outlined,
+                    iconColor: EzizaColors.kPurpleD,
+                    iconBg: EzizaColors.kPurpleD.withValues(alpha: 0.1),
+                    title: 'Bank Account',
+                    subtitle: _company?['account_number'] != null
+                        ? '${_company?['bank_name'] ?? ''} · ${_company?['account_number']}'
+                        : 'Not set up yet',
+                    onTap: () async {
+                      await Get.to(() => const BankAccountPage(role: BankAccountRole.company));
                       _load();
                     },
                   ),
