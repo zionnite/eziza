@@ -102,6 +102,74 @@ class _SendPackagePageState extends State<SendPackagePage>
     }
   }
 
+  // The OTP delivery-confirmation flow depends entirely on this phone
+  // number being correct — a typo here means the rider can't confirm
+  // delivery at all. One last check before the package goes out for bids.
+  Future<bool?> _confirmRecipientDetails() {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20)),
+        title: const Text('Confirm Recipient Details',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
+        content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+          const Text(
+              'The rider will use this phone number to confirm delivery. '
+              'Please make sure it\'s correct.',
+              style: TextStyle(fontSize: 13, color: EzizaColors.kMuted, height: 1.4)),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+                color: EzizaColors.kSurface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: EzizaColors.kBorder)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                const Icon(Icons.person_outline_rounded,
+                    size: 16, color: EzizaColors.kMuted),
+                const SizedBox(width: 8),
+                Expanded(child: Text(_deliveryContactCtrl.text.trim(),
+                    style: const TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.w700,
+                        color: EzizaColors.kText))),
+              ]),
+              const SizedBox(height: 8),
+              Row(children: [
+                const Icon(Icons.phone_outlined,
+                    size: 16, color: EzizaColors.kMuted),
+                const SizedBox(width: 8),
+                Text(_deliveryPhoneCtrl.text.trim(),
+                    style: const TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.w700,
+                        color: EzizaColors.kText)),
+              ]),
+            ]),
+          ),
+        ]),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Edit',
+                  style: TextStyle(color: EzizaColors.kMuted))),
+          ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: EzizaColors.kPurpleD,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10))),
+              child: const Text('Confirm & Send',
+                  style: TextStyle(fontWeight: FontWeight.w700))),
+        ],
+      ),
+    );
+  }
+
   Future<void> _submit() async {
     if (_pickupAddress == null || _pickupLat == null) {
       _snack('Pick a pickup location on the map.');
@@ -124,6 +192,9 @@ class _SendPackagePageState extends State<SendPackagePage>
       _snack('Enter the recipient\'s phone number.');
       return;
     }
+
+    final confirmed = await _confirmRecipientDetails();
+    if (confirmed != true || !mounted) return;
 
     final user = _db.auth.currentUser;
     if (user == null) {
