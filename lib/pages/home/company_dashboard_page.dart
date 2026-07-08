@@ -7,6 +7,7 @@ import '../../constants/colors.dart';
 import '../../controllers/auth_controller.dart';
 import '../shared/bank_account_page.dart';
 import '../shared/change_password_page.dart';
+import '../shared/support_tickets_page.dart';
 import 'earnings_widgets.dart';
 import 'company_map_page.dart';
 import 'company_profile_page.dart';
@@ -1811,12 +1812,8 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
                     iconColor: Colors.blueGrey,
                     iconBg: Colors.blueGrey.shade50,
                     title: 'Help & Support',
-                    subtitle: 'Chat with us on WhatsApp',
-                    onTap: () => Get.snackbar(
-                      'Coming Soon',
-                      'WhatsApp support will be available soon.',
-                      snackPosition: SnackPosition.BOTTOM,
-                    ),
+                    subtitle: 'Open a support ticket',
+                    onTap: () => Get.to(() => const SupportTicketsPage()),
                   ),
                   _acctDivider(),
                   _acctTile(

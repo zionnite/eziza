@@ -16,6 +16,7 @@ import '../../services/ratings_service.dart';
 import '../../widgets/rating_sheet.dart';
 import '../shared/bank_account_page.dart';
 import '../shared/change_password_page.dart';
+import '../shared/support_tickets_page.dart';
 import 'earnings_widgets.dart';
 import 'profile_page.dart';
 import 'rider_map_page.dart';
@@ -2937,12 +2938,8 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
                     iconColor: Colors.blueGrey,
                     iconBg: Colors.blueGrey.shade50,
                     title: 'Help & Support',
-                    subtitle: 'Chat with us on WhatsApp',
-                    onTap: () => Get.snackbar(
-                      'Coming Soon',
-                      'WhatsApp support will be available soon.',
-                      snackPosition: SnackPosition.BOTTOM,
-                    ),
+                    subtitle: 'Open a support ticket',
+                    onTap: () => Get.to(() => const SupportTicketsPage()),
                   ),
                   _acctDivider(),
                   _acctTile(

@@ -4,7 +4,11 @@ import 'package:image_picker/image_picker.dart';
 
 class BunnyService {
   static String get _apiKey    => dotenv.env['BUNNY_STORAGE_API_KEY'] ?? '';
-  static String get _uploadBase => dotenv.env['BUNNY_STORAGE_URL'] ?? '';     // https://storage.bunnycdn.com/eziza
+  static String get _zoneName  => dotenv.env['BUNNY_STORAGE_ZONE_NAME'] ?? '';
+  // BUNNY_STORAGE_URL was never actually set in .env -- every upload() call
+  // silently failed (relative-only URI, no scheme/host) until this was
+  // switched to build the upload base from the zone name, which IS set.
+  static String get _uploadBase => 'https://storage.bunnycdn.com/$_zoneName';
   static String get _pullZone  => dotenv.env['BUNNY_STORAGE_PULL_ZONE'] ?? ''; // eziza.b-cdn.net
 
   /// Uploads [file] to Bunny CDN at [storagePath] (no leading slash, no extension).
