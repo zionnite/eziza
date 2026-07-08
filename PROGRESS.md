@@ -408,6 +408,22 @@ New repo at `/Users/zionnite/StudioProjects/eziza-admin` (sibling to `eziza_ride
 
 **Note:** the notification bug in the Pending section above is a separate track from these phases — it's a live bug in already-shipped Phase 1 functionality, not new scope. Worth fixing before or alongside Phase 2, since an admin dashboard doesn't help if the underlying app can't notify anyone.
 
+### Pre-auth flow: Splash, Onboarding, Welcome — BUILT 2026-07-15
+
+The app had no branded entry flow at all — a fresh install went straight to `LoginPage` with a "Rider Portal" subtitle (already caught and fixed once this session, see the git log), which was itself the wrong first screen even fixed, since a company or customer install shouldn't open on a login form before ever explaining what Eziza is. Ported ZeeFashion's actual proven structure (`splash_page.dart` is currently dead code there, unused — the real flow is the file-flag onboarding check → `WelcomePage`/`Login`/`SignUp`/`ForgotPassword`/`ResetPassword`), adapted for Eziza:
+
+- [x] **No photography assets exist for Eziza** (checked `assets/images/` — only 2 debug screenshots, no hero/onboarding photos). Used gradient + large-icon compositions instead, matching the icon+gradient "hero" visual language already established across the rest of the app (profile/bank-account/change-password pages) rather than fabricating or sourcing photos.
+- [x] `lib/pages/auth/splash_page.dart` — new, brief branded screen, checks the onboarding file-flag then routes to `OnboardingPage` (first run) or `AuthRouter` (returning).
+- [x] `lib/pages/auth/onboarding_page.dart` — new, 3-slide swipeable intro (send/track/earn), full-bleed gradient + icon per slide, glass bottom card, page dots, skip — structurally ported from ZeeFashion's `onboarding_screen.dart`. Sets `.onboarding_done` via `path_provider` (new dependency — deliberately not `shared_preferences`, matching ZeeFashion's documented reason: an earlier ZeeFashion bug had an unrelated page resetting the flag via SharedPreferences on every load).
+- [x] `lib/pages/auth/welcome_page.dart` — new, hero + "Create Account"/"Sign In" CTAs, shown to anyone not logged in. `AuthRouter`'s not-logged-in branch now returns this instead of `LoginPage` directly.
+- [x] `lib/pages/auth/login_page.dart` — full visual rework to match ZeeFashion's polish (glow gradients, entrance animation, proper field styling); "Forgot Password?" now actually works (was previously a dead `onPressed: () {}`).
+- [x] `lib/pages/auth/forgot_password_page.dart` / `reset_password_page.dart` — new. Forgot-password calls `resetPasswordForEmail(redirectTo: 'eziza://reset')`; reset page reached via `Supabase.instance.client.auth.onAuthStateChange`'s `passwordRecovery` event in `main.dart` (Supabase's own deep-link handling catches `eziza://reset`, already registered natively alongside `eziza://wallet-topup-complete` for Paystack — no new URI-stream listener needed, same technique ZeeFashion already proved out).
+- [x] `lib/pages/auth/register_page.dart` — light header/style pass to match (back button, "GET STARTED" label treatment) without touching its existing fields or submit logic.
+- [x] `main.dart`: `EzizaRiderApp` converted to `StatefulWidget` to host the `onAuthStateChange` listener; `home:` is now `SplashPage` instead of the auth router directly; `_AuthRouter` renamed to public `AuthRouter` (referenced by the new pages).
+- [x] `flutter analyze` clean across the whole `lib/` tree.
+- [ ] **Needs a real on-device test for the email-link → deep-link → reset-password step specifically** — everything else in this flow was verified by code review + `flutter analyze` (can't simulate tapping a real emailed link from this environment). Also needs the Supabase Dashboard's Authentication → URL Configuration → Redirect URLs to include `eziza://reset` (or `eziza://**`) — this is a project-level Auth setting, not something in a migration file, and I have no visibility into whether it's already set.
+- [ ] **Noted but not fixed**: `wallet_page.dart`'s existing `AppLinks` listener matches on `uri.scheme == 'eziza'` only (not the specific `wallet-topup-complete` path), so if the wallet page happened to be mounted at the exact moment an `eziza://reset` link was tapped, it would incorrectly treat it as a Paystack return too. Pre-existing looseness, not introduced by this change, and very low real-world likelihood (would need the wallet page open during password reset) — flagged rather than fixed since it's outside this task's scope.
+
 ---
 
 ## Key Credentials & URLs

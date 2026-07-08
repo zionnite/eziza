@@ -47,7 +47,7 @@ class _RegisterPageState extends State<RegisterPage> {
       );
       if (!mounted) return;
       if (result == 'true') {
-        // Auth state change will update _AuthRouter to show UserHomePage
+        // Auth state change will update AuthRouter to show UserHomePage
         Get.until((route) => route.isFirst);
       } else {
         Get.snackbar(
@@ -67,31 +67,71 @@ class _RegisterPageState extends State<RegisterPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: EzizaColors.kWhite,
-      appBar: AppBar(
-        title: const Text('Create Account'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_rounded),
-          onPressed: () => Get.back(),
+      body: Stack(children: [
+        Positioned(
+          top: -100, right: -80,
+          child: Container(
+            width: 280, height: 280,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(colors: [EzizaColors.kPurple.withValues(alpha: 0.08), Colors.transparent]),
+            ),
+          ),
         ),
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Form(
+        Positioned(
+          bottom: 120, left: -40,
+          child: Container(
+            width: 160, height: 160,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(colors: [EzizaColors.kGold.withValues(alpha: 0.07), Colors.transparent]),
+            ),
+          ),
+        ),
+        SafeArea(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const SizedBox(height: 16),
+                GestureDetector(
+                  onTap: () => Get.back(),
+                  child: Container(
+                    width: 38, height: 38,
+                    decoration: BoxDecoration(
+                      color: EzizaColors.kSurface,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: EzizaColors.kBorder),
+                    ),
+                    child: const Icon(Icons.arrow_back_ios_new, size: 15, color: EzizaColors.kText),
+                  ),
+                ),
+                const SizedBox(height: 28),
+                Row(children: [
+                  Container(
+                    width: 14, height: 2,
+                    decoration: BoxDecoration(color: EzizaColors.kPurple, borderRadius: BorderRadius.circular(1)),
+                    margin: const EdgeInsets.only(right: 8),
+                  ),
+                  Text('GET STARTED', style: TextStyle(color: EzizaColors.kPurple.withValues(alpha: 0.7), fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 2.5)),
+                ]),
+                const SizedBox(height: 10),
                 const Text(
-                  'Welcome to Eziza',
+                  'Create\nAccount',
                   style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: EzizaColors.kText),
+                      color: EzizaColors.kText,
+                      fontSize: 34,
+                      fontWeight: FontWeight.w800,
+                      height: 1.15,
+                      letterSpacing: -0.5),
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  'Create your account to get started.',
+                  'Join Eziza to send, track, and deliver',
                   style: TextStyle(color: EzizaColors.kMuted, fontSize: 14),
                 ),
                 const SizedBox(height: 32),
@@ -213,11 +253,13 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 32),
               ],
             ),
           ),
+          ),
         ),
-      ),
+      ]),
     );
   }
 

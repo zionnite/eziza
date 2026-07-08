@@ -57,6 +57,11 @@ dependencies:
   flutter_otp_text_field: ^1.1.3+2
   shared_preferences: ^2.2.2
 
+  # Onboarding first-run flag -- file-based, not SharedPreferences (mirrors
+  # ZeeFashion's onboarding_page.dart, which moved off SharedPreferences
+  # after a real bug where an unrelated page reset the flag on every load)
+  path_provider: ^2.1.4
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -9,7 +9,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'constants/colors.dart';
 import 'controllers/auth_controller.dart';
 import 'controllers/delivery_controller.dart';
-import 'pages/auth/login_page.dart';
+import 'pages/auth/reset_password_page.dart';
+import 'pages/auth/splash_page.dart';
+import 'pages/auth/welcome_page.dart';
 import 'pages/customer/customer_dashboard_page.dart';
 import 'pages/home/company_dashboard_page.dart';
 import 'pages/home/home_page.dart';
@@ -46,14 +48,33 @@ void main() async {
   runApp(const EzizaRiderApp());
 }
 
-class EzizaRiderApp extends StatelessWidget {
+class EzizaRiderApp extends StatefulWidget {
   const EzizaRiderApp({super.key});
+
+  @override
+  State<EzizaRiderApp> createState() => _EzizaRiderAppState();
+}
+
+class _EzizaRiderAppState extends State<EzizaRiderApp> {
+  @override
+  void initState() {
+    super.initState();
+    // Supabase's own deep-link handling catches the eziza://reset link
+    // (registered natively alongside eziza://wallet-topup-complete) and
+    // emits this event once the recovery session is ready -- no need to
+    // manually intercept the URI ourselves. Mirrors ZeeFashion's main.dart.
+    Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      if (data.event == AuthChangeEvent.passwordRecovery) {
+        Get.to(() => const ResetPasswordPage());
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return GetMaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Eziza Rider',
+      title: 'Eziza',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: EzizaColors.kPurple),
         useMaterial3: true,
@@ -70,13 +91,13 @@ class EzizaRiderApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const _AuthRouter(),
+      home: const SplashPage(),
     );
   }
 }
 
-class _AuthRouter extends StatelessWidget {
-  const _AuthRouter();
+class AuthRouter extends StatelessWidget {
+  const AuthRouter({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -91,7 +112,7 @@ class _AuthRouter extends StatelessWidget {
         );
       }
 
-      if (!auth.loggedIn.value) return const LoginPage();
+      if (!auth.loggedIn.value) return const WelcomePage();
 
       final rider = auth.rider.value;
 

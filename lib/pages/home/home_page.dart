@@ -101,7 +101,7 @@ class _UserHomePageState extends State<UserHomePage> {
                     'Use Eziza to send packages, get real-time tracking, and confirm delivery.',
                 onTap: () async {
                   await SupabaseService.setCustomerRole();
-                  // Setting isCustomer triggers _AuthRouter to rebuild → CustomerDashboardPage
+                  // Setting isCustomer triggers AuthRouter to rebuild → CustomerDashboardPage
                   Get.find<AuthController>().isCustomer.value = true;
                 },
               ),
