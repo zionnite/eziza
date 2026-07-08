@@ -39,6 +39,7 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
   List<Map<String, dynamic>> _jobHistory       = [];
   List<Map<String, dynamic>> _pendingInvites   = [];
   List<Map<String, dynamic>> _payoutHistory    = [];
+  List<Map<String, dynamic>> _myRatings        = [];
 
   double? _riderLat;
   double? _riderLng;
@@ -195,6 +196,15 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
           .eq('rider_id', riderId)
           .order('created_at', ascending: false);
       _payoutHistory = List<Map<String, dynamic>>.from(payoutRes);
+
+      // Ratings left on me — who rated, their stars, and their comment.
+      final ratingsRes = await _db
+          .from('delivery_ratings')
+          .select()
+          .eq('ratee_id', riderId)
+          .eq('ratee_role', 'rider')
+          .order('created_at', ascending: false);
+      _myRatings = List<Map<String, dynamic>>.from(ratingsRes);
     } catch (_) {}
 
     setState(() => _loading = false);
@@ -1879,38 +1889,110 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
           'Ratings from customers will appear here once you complete deliveries.');
     }
 
-    return SingleChildScrollView(
+    return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 60),
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-            color: EzizaColors.kWhite,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: EzizaColors.kBorder)),
-        child: Column(children: [
-          Text(avg.toStringAsFixed(1),
-              style: const TextStyle(
-                  fontSize: 44,
-                  fontWeight: FontWeight.w900,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+              color: EzizaColors.kWhite,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: EzizaColors.kBorder)),
+          child: Column(children: [
+            Text(avg.toStringAsFixed(1),
+                style: const TextStyle(
+                    fontSize: 44,
+                    fontWeight: FontWeight.w900,
+                    color: EzizaColors.kText)),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(5, (i) {
+                final filled = i < avg.round();
+                return Icon(
+                    filled ? Icons.star_rounded : Icons.star_outline_rounded,
+                    color: EzizaColors.kGold,
+                    size: 26);
+              }),
+            ),
+            const SizedBox(height: 10),
+            Text('Average rating from completed deliveries',
+                style: const TextStyle(
+                    fontSize: 13, color: EzizaColors.kMuted),
+                textAlign: TextAlign.center),
+          ]),
+        ),
+        if (_myRatings.isNotEmpty) ...[
+          const SizedBox(height: 20),
+          const Text('Recent Reviews',
+              style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
                   color: EzizaColors.kText)),
+          const SizedBox(height: 12),
+          ..._myRatings.map(_myRatingCard),
+        ],
+      ],
+    );
+  }
+
+  Widget _myRatingCard(Map<String, dynamic> r) {
+    final rating  = (r['rating'] as num?)?.toInt() ?? 0;
+    final role    = r['rater_role'] as String? ?? '';
+    final name    = (r['rater_name'] as String?)?.trim();
+    final comment = r['comment'] as String?;
+    final date    = r['created_at'] as String? ?? '';
+    final dateLabel = date.length >= 10 ? date.substring(0, 10) : date;
+    final roleLabel = role == 'sender' ? 'Sender' : 'Receiver';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+          color: EzizaColors.kWhite,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: EzizaColors.kBorder)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Expanded(
+              child: Text(
+                  (name == null || name.isEmpty) ? 'Anonymous' : name,
+                  style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: EzizaColors.kText)),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                  color: EzizaColors.kPurple.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20)),
+              child: Text(roleLabel,
+                  style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: EzizaColors.kPurpleD)),
+            ),
+          ]),
           const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(5, (i) {
-              final filled = i < avg.round();
-              return Icon(
-                  filled ? Icons.star_rounded : Icons.star_outline_rounded,
+          Row(children: List.generate(
+              5,
+              (i) => Icon(
+                  i < rating ? Icons.star_rounded : Icons.star_outline_rounded,
                   color: EzizaColors.kGold,
-                  size: 26);
-            }),
-          ),
-          const SizedBox(height: 10),
-          Text('Average rating from completed deliveries',
-              style: const TextStyle(
-                  fontSize: 13, color: EzizaColors.kMuted),
-              textAlign: TextAlign.center),
-        ]),
+                  size: 18))),
+          if (comment != null && comment.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(comment,
+                style: const TextStyle(fontSize: 13, color: EzizaColors.kText)),
+          ],
+          const SizedBox(height: 6),
+          Text(dateLabel,
+              style: const TextStyle(fontSize: 11, color: EzizaColors.kMuted)),
+        ],
       ),
     );
   }
