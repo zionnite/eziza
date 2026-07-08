@@ -116,6 +116,14 @@ class _SendPackagePageState extends State<SendPackagePage>
       _snack('Describe the package.');
       return;
     }
+    if (_deliveryContactCtrl.text.trim().isEmpty) {
+      _snack('Enter the recipient\'s name.');
+      return;
+    }
+    if (_deliveryPhoneCtrl.text.trim().isEmpty) {
+      _snack('Enter the recipient\'s phone number.');
+      return;
+    }
 
     final user = _db.auth.currentUser;
     if (user == null) {
@@ -146,12 +154,8 @@ class _SendPackagePageState extends State<SendPackagePage>
         'delivery_address':       _dropoffAddress,
         'delivery_lat':           _dropoffLat,
         'delivery_lng':           _dropoffLng,
-        'delivery_contact_name':  _deliveryContactCtrl.text.trim().isEmpty
-            ? null
-            : _deliveryContactCtrl.text.trim(),
-        'delivery_contact_phone': _deliveryPhoneCtrl.text.trim().isEmpty
-            ? null
-            : _deliveryPhoneCtrl.text.trim(),
+        'delivery_contact_name':  _deliveryContactCtrl.text.trim(),
+        'delivery_contact_phone': _deliveryPhoneCtrl.text.trim(),
         'package_description': desc,
         'package_value':       value,
         'status':              'open',
@@ -240,10 +244,10 @@ class _SendPackagePageState extends State<SendPackagePage>
                     onTap: _pickDropoff,
                   ),
                   const SizedBox(height: 14),
-                  _field('Recipient Name', _deliveryContactCtrl,
+                  _field('Recipient Name *', _deliveryContactCtrl,
                       hint: 'Name of person receiving package'),
                   const SizedBox(height: 14),
-                  _field('Recipient Phone', _deliveryPhoneCtrl,
+                  _field('Recipient Phone *', _deliveryPhoneCtrl,
                       hint: '080xxxxxxxx',
                       type: TextInputType.phone),
                 ]),
