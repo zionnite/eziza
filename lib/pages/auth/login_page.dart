@@ -69,7 +69,7 @@ class _LoginPageState extends State<LoginPage> {
                         color: EzizaColors.kText)),
               ]),
               const SizedBox(height: 12),
-              const Text('Rider Portal',
+              const Text('Delivery made simple',
                   style: TextStyle(color: EzizaColors.kMuted, fontSize: 15)),
               const SizedBox(height: 48),
               const Text('Sign In',
