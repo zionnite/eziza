@@ -11,8 +11,9 @@ enum BankAccountRole { rider, company }
 
 /// Detached Bank Account page, separate from Edit Profile — riders and
 /// companies each have their own tile/route into this, own load, own save.
-/// Rider bank_name is free text (no bank_code column on riders); company
-/// uses the same bank picker company_registration_page.dart uses at signup.
+/// Both roles pick from the same BankService dropdown (not free text) so
+/// bank_code is always captured — required for admin/Paystack transfer
+/// payouts, which resolve by bank code, not by typed-in bank name.
 class BankAccountPage extends StatefulWidget {
   final BankAccountRole role;
   const BankAccountPage({super.key, required this.role});
@@ -25,7 +26,6 @@ class _BankAccountPageState extends State<BankAccountPage> {
   final _db = Supabase.instance.client;
   final _formKey = GlobalKey<FormState>();
 
-  final _bankNameCtrl = TextEditingController();
   final _accountNumberCtrl = TextEditingController();
   final _accountNameCtrl = TextEditingController();
 
@@ -46,24 +46,24 @@ class _BankAccountPageState extends State<BankAccountPage> {
 
   @override
   void dispose() {
-    _bankNameCtrl.dispose();
     _accountNumberCtrl.dispose();
     _accountNameCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _load() async {
+    final banks = await BankService.fetchBanks();
+    _banks = banks;
+
     if (_isCompany) {
       final uid = _db.auth.currentUser?.id;
       if (uid != null) {
         try {
           final row =
               await _db.from('companies').select().eq('auth_user_id', uid).single();
-          final banks = await BankService.fetchBanks();
           _companyId = row['id'] as String;
           _accountNumberCtrl.text = row['account_number'] as String? ?? '';
           _accountNameCtrl.text = row['account_name'] as String? ?? '';
-          _banks = banks;
           final bankCode = row['bank_code'] as String?;
           if (bankCode != null) {
             _selectedBank = banks.firstWhereOrNull((b) => b.code == bankCode) ??
@@ -73,9 +73,18 @@ class _BankAccountPageState extends State<BankAccountPage> {
       }
     } else {
       final rider = Get.find<AuthController>().rider.value;
-      _bankNameCtrl.text = rider?.bankName ?? '';
       _accountNumberCtrl.text = rider?.accountNumber ?? '';
       _accountNameCtrl.text = rider?.accountName ?? '';
+      final bankCode = rider?.bankCode;
+      final bankName = rider?.bankName;
+      if (bankCode != null) {
+        _selectedBank = banks.firstWhereOrNull((b) => b.code == bankCode) ??
+            Bank(name: bankName ?? '', code: bankCode);
+      } else if (bankName != null && bankName.isNotEmpty) {
+        // Pre-existing rider from before bank_code was captured — best-effort
+        // match by name so they aren't forced to re-pick from scratch.
+        _selectedBank = banks.firstWhereOrNull((b) => b.name == bankName);
+      }
     }
     if (mounted) setState(() => _loading = false);
   }
@@ -89,7 +98,7 @@ class _BankAccountPageState extends State<BankAccountPage> {
 
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    if (_isCompany && _selectedBank == null) {
+    if (_selectedBank == null) {
       _snack('Please select a bank.');
       return;
     }
@@ -107,7 +116,8 @@ class _BankAccountPageState extends State<BankAccountPage> {
         _snack('Bank account updated.');
       } else {
         final result = await Get.find<AuthController>().updateBankDetails(
-          bankName: _bankNameCtrl.text.trim(),
+          bankName: _selectedBank?.name ?? '',
+          bankCode: _selectedBank?.code ?? '',
           accountNumber: _accountNumberCtrl.text.trim(),
           accountName: _accountNameCtrl.text.trim(),
         );
@@ -162,7 +172,7 @@ class _BankAccountPageState extends State<BankAccountPage> {
                         ]),
                       ),
                       const SizedBox(height: 24),
-                      if (_isCompany) _bankPicker() else _bankNameField(),
+                      _bankPicker(),
                       const SizedBox(height: 12),
                       _field(
                         controller: _accountNumberCtrl,
@@ -292,13 +302,6 @@ class _BankAccountPageState extends State<BankAccountPage> {
       ),
     );
   }
-
-  Widget _bankNameField() => _field(
-        controller: _bankNameCtrl,
-        label: 'Bank Name',
-        icon: Icons.account_balance_outlined,
-        validator: (v) => (v?.trim().isEmpty ?? true) ? 'Required' : null,
-      );
 
   TextFormField _field({
     required TextEditingController controller,

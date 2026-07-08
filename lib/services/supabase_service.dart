@@ -73,6 +73,7 @@ class SupabaseService {
     required String vehiclePlate,
     required List<String> coverageStates,
     required String bankName,
+    required String bankCode,
     required String accountNumber,
     required String accountName,
     XFile? govId,
@@ -91,6 +92,7 @@ class SupabaseService {
         'vehicle_plate':   vehiclePlate.isEmpty ? null : vehiclePlate,
         'coverage_states': coverageStates,
         'bank_name':       bankName.isEmpty ? null : bankName,
+        'bank_code':       bankCode.isEmpty ? null : bankCode,
         'account_number':  accountNumber.isEmpty ? null : accountNumber,
         'account_name':    accountName.isEmpty ? null : accountName,
         'is_approved':     false,
@@ -259,12 +261,14 @@ class SupabaseService {
   static Future<String> updateRiderBankDetails({
     required String riderId,
     required String bankName,
+    required String bankCode,
     required String accountNumber,
     required String accountName,
   }) async {
     try {
       await _client.from('riders').update({
         'bank_name':      bankName.isEmpty ? null : bankName,
+        'bank_code':      bankCode.isEmpty ? null : bankCode,
         'account_number': accountNumber.isEmpty ? null : accountNumber,
         'account_name':   accountName.isEmpty ? null : accountName,
       }).eq('id', riderId);

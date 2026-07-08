@@ -8,6 +8,7 @@ class Rider {
   final String? vehiclePlate;
   final List<String> coverageStates;
   final String? bankName;
+  final String? bankCode;
   final String? accountNumber;
   final String? accountName;
   final bool isApproved;
@@ -29,6 +30,7 @@ class Rider {
     this.vehiclePlate,
     required this.coverageStates,
     this.bankName,
+    this.bankCode,
     this.accountNumber,
     this.accountName,
     required this.isApproved,
@@ -53,6 +55,7 @@ class Rider {
       vehiclePlate: j['vehicle_plate'] as String?,
       coverageStates: List<String>.from(j['coverage_states'] ?? []),
       bankName: j['bank_name'] as String?,
+      bankCode: j['bank_code'] as String?,
       accountNumber: j['account_number'] as String?,
       accountName: j['account_name'] as String?,
       isApproved: approved,

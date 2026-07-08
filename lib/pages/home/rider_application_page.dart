@@ -148,6 +148,7 @@ class _RiderApplicationPageState extends State<RiderApplicationPage>
         vehiclePlate:   _plate.text.trim(),
         coverageStates: _selectedStates.toList(),
         bankName:       _selectedBank?.name ?? '',
+        bankCode:       _selectedBank?.code ?? '',
         accountNumber:  _accountNumber.text.trim(),
         accountName:    _accountName.text.trim(),
         govId:          _govId,

@@ -103,6 +103,7 @@ class AuthController extends GetxController {
     required String vehiclePlate,
     required List<String> coverageStates,
     required String bankName,
+    required String bankCode,
     required String accountNumber,
     required String accountName,
     XFile? govId,
@@ -117,6 +118,7 @@ class AuthController extends GetxController {
         vehiclePlate:   vehiclePlate,
         coverageStates: coverageStates,
         bankName:       bankName,
+        bankCode:       bankCode,
         accountNumber:  accountNumber,
         accountName:    accountName,
         govId:          govId,
@@ -192,6 +194,7 @@ class AuthController extends GetxController {
 
   Future<String> updateBankDetails({
     required String bankName,
+    required String bankCode,
     required String accountNumber,
     required String accountName,
   }) async {
@@ -202,6 +205,7 @@ class AuthController extends GetxController {
       final result = await SupabaseService.updateRiderBankDetails(
         riderId:       id,
         bankName:      bankName,
+        bankCode:      bankCode,
         accountNumber: accountNumber,
         accountName:   accountName,
       );
