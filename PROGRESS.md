@@ -313,18 +313,21 @@ Replaced the old unused `delivery_ratings` (single rider/customer rating pair) w
 ### Phase 1 — Monetisation Foundation — COMPLETE, live-verified 2026-07-09
 Full design + schema is documented above under "Monetisation — Phase 1 (Foundation) COMPLETE" — `earnings_ledger` table, `credit_delivery_earnings()` trigger (fires on `-> confirmed`, incremental-crediting pattern matching ZeeFashion's `wallet_transaction` trigger — nothing else should ever directly `UPDATE riders/companies SET wallet_balance = ...`), backfill for pre-existing confirmed deliveries, itemized history on `earnings_page.dart`. Verification checklist (manual status flip, idempotency check, both individual-rider and company-won paths, itemized history render) — all passed. The one real bug found along the way (missing `SECURITY DEFINER`, silently blocking the trigger's writes for any non-service-role confirming user) is documented in that section too.
 
-Phases 2-6 below were scoped out in full but not started as of 2026-07-09. Each deliberately mirrors an existing ZeeFashion admin/Flutter pattern (same tables, same file structure) rather than inventing new conventions, except where explicitly called out.
+### Phase 2 — eziza-admin — BUILT 2026-07-10, not yet live-verified
+New repo at `/Users/zionnite/StudioProjects/eziza-admin` (sibling to `eziza_rider`, own git repo, no remote yet), structurally mirrors `zeefashion-admin` (App Router, `admin_profiles` table + `is_active` flag for auth gating, `Sidebar.tsx` nav pattern) — but does **not** copy zeefashion-admin's one real flaw: `lib/supabaseBrowser.ts` (anon key) and `lib/supabaseAdmin.ts` (service-role, guarded by the `server-only` package) are split, and every privileged read/write goes through `/api/admin/*` Route Handlers authenticated by `lib/adminAuth.ts::requireAdmin()` (verifies the caller's own access token, then checks `admin_profiles.is_active`). Verified empirically that the service-role key does not appear anywhere in the built `.next` output (client or server bundles) — Next.js reads non-`NEXT_PUBLIC_` env vars from `process.env` at runtime, never inlines them.
 
-### Phase 2 — eziza-admin (new standalone Next.js app)
-New repo/directory, structurally mirrors `zeefashion-admin` (App Router, client-side Supabase calls, `admin_profiles` table + `is_active` flag for auth gating, `Sidebar.tsx` nav pattern) — but does **not** copy zeefashion-admin's one real flaw: the service-role key stays server-only (Route Handlers/Server Actions), never shipped to the browser under `NEXT_PUBLIC_`.
+- [x] Migration `20260710020000_admin_profiles.sql` — table + self-select-only RLS policy (every other operation is server-side)
+- [x] **Approvals** (`/dashboard/approvals`) — riders/companies tabs, pending-first sort, approve/reject/suspend/reinstate, push notification on status change (`device_tokens` lookup by `auth_user_id` + `send-notification` edge function — Eziza has no `send-email` function yet, so email-on-status-change from the original ZeeFashion pattern is not implemented here)
+- [x] **Deliveries** (`/dashboard/deliveries`) — all tenants, status filter chips
+- [x] **Earnings** (`/dashboard/earnings`) — `earnings_ledger` itemized list (payee via FK embed to `riders`/`companies`) + aggregate gross/commission/net cards
+- [x] **Tenant Billing** (`/dashboard/billing`) — commission grouped by `deliveries.tenant_id` (aggregated server-side in the Route Handler, since `earnings_ledger` has no `tenant_id` column of its own); explicitly reporting-only, no invoicing/collection
+- [x] **Settings** (`/dashboard/settings`) — `platform_fee_pct` editor (stored as a 0-1 fraction in `settings`, edited as a 0-100 percentage in the UI)
+- [x] **Support** (`/dashboard/support`) — placeholder page, real UI waits on Phase 6's ticket schema
+- [x] `npm run build` and `npm run lint` both clean (one new stricter lint rule, `react-hooks/set-state-in-effect`, flags the standard "fetch on mount" `useEffect(() => { load() }, [dep])` pattern used throughout this app and its ZeeFashion sibling — downgraded to a warning in `eslint.config.mjs` rather than restructured)
+- [ ] **Not yet live-verified**: no admin has actually logged in yet — needs a first `admin_profiles` row inserted manually (by design, no self-serve signup) for an existing `auth.users` id in the Eziza Supabase project, then a real walkthrough of each section
+- [ ] Not deployed anywhere yet (local only)
 
-Sections:
-- **Riders/Companies approval queues** — direct template: ZeeFashion admin's `logistics/page.tsx` pending-first-section + approve/reject/suspend pattern with push+email on status change
-- **Deliveries**
-- **Earnings** — reads `earnings_ledger` + `tenants`, aggregate commission over time/per-tenant (the "admin earnings dashboard" backlog item)
-- **Tenant Billing** — summary view over `earnings_ledger` grouped by tenant/period; real invoicing/collection out of scope until there's an actual payment-collection mechanism from tenants
-- **Settings** — `platform_fee_pct` editor
-- **Support** — ticket reply UI, built alongside Phase 6's ticket schema
+Phases 3-6 below were scoped out in full but not started as of 2026-07-10. Each deliberately mirrors an existing ZeeFashion admin/Flutter pattern (same tables, same file structure) rather than inventing new conventions, except where explicitly called out.
 
 ### Phase 3 — Customer Wallet
 New `customers` table — customers currently have zero DB row (identity lives only in `auth.users` metadata); this table becomes the home for `wallet_balance` and later Phase 4's `pin`/`pin_set` and an avatar URL:
