@@ -32,6 +32,7 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
   List<Map<String, dynamic>> _riders           = [];
   List<Map<String, dynamic>> _invites          = [];
   List<Map<String, dynamic>> _payoutHistory    = [];
+  List<Map<String, dynamic>> _companyRatings   = [];
   bool _loading = true;
 
   RealtimeChannel? _channel;
@@ -163,6 +164,22 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
         _riders = List<Map<String, dynamic>>.from(ridersRes);
       } else {
         _riders = [];
+      }
+
+      // Ratings left on any of this company's riders — a rider's rating is
+      // reputational for the company too, so surface every rating (rater,
+      // stars, comment, which rider it was about) here, not just per-rider.
+      if (_riders.isNotEmpty) {
+        final riderIds = _riders.map((r) => r['id'] as String).toList();
+        final ratingsRes = await _db
+            .from('delivery_ratings')
+            .select()
+            .eq('ratee_role', 'rider')
+            .inFilter('ratee_id', riderIds)
+            .order('created_at', ascending: false);
+        _companyRatings = List<Map<String, dynamic>>.from(ratingsRes);
+      } else {
+        _companyRatings = [];
       }
 
       final invitesRes = await _db
@@ -1110,37 +1127,123 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
       );
     }
 
-    return SingleChildScrollView(
+    return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 60),
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-            color: EzizaColors.kWhite,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: EzizaColors.kBorder)),
-        child: Column(children: [
-          Text(avg.toStringAsFixed(1),
-              style: const TextStyle(
-                  fontSize: 44,
-                  fontWeight: FontWeight.w900,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+              color: EzizaColors.kWhite,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: EzizaColors.kBorder)),
+          child: Column(children: [
+            Text(avg.toStringAsFixed(1),
+                style: const TextStyle(
+                    fontSize: 44,
+                    fontWeight: FontWeight.w900,
+                    color: EzizaColors.kText)),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(5, (i) {
+                final filled = i < avg.round();
+                return Icon(
+                    filled ? Icons.star_rounded : Icons.star_outline_rounded,
+                    color: EzizaColors.kGold,
+                    size: 26);
+              }),
+            ),
+            const SizedBox(height: 10),
+            Text('Based on $count review${count == 1 ? '' : 's'}',
+                style: const TextStyle(
+                    fontSize: 13, color: EzizaColors.kMuted)),
+          ]),
+        ),
+        if (_companyRatings.isNotEmpty) ...[
+          const SizedBox(height: 20),
+          const Text('Recent Reviews',
+              style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
                   color: EzizaColors.kText)),
+          const SizedBox(height: 12),
+          ..._companyRatings.map(_companyRatingCard),
+        ],
+      ],
+    );
+  }
+
+  Widget _companyRatingCard(Map<String, dynamic> r) {
+    final rating  = (r['rating'] as num?)?.toInt() ?? 0;
+    final role    = r['rater_role'] as String? ?? '';
+    final name    = (r['rater_name'] as String?)?.trim();
+    final comment = r['comment'] as String?;
+    final date    = r['created_at'] as String? ?? '';
+    final dateLabel = date.length >= 10 ? date.substring(0, 10) : date;
+    final roleLabel = role == 'sender' ? 'Sender' : 'Receiver';
+    final rider = _riders.firstWhereOrNull(
+        (x) => x['id'] == (r['ratee_id'] as String?));
+    final riderName = rider?['full_name'] as String? ?? 'a rider';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+          color: EzizaColors.kWhite,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: EzizaColors.kBorder)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Expanded(
+              child: Text(
+                  (name == null || name.isEmpty) ? 'Anonymous' : name,
+                  style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: EzizaColors.kText)),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                  color: EzizaColors.kPurple.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20)),
+              child: Text(roleLabel,
+                  style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: EzizaColors.kPurpleD)),
+            ),
+          ]),
           const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(5, (i) {
-              final filled = i < avg.round();
-              return Icon(
-                  filled ? Icons.star_rounded : Icons.star_outline_rounded,
+          Row(children: List.generate(
+              5,
+              (i) => Icon(
+                  i < rating ? Icons.star_rounded : Icons.star_outline_rounded,
                   color: EzizaColors.kGold,
-                  size: 26);
-            }),
-          ),
-          const SizedBox(height: 10),
-          Text('Based on $count review${count == 1 ? '' : 's'}',
-              style: const TextStyle(
-                  fontSize: 13, color: EzizaColors.kMuted)),
-        ]),
+                  size: 18))),
+          if (comment != null && comment.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(comment,
+                style: const TextStyle(fontSize: 13, color: EzizaColors.kText)),
+          ],
+          const SizedBox(height: 8),
+          Row(children: [
+            const Icon(Icons.two_wheeler_rounded,
+                size: 13, color: EzizaColors.kMuted),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text('From a delivery by $riderName',
+                  style: const TextStyle(
+                      fontSize: 11, color: EzizaColors.kMuted)),
+            ),
+            Text(dateLabel,
+                style: const TextStyle(
+                    fontSize: 11, color: EzizaColors.kMuted)),
+          ]),
+        ],
       ),
     );
   }
