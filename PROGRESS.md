@@ -313,7 +313,7 @@ Replaced the old unused `delivery_ratings` (single rider/customer rating pair) w
 ### Phase 1 — Monetisation Foundation — COMPLETE, live-verified 2026-07-09
 Full design + schema is documented above under "Monetisation — Phase 1 (Foundation) COMPLETE" — `earnings_ledger` table, `credit_delivery_earnings()` trigger (fires on `-> confirmed`, incremental-crediting pattern matching ZeeFashion's `wallet_transaction` trigger — nothing else should ever directly `UPDATE riders/companies SET wallet_balance = ...`), backfill for pre-existing confirmed deliveries, itemized history on `earnings_page.dart`. Verification checklist (manual status flip, idempotency check, both individual-rider and company-won paths, itemized history render) — all passed. The one real bug found along the way (missing `SECURITY DEFINER`, silently blocking the trigger's writes for any non-service-role confirming user) is documented in that section too.
 
-### Phase 2 — eziza-admin — BUILT 2026-07-10, not yet live-verified
+### Phase 2 — eziza-admin — BUILT + live-verified 2026-07-10
 New repo at `/Users/zionnite/StudioProjects/eziza-admin` (sibling to `eziza_rider`, own git repo, no remote yet), structurally mirrors `zeefashion-admin` (App Router, `admin_profiles` table + `is_active` flag for auth gating, `Sidebar.tsx` nav pattern) — but does **not** copy zeefashion-admin's one real flaw: `lib/supabaseBrowser.ts` (anon key) and `lib/supabaseAdmin.ts` (service-role, guarded by the `server-only` package) are split, and every privileged read/write goes through `/api/admin/*` Route Handlers authenticated by `lib/adminAuth.ts::requireAdmin()` (verifies the caller's own access token, then checks `admin_profiles.is_active`). Verified empirically that the service-role key does not appear anywhere in the built `.next` output (client or server bundles) — Next.js reads non-`NEXT_PUBLIC_` env vars from `process.env` at runtime, never inlines them.
 
 - [x] Migration `20260710020000_admin_profiles.sql` — table + self-select-only RLS policy (every other operation is server-side)
@@ -324,8 +324,9 @@ New repo at `/Users/zionnite/StudioProjects/eziza-admin` (sibling to `eziza_ride
 - [x] **Settings** (`/dashboard/settings`) — `platform_fee_pct` editor (stored as a 0-1 fraction in `settings`, edited as a 0-100 percentage in the UI)
 - [x] **Support** (`/dashboard/support`) — placeholder page, real UI waits on Phase 6's ticket schema
 - [x] `npm run build` and `npm run lint` both clean (one new stricter lint rule, `react-hooks/set-state-in-effect`, flags the standard "fetch on mount" `useEffect(() => { load() }, [dep])` pattern used throughout this app and its ZeeFashion sibling — downgraded to a warning in `eslint.config.mjs` rather than restructured)
-- [ ] **Not yet live-verified**: no admin has actually logged in yet — needs a first `admin_profiles` row inserted manually (by design, no self-serve signup) for an existing `auth.users` id in the Eziza Supabase project, then a real walkthrough of each section
-- [ ] Not deployed anywhere yet (local only)
+- [x] First admin created: `admin@eziza.online` (dedicated admin account, not reused from any rider/company/customer signup) — new `auth.users` row + `admin_profiles` row with `is_active=true`
+- [x] **Live-verified 2026-07-10**: real login → real access token → every `/api/admin/*` route hit with it and returned correct live data (5 riders, 90 `earnings_ledger` rows, billing correctly split ₦39,823.80 commission for Eziza Direct vs ₦3,638 for ZeeFashion, settings returned `platform_fee_pct: 0.10`); confirmed the same request without a token gets 401
+- [ ] Not deployed anywhere yet (local only — `npm run dev` on the developer's machine)
 
 Phases 3-6 below were scoped out in full but not started as of 2026-07-10. Each deliberately mirrors an existing ZeeFashion admin/Flutter pattern (same tables, same file structure) rather than inventing new conventions, except where explicitly called out.
 
