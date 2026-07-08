@@ -42,12 +42,14 @@ serve(async (req) => {
         currency: 'NGN',
         reference,
         metadata: { customer_id, purpose: 'wallet_topup' },
-        // Paystack redirects here after payment. The app registers the
-        // `eziza://` scheme (see AndroidManifest.xml / Info.plist), so the OS
-        // hands control back to it automatically instead of leaving the user
-        // stuck on Paystack's own post-payment page — see wallet_page.dart's
-        // AppLinks listener.
-        callback_url: 'eziza://wallet-topup-complete',
+        // Paystack's API silently ignores a raw custom-scheme callback_url
+        // (confirmed live — the checkout page just stayed on its own
+        // "Payment Successful" screen with no redirect attempted at all).
+        // paystack-return is a real https:// bridge page that immediately
+        // redirects to eziza://wallet-topup-complete client-side, which iOS/
+        // Android DO intercept from inside the in-app browser — see
+        // wallet_page.dart's AppLinks listener.
+        callback_url: 'https://nvwpsccleewgirlwokys.supabase.co/functions/v1/paystack-return',
       }),
     })
 
