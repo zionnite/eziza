@@ -7,6 +7,7 @@ import '../../controllers/auth_controller.dart';
 import 'customer_delivery_detail_page.dart';
 import 'delivery_tracking_page.dart';
 import 'send_package_page.dart';
+import 'wallet_page.dart';
 
 class CustomerDashboardPage extends StatefulWidget {
   const CustomerDashboardPage({super.key});
@@ -593,6 +594,15 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
                 _settingsSectionLabel('Account'),
                 const SizedBox(height: 10),
                 _settingsCard(children: [
+                  _settingsTile(
+                    icon: Icons.account_balance_wallet_outlined,
+                    iconColor: EzizaColors.kGold,
+                    iconBg: EzizaColors.kGold.withValues(alpha: 0.12),
+                    title: 'Wallet',
+                    subtitle: 'Top up and pay for deliveries',
+                    onTap: () => Get.to(() => const WalletPage()),
+                  ),
+                  _tileDivider(),
                   _settingsTile(
                     icon: Icons.local_shipping_outlined,
                     iconColor: EzizaColors.kPurpleD,

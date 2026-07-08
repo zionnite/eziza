@@ -5,8 +5,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../constants/colors.dart';
 import '../../services/ratings_service.dart';
+import '../../services/wallet_service.dart';
 import '../../widgets/rating_sheet.dart';
 import 'delivery_tracking_page.dart';
+import 'wallet_page.dart';
 
 class CustomerDeliveryDetailPage extends StatefulWidget {
   const CustomerDeliveryDetailPage({
@@ -31,6 +33,7 @@ class _CustomerDeliveryDetailPageState
   bool _loading    = true;
   bool _accepting  = false;
   bool _confirming = false;
+  bool _cancelling = false;
   RealtimeChannel? _channel;
 
   @override
@@ -136,37 +139,120 @@ class _CustomerDeliveryDetailPageState
   }
 
   Future<void> _acceptBid(Map<String, dynamic> bid) async {
+    final user = _db.auth.currentUser;
+    if (user == null) return;
+
     setState(() => _accepting = true);
     try {
-      final bidId    = bid['id']      as String;
-      final delivId  = widget.deliveryId;
-      final amount   = bid['amount'];
-      final riderId  = bid['rider_id'] as String?;
-      // Company bids have no rider_id at bid time — the company assigns one
-      // of its own riders afterward via _assignRider. Only set rider_id here
-      // for individual-rider bids; otherwise this unconditional write can
-      // race ahead of (and clobber back to null) a company's own assignment
-      // if it happens quickly after realtime notifies them of the win.
-      final isCompanyBid = bid['company_id'] != null;
-
-      await _db.from('delivery_bids')
-          .update({'status': 'accepted'}).eq('id', bidId);
-      await _db.from('delivery_bids')
-          .update({'status': 'rejected'})
-          .eq('delivery_id', delivId).neq('id', bidId);
-      await _db.from('deliveries').update({
-        'agreed_price': amount,
-        'status':       'assigned',
-        if (!isCompanyBid) 'rider_id': riderId,
-        'assigned_at':  DateTime.now().toUtc().toIso8601String(),
-      }).eq('id', delivId);
-
+      await WalletService.acceptBidWithPayment(
+        bidId: bid['id'] as String,
+        customerId: user.id,
+      );
       _snack('Bid accepted! Your package is being arranged.');
       await _load();
+    } on PostgrestException catch (e) {
+      if (e.message.contains('Insufficient wallet balance')) {
+        await _showInsufficientBalanceDialog();
+      } else {
+        _snack('Could not accept bid. Please try again.');
+      }
     } catch (_) {
       _snack('Could not accept bid. Please try again.');
     }
     if (mounted) setState(() => _accepting = false);
+  }
+
+  Future<void> _showInsufficientBalanceDialog() {
+    return showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Insufficient Balance'),
+        content: const Text(
+            'Your wallet balance is too low to accept this bid. Top up your wallet and try again.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel', style: TextStyle(color: EzizaColors.kMuted))),
+          ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                Get.to(() => const WalletPage());
+              },
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: EzizaColors.kPurpleD,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+              child: const Text('Top Up Wallet', style: TextStyle(fontWeight: FontWeight.w700))),
+        ],
+      ),
+    );
+  }
+
+  // Same cancellable-status scope as cancel_delivery_with_refund() /
+  // the tenant-facing cancel-delivery edge function — once a rider has
+  // picked up, this isn't a self-serve cancel anymore.
+  bool _canCancel() {
+    final status = _delivery?['status'] as String? ?? '';
+    return status == 'open' || status == 'assigned';
+  }
+
+  Widget _cancelSection() => Padding(
+    padding: const EdgeInsets.only(top: 12),
+    child: SizedBox(
+      width: double.infinity,
+      child: TextButton(
+        onPressed: _cancelling ? null : _confirmCancel,
+        style: TextButton.styleFrom(
+          foregroundColor: EzizaColors.kError,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+        ),
+        child: _cancelling
+            ? const SizedBox(width: 16, height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2, color: EzizaColors.kError))
+            : const Text('Cancel Delivery', style: TextStyle(fontWeight: FontWeight.w700)),
+      ),
+    ),
+  );
+
+  Future<void> _confirmCancel() async {
+    final wasPaid = (_delivery?['payment_status'] as String?) == 'paid';
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Cancel this delivery?'),
+        content: Text(wasPaid
+            ? 'The amount you paid will be refunded to your wallet.'
+            : 'This delivery will be cancelled.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('No', style: TextStyle(color: EzizaColors.kMuted))),
+          ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: EzizaColors.kError,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+              child: const Text('Yes, Cancel', style: TextStyle(fontWeight: FontWeight.w700))),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    final user = _db.auth.currentUser;
+    if (user == null) return;
+
+    setState(() => _cancelling = true);
+    try {
+      await WalletService.cancelDelivery(deliveryId: widget.deliveryId, customerId: user.id);
+      _snack(wasPaid ? 'Delivery cancelled. Amount refunded to your wallet.' : 'Delivery cancelled.');
+      await _load();
+    } catch (_) {
+      _snack('Could not cancel. Please try again.');
+    }
+    if (mounted) setState(() => _cancelling = false);
   }
 
   Future<void> _confirmHandoff() async {
@@ -288,6 +374,7 @@ class _CustomerDeliveryDetailPageState
                             const SizedBox(height: 16),
                           ],
                           if (!widget.isRecipient) _bidsSection(),
+                          if (!widget.isRecipient && _canCancel()) _cancelSection(),
                         ],
                       ),
                     ),
