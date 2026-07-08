@@ -14,6 +14,7 @@ import '../../services/location_service.dart';
 import '../../services/rider_location_task.dart';
 import '../../services/ratings_service.dart';
 import '../../widgets/rating_sheet.dart';
+import '../shared/change_password_page.dart';
 import 'earnings_widgets.dart';
 import 'profile_page.dart';
 import 'rider_map_page.dart';
@@ -2850,7 +2851,7 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
                     iconColor: EzizaColors.kPurpleD,
                     iconBg: EzizaColors.kPurpleD.withValues(alpha: 0.1),
                     title: 'Change Password',
-                    onTap: _showChangePasswordSheet,
+                    onTap: () => Get.to(() => const ChangePasswordPage()),
                   ),
                   if (!_isCompanyRider) ...[
                     _acctDivider(),
@@ -3218,113 +3219,6 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
     );
   }
 
-  // ── Change password sheet ─────────────────────────────────────
-
-  void _showChangePasswordSheet() {
-    final ctrl = TextEditingController();
-    bool saving  = false;
-    bool visible = false;
-
-    Get.bottomSheet(
-      StatefulBuilder(builder: (ctx, setS) {
-        return Container(
-          padding: EdgeInsets.only(
-            left: 20, right: 20, top: 12,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-          ),
-          decoration: const BoxDecoration(
-            color: EzizaColors.kWhite,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(24), topRight: Radius.circular(24)),
-          ),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Container(width: 40, height: 4,
-                margin: const EdgeInsets.only(bottom: 20),
-                decoration: BoxDecoration(color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2))),
-            const Align(alignment: Alignment.centerLeft,
-                child: Text('Change Password',
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800,
-                        color: EzizaColors.kText))),
-            const SizedBox(height: 6),
-            const Align(alignment: Alignment.centerLeft,
-                child: Text('Enter your new password below.',
-                    style: TextStyle(fontSize: 13, color: EzizaColors.kMuted))),
-            const SizedBox(height: 20),
-            TextField(
-              controller: ctrl,
-              obscureText: !visible,
-              style: const TextStyle(fontSize: 14),
-              decoration: InputDecoration(
-                hintText: 'New password',
-                hintStyle: const TextStyle(color: EzizaColors.kMuted, fontSize: 14),
-                filled: true,
-                fillColor: EzizaColors.kSurface,
-                prefixIcon: const Icon(Icons.lock_outline,
-                    color: EzizaColors.kPurple, size: 20),
-                suffixIcon: GestureDetector(
-                  onTap: () => setS(() => visible = !visible),
-                  child: Icon(
-                    visible ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                    color: EzizaColors.kMuted, size: 20),
-                ),
-                contentPadding: const EdgeInsets.all(14),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: EzizaColors.kBorder)),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: EzizaColors.kBorder)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: EzizaColors.kPurple, width: 1.5)),
-              ),
-            ),
-            const SizedBox(height: 20),
-            GestureDetector(
-              onTap: saving ? null : () async {
-                if (ctrl.text.trim().length < 6) {
-                  Get.snackbar('Too short', 'Password must be at least 6 characters.',
-                      snackPosition: SnackPosition.BOTTOM);
-                  return;
-                }
-                setS(() => saving = true);
-                try {
-                  await _db.auth.updateUser(
-                      UserAttributes(password: ctrl.text.trim()));
-                  Get.back();
-                  Get.snackbar('Done', 'Password updated.',
-                      snackPosition: SnackPosition.BOTTOM);
-                } catch (_) {
-                  Get.snackbar('Error', 'Could not update password.',
-                      snackPosition: SnackPosition.BOTTOM);
-                } finally {
-                  setS(() => saving = false);
-                }
-              },
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                      colors: [EzizaColors.kPurple, EzizaColors.kPurpleD]),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [BoxShadow(
-                      color: EzizaColors.kPurpleD.withValues(alpha: 0.3),
-                      blurRadius: 8, offset: const Offset(0, 3))],
-                ),
-                child: Center(child: saving
-                    ? const SizedBox(width: 18, height: 18,
-                        child: CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2))
-                    : const Text('Update Password',
-                        style: TextStyle(color: Colors.white,
-                            fontWeight: FontWeight.w700, fontSize: 15))),
-              ),
-            ),
-          ]),
-        );
-      }),
-      isScrollControlled: true,
-    );
-  }
 
   // ── Reusable widgets ──────────────────────────────────────────
 

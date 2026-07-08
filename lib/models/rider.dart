@@ -17,6 +17,7 @@ class Rider {
   final double walletBalance;
   final String? fcmToken;
   final String status; // pending / approved / rejected / suspended
+  final String? avatarUrl;
 
   const Rider({
     required this.id,
@@ -37,6 +38,7 @@ class Rider {
     required this.walletBalance,
     this.fcmToken,
     required this.status,
+    this.avatarUrl,
   });
 
   factory Rider.fromJson(Map<String, dynamic> j) {
@@ -60,6 +62,7 @@ class Rider {
       walletBalance: (j['wallet_balance'] as num?)?.toDouble() ?? 0,
       fcmToken: j['fcm_token'] as String?,
       status: j['status'] as String? ?? (approved ? 'approved' : 'pending'),
+      avatarUrl: j['avatar_url'] as String?,
     );
   }
 }

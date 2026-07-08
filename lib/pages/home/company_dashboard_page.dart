@@ -5,8 +5,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../constants/colors.dart';
 import '../../controllers/auth_controller.dart';
+import '../shared/change_password_page.dart';
 import 'earnings_widgets.dart';
 import 'company_map_page.dart';
+import 'company_profile_page.dart';
 import 'company_rider_ratings_page.dart';
 
 class CompanyDashboardPage extends StatefulWidget {
@@ -1737,6 +1739,26 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
                 _acctSectionLabel('Account'),
                 const SizedBox(height: 10),
                 _acctCard(children: [
+                  _acctTile(
+                    icon: Icons.badge_outlined,
+                    iconColor: EzizaColors.kPurpleD,
+                    iconBg: EzizaColors.kPurpleD.withValues(alpha: 0.1),
+                    title: 'Edit Profile',
+                    subtitle: 'Company info & bank details',
+                    onTap: () async {
+                      await Get.to(() => const CompanyProfilePage());
+                      _load();
+                    },
+                  ),
+                  _acctDivider(),
+                  _acctTile(
+                    icon: Icons.lock_outline_rounded,
+                    iconColor: EzizaColors.kPurpleD,
+                    iconBg: EzizaColors.kPurpleD.withValues(alpha: 0.1),
+                    title: 'Change Password',
+                    onTap: () => Get.to(() => const ChangePasswordPage()),
+                  ),
+                  _acctDivider(),
                   _acctTile(
                     icon: Icons.local_shipping_outlined,
                     iconColor: EzizaColors.kPurpleD,

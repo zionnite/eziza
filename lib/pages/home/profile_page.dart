@@ -1,9 +1,13 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../constants/colors.dart';
 import '../../controllers/auth_controller.dart';
 import '../../models/rider.dart';
+import '../../services/bunny_service.dart';
 
 const _vehicleTypes = [
   ('bike',  'Bike',  Icons.two_wheeler_rounded),
@@ -33,6 +37,7 @@ class _ProfilePageState extends State<ProfilePage> {
   String _vehicleType  = 'bike';
 
   bool _saving = false;
+  bool _uploadingPhoto = false;
 
   @override
   void initState() {
@@ -96,6 +101,34 @@ class _ProfilePageState extends State<ProfilePage> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+
+  Future<void> _pickAvatar() async {
+    final rider = _auth.rider.value;
+    if (rider == null) return;
+    final image = await ImagePicker().pickImage(
+        source: ImageSource.gallery, imageQuality: 80, maxWidth: 800);
+    if (image == null) return;
+
+    setState(() => _uploadingPhoto = true);
+    final url = await BunnyService.upload(image, 'avatars/${rider.authUserId}/photo');
+    if (url != null) {
+      try {
+        await Supabase.instance.client
+            .from('riders')
+            .update({'avatar_url': url}).eq('id', rider.id);
+        await _auth.refreshProfile();
+      } catch (_) {
+        Get.snackbar('Error', 'Could not save photo. Please try again.',
+            backgroundColor: EzizaColors.kError, colorText: Colors.white,
+            snackPosition: SnackPosition.BOTTOM);
+      }
+    } else {
+      Get.snackbar('Error', 'Could not upload photo. Please try again.',
+          backgroundColor: EzizaColors.kError, colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM);
+    }
+    if (mounted) setState(() => _uploadingPhoto = false);
   }
 
   // ── Build ──────────────────────────────────────────────────
@@ -413,32 +446,63 @@ class _ProfilePageState extends State<ProfilePage> {
                   // ── Avatar + info ─────────────────────────
                   Row(
                     children: [
-                      Container(
-                        width: 62,
-                        height: 62,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                              colors: [EzizaColors.kPurple, EzizaColors.kPurpleD]),
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: EzizaColors.kPurpleD.withValues(alpha: 0.4),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
+                      Stack(children: [
+                        Container(
+                          width: 62,
+                          height: 62,
+                          decoration: BoxDecoration(
+                            gradient: rider.avatarUrl == null
+                                ? const LinearGradient(
+                                    colors: [EzizaColors.kPurple, EzizaColors.kPurpleD])
+                                : null,
+                            shape: BoxShape.circle,
+                            image: rider.avatarUrl != null
+                                ? DecorationImage(
+                                    image: CachedNetworkImageProvider(rider.avatarUrl!),
+                                    fit: BoxFit.cover)
+                                : null,
+                            boxShadow: [
+                              BoxShadow(
+                                color: EzizaColors.kPurpleD.withValues(alpha: 0.4),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: rider.avatarUrl == null
+                              ? Center(
+                                  child: Text(
+                                    initials,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                )
+                              : null,
                         ),
-                        child: Center(
-                          child: Text(
-                            initials,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
+                        Positioned(
+                          right: -2, bottom: -2,
+                          child: GestureDetector(
+                            onTap: _uploadingPhoto ? null : _pickAvatar,
+                            child: Container(
+                              width: 24, height: 24,
+                              decoration: BoxDecoration(
+                                  color: EzizaColors.kGold,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: EzizaColors.kNavy, width: 2)),
+                              child: _uploadingPhoto
+                                  ? const Padding(
+                                      padding: EdgeInsets.all(4),
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2, color: EzizaColors.kNavy))
+                                  : const Icon(Icons.camera_alt_rounded,
+                                      size: 12, color: EzizaColors.kNavy),
                             ),
                           ),
                         ),
-                      ),
+                      ]),
                       const SizedBox(width: 14),
                       Expanded(
                         child: Column(
