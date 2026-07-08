@@ -379,13 +379,13 @@ Phases 5-6 below were scoped out in full but not started as of 2026-07-10. Each 
 
 ### Phase 5 — Change Password, Profile, Bank Account (all 3 roles)
 - **Change Password**: one shared page matching ZeeFashion's `change_password.dart` exactly (current/new/confirm fields, same non-verification-of-current-password behavior, same `auth.updateUser` call) — wired into all 3 dashboards' Account tabs, replacing rider/customer's ad-hoc bottom sheets and adding the missing company path
-- **Profile**: rebuilt per role matching `profile_page.dart` (display) + `edit_profile.dart` (edit). Photo upload uses **Supabase Storage, not Bunny CDN** — Eziza has no Bunny account of its own; using ZeeFashion's would upload into the wrong brand's storage. Company gets its first-ever post-registration edit capability (`companies` table currently only ever gets inserted, never updated)
+- **Profile**: rebuilt per role matching `profile_page.dart` (display) + `edit_profile.dart` (edit). Photo upload uses **Eziza's own Bunny CDN zone** (`lib/services/bunny_service.dart`, `eziza.b-cdn.net`, already used for rider docs at `rider-docs/<uid>/...`) — **correction 2026-07-13**: briefly built a Supabase Storage bucket + RLS policies for this before realizing Eziza already has its own Bunny zone (an earlier note in this doc wrongly said it didn't); reverted that (migration `20260713010000`) in favor of `BunnyService.upload()`. Company gets its first-ever post-registration edit capability (`companies` table currently only ever gets inserted, never updated)
 - **Bank Account**: split out of Profile into its own page/section for rider and company (currently embedded in rider's profile form; never editable at all for company post-registration)
 
 ### Phase 6 — Support Tickets (all 3 roles + admin reply)
 - New migration porting ZeeFashion's `support_tickets`/`support_messages` schema near-verbatim (including the undocumented-but-live `support_messages.image_url` column), adapted to reference `auth.users` directly (Eziza has no unified `profiles` table)
 - Flutter: `support_tickets_page.dart`/`create_ticket_page.dart`/`ticket_thread_page.dart` ported per ZeeFashion's structure, wired into all 3 roles' "Help & Support" tiles (replacing the current WhatsApp/"Coming Soon" stub)
-- Image attachments via Supabase Storage (same reasoning as Phase 5, not Bunny)
+- Image attachments via `BunnyService.upload()`, same as Phase 5's avatars
 - Admin reply UI in eziza-admin mirrors ZeeFashion admin's two-pane list+thread+realtime page
 
 **Note:** the notification bug in the Pending section above is a separate track from these phases — it's a live bug in already-shipped Phase 1 functionality, not new scope. Worth fixing before or alongside Phase 2, since an admin dashboard doesn't help if the underlying app can't notify anyone.
