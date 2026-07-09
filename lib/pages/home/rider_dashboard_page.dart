@@ -13,8 +13,8 @@ import '../../models/rider.dart';
 import '../../services/location_service.dart';
 import '../../services/rider_location_task.dart';
 import '../../services/ratings_service.dart';
+import '../../widgets/delivery_trip_summary.dart';
 import '../../widgets/rating_sheet.dart';
-import '../../widgets/route_preview_map.dart';
 import '../shared/bank_account_page.dart';
 import '../shared/change_password_page.dart';
 import '../shared/support_tickets_page.dart';
@@ -1011,11 +1011,6 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
     }
     final amtCtrl  = TextEditingController();
     final noteCtrl = TextEditingController();
-    final pLat = (delivery['pickup_lat']   as num?)?.toDouble();
-    final pLng = (delivery['pickup_lng']   as num?)?.toDouble();
-    final dLat = (delivery['delivery_lat'] as num?)?.toDouble();
-    final dLng = (delivery['delivery_lng'] as num?)?.toDouble();
-    final hasCoords = pLat != null && pLng != null && dLat != null && dLng != null;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1031,29 +1026,9 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                   color: EzizaColors.kText)),
-          const SizedBox(height: 4),
-          Text(
-              '${delivery['pickup_address'] ?? ''} → ${delivery['delivery_address'] ?? ''}',
-              style: const TextStyle(
-                  fontSize: 12, color: EzizaColors.kMuted),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis),
-          const SizedBox(height: 14),
-          if (hasCoords)
-            RoutePreviewMap(
-                pickupLat: pLat, pickupLng: pLng,
-                dropoffLat: dLat, dropoffLng: dLng)
-          else
-            Container(
-              height: 60,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                  color: EzizaColors.kSurface,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: EzizaColors.kBorder)),
-              child: const Text('Map preview unavailable for this delivery',
-                  style: TextStyle(fontSize: 12, color: EzizaColors.kMuted)),
-            ),
+          const SizedBox(height: 16),
+          DeliveryTripSummary(
+              delivery: delivery, riderLat: _riderLat, riderLng: _riderLng),
           const SizedBox(height: 16),
           TextField(
             controller: amtCtrl,

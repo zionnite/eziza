@@ -6,7 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../constants/colors.dart';
 import '../../controllers/auth_controller.dart';
-import '../../widgets/route_preview_map.dart';
+import '../../widgets/delivery_trip_summary.dart';
 import '../shared/bank_account_page.dart';
 import '../shared/change_password_page.dart';
 import '../shared/support_tickets_page.dart';
@@ -2794,11 +2794,6 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
   }
 
   void _showBidSheet(Map<String, dynamic> d) {
-    final pLat = (d['pickup_lat']   as num?)?.toDouble();
-    final pLng = (d['pickup_lng']   as num?)?.toDouble();
-    final dLat = (d['delivery_lat'] as num?)?.toDouble();
-    final dLng = (d['delivery_lng'] as num?)?.toDouble();
-    final hasCoords = pLat != null && pLng != null && dLat != null && dLng != null;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -2814,23 +2809,11 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-            _routeLabel(d['pickup_address'], d['delivery_address']),
-            const SizedBox(height: 14),
-            if (hasCoords)
-              RoutePreviewMap(
-                  pickupLat: pLat, pickupLng: pLng,
-                  dropoffLat: dLat, dropoffLng: dLng)
-            else
-              Container(
-                height: 60,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                    color: EzizaColors.kSurface,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: EzizaColors.kBorder)),
-                child: const Text('Map preview unavailable for this delivery',
-                    style: TextStyle(fontSize: 12, color: EzizaColors.kMuted)),
-              ),
+            const Text('Place a Bid',
+                style: TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.w800, color: EzizaColors.kText)),
+            const SizedBox(height: 16),
+            DeliveryTripSummary(delivery: d),
             const SizedBox(height: 16),
             _inputField(
                 _bidCtrl,
