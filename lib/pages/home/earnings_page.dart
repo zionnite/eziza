@@ -8,6 +8,7 @@ import '../../models/delivery.dart';
 import '../../models/payout_request.dart';
 import '../../services/supabase_service.dart';
 import '../../utils/currency.dart';
+import '../../widgets/premium_card.dart';
 
 class EarningsPage extends StatefulWidget {
   const EarningsPage({super.key});
@@ -299,59 +300,66 @@ class _EarningsPageState extends State<EarningsPage> {
 
   Widget _buildBalanceCard(double balance) {
     return Container(
-      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [EzizaColors.kPurpleD, EzizaColors.kPurple],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: EzizaColors.kPurple.withValues(alpha: 0.35),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+            color: EzizaColors.kPurpleD.withValues(alpha: 0.30),
+            blurRadius: 28,
+            offset: const Offset(0, 16),
+            spreadRadius: -8,
+          ),
+          BoxShadow(
+            color: EzizaColors.kNavy.withValues(alpha: 0.15),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Wallet Balance',
-              style: TextStyle(color: Colors.white70, fontSize: 13)),
-          const SizedBox(height: 8),
-          Text(
-            _naira.format(balance),
-            style: const TextStyle(
-              color: EzizaColors.kWhite,
-              fontSize: 36,
-              fontWeight: FontWeight.bold,
-              letterSpacing: -0.5,
-            ),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _showPayoutSheet,
-                  icon: const Icon(Icons.account_balance_outlined,
-                      size: 16, color: EzizaColors.kWhite),
-                  label: const Text('Request Payout',
-                      style: TextStyle(color: EzizaColors.kWhite)),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(
-                        color: Colors.white54, width: 1.5),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Stack(children: [
+          Positioned(right: -30, top: -30,
+              child: Container(width: 140, height: 140,
+                  decoration: BoxDecoration(shape: BoxShape.circle,
+                      color: Colors.white.withValues(alpha: 0.08)))),
+          Positioned(left: -30, bottom: -40,
+              child: Container(width: 130, height: 130,
+                  decoration: BoxDecoration(shape: BoxShape.circle,
+                      color: EzizaColors.kGold.withValues(alpha: 0.08)))),
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Wallet Balance',
+                    style: TextStyle(color: Colors.white70, fontSize: 13)),
+                const SizedBox(height: 8),
+                Text(
+                  _naira.format(balance),
+                  style: const TextStyle(
+                    color: EzizaColors.kWhite,
+                    fontSize: 36,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: -0.5,
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 20),
+                PremiumButton(
+                  label: 'Request Payout',
+                  icon: Icons.account_balance_outlined,
+                  colors: const [EzizaColors.kGold, Color(0xFFD97706)],
+                  onTap: _showPayoutSheet,
+                ),
+              ],
+            ),
           ),
-        ],
+        ]),
       ),
     );
   }

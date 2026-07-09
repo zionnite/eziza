@@ -8,6 +8,7 @@ import '../../constants/colors.dart';
 import '../../controllers/auth_controller.dart';
 import '../../utils/currency.dart';
 import '../../widgets/delivery_trip_summary.dart';
+import '../../widgets/premium_card.dart';
 import '../shared/bank_account_page.dart';
 import '../shared/change_password_page.dart';
 import '../shared/delete_account_page.dart';
@@ -1002,33 +1003,62 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
                     : ListView(
                         padding:
                             const EdgeInsets.fromLTRB(16, 16, 16, 60),
-                        children: [
-                          if (_activeDeliveries.isNotEmpty) ...[
-                            _sectionLabel('Active Deliveries',
-                                Icons.local_shipping_rounded,
-                                EzizaColors.kGold),
-                            const SizedBox(height: 10),
-                            ..._activeDeliveries.map(_activeCard),
-                            const SizedBox(height: 20),
-                          ],
-                          if (pendingBids.isNotEmpty) ...[
-                            _sectionLabel('Your Pending Offers',
-                                Icons.local_offer_rounded, EzizaColors.kPurpleD),
-                            const SizedBox(height: 10),
-                            ...pendingBids.map(_pendingBidCard),
-                            const SizedBox(height: 20),
-                          ],
-                          _sectionLabel(
-                              'Available Deliveries (${_openDeliveries.length})',
-                              Icons.inbox_rounded,
-                              EzizaColors.kMuted),
-                          const SizedBox(height: 10),
-                          if (_openDeliveries.isEmpty)
-                            _emptyCard(
-                                'No open delivery requests right now'),
-                          ..._openDeliveries.map(_openDeliveryCard),
-                          const SizedBox(height: 20),
-                        ],
+                        // New open jobs bump "Available Deliveries" above
+                        // the other sections so a company sees jobs it can
+                        // still bid on first; with nothing new available,
+                        // the other sections lead instead.
+                        children: _openDeliveries.isNotEmpty
+                            ? [
+                                _sectionLabel(
+                                    'Available Deliveries (${_openDeliveries.length})',
+                                    Icons.inbox_rounded,
+                                    EzizaColors.kMuted),
+                                const SizedBox(height: 10),
+                                ..._openDeliveries.map(_openDeliveryCard),
+                                const SizedBox(height: 20),
+                                if (_activeDeliveries.isNotEmpty) ...[
+                                  _sectionLabel('Active Deliveries',
+                                      Icons.local_shipping_rounded,
+                                      EzizaColors.kGold),
+                                  const SizedBox(height: 10),
+                                  ..._activeDeliveries.map(_activeCard),
+                                  const SizedBox(height: 20),
+                                ],
+                                if (pendingBids.isNotEmpty) ...[
+                                  _sectionLabel('Your Pending Offers',
+                                      Icons.local_offer_rounded,
+                                      EzizaColors.kPurpleD),
+                                  const SizedBox(height: 10),
+                                  ...pendingBids.map(_pendingBidCard),
+                                  const SizedBox(height: 20),
+                                ],
+                              ]
+                            : [
+                                if (_activeDeliveries.isNotEmpty) ...[
+                                  _sectionLabel('Active Deliveries',
+                                      Icons.local_shipping_rounded,
+                                      EzizaColors.kGold),
+                                  const SizedBox(height: 10),
+                                  ..._activeDeliveries.map(_activeCard),
+                                  const SizedBox(height: 20),
+                                ],
+                                if (pendingBids.isNotEmpty) ...[
+                                  _sectionLabel('Your Pending Offers',
+                                      Icons.local_offer_rounded,
+                                      EzizaColors.kPurpleD),
+                                  const SizedBox(height: 10),
+                                  ...pendingBids.map(_pendingBidCard),
+                                  const SizedBox(height: 20),
+                                ],
+                                _sectionLabel(
+                                    'Available Deliveries (${_openDeliveries.length})',
+                                    Icons.inbox_rounded,
+                                    EzizaColors.kMuted),
+                                const SizedBox(height: 10),
+                                _emptyCard(
+                                    'No open delivery requests right now'),
+                                const SizedBox(height: 20),
+                              ],
                       ),
               ),
               // ── History sub-tab ──
@@ -1195,13 +1225,8 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
         (x) => x['id'] == (r['ratee_id'] as String?));
     final riderName = rider?['full_name'] as String? ?? 'a rider';
 
-    return Container(
+    return PremiumCard(
       margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-          color: EzizaColors.kWhite,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: EzizaColors.kBorder)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1214,17 +1239,7 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
                       fontWeight: FontWeight.w700,
                       color: EzizaColors.kText)),
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                  color: EzizaColors.kPurple.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20)),
-              child: Text(roleLabel,
-                  style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: EzizaColors.kPurpleD)),
-            ),
+            StatusPill(label: roleLabel, color: EzizaColors.kPurpleD),
           ]),
           const SizedBox(height: 8),
           Row(children: List.generate(
@@ -1557,7 +1572,7 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
                     formatNaira((company['paid_out'] as num?) ?? 0)),
                 const SizedBox(width: 20),
                 _walletStat('Rating',
-                    '${company['rating_avg'] ?? 0} ★'),
+                    '${((company['rating_avg'] as num?) ?? 0).toStringAsFixed(1)} ★'),
               ]),
               if (balance > 0 || hasPending) ...[
                 const SizedBox(height: 14),
@@ -1733,7 +1748,7 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
                         const Color(0xFF0284C7)),
                     _acctVertDiv(),
                     _acctStatCell(
-                        '${_company?['rating_avg'] ?? 0}★',
+                        '${((_company?['rating_avg'] as num?) ?? 0).toStringAsFixed(1)}★',
                         'Rating',
                         EzizaColors.kSuccess),
                   ]),
@@ -2227,142 +2242,103 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
     final delivId = d['id'] as String;
     final statusColor = _statusText(status);
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-            color: EzizaColors.kWhite,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: statusColor.withValues(alpha: 0.25)),
-            boxShadow: [
-              BoxShadow(
-                  color: statusColor.withValues(alpha: 0.08),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4))
-            ]),
-        child: IntrinsicHeight(
-          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Container(width: 4, color: statusColor),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                          color: statusColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(10)),
-                      child: Icon(_statusIcon(status), size: 18, color: statusColor),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(child: _routeLabel(d['pickup_address'], d['delivery_address'])),
-                    const SizedBox(width: 8),
-                    _chip(_statusLabel(status), statusColor, _statusBg(status)),
-                  ]),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                        color: EzizaColors.kSurface,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: EzizaColors.kBorder)),
-                    child: assignedRider != null
-                        ? Row(children: [
-                            Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                  color: EzizaColors.kPurple.withValues(alpha: 0.1),
-                                  shape: BoxShape.circle),
-                              child: const Icon(Icons.two_wheeler_rounded,
-                                  size: 14, color: EzizaColors.kPurpleD),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text('Assigned to ${assignedRider['full_name'] ?? ''}',
-                                  style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: EzizaColors.kText),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis),
-                            ),
-                          ])
-                        : Row(children: [
-                            const Icon(Icons.person_off_outlined,
-                                size: 16, color: EzizaColors.kMuted),
-                            const SizedBox(width: 8),
-                            const Expanded(
-                              child: Text('No rider assigned yet',
-                                  style: TextStyle(fontSize: 12, color: EzizaColors.kMuted)),
-                            ),
-                            if (_assigning)
-                              const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2, color: EzizaColors.kPurpleD))
-                            else if (_riders.isEmpty)
-                              const Text('Add riders first',
-                                  style: TextStyle(
-                                      fontSize: 11,
-                                      color: EzizaColors.kMuted,
-                                      fontStyle: FontStyle.italic))
-                            else
-                              GestureDetector(
-                                onTap: () => _showAssignSheet(delivId),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                  decoration: BoxDecoration(
-                                      gradient: const LinearGradient(
-                                          colors: [EzizaColors.kPurple, EzizaColors.kPurpleD]),
-                                      borderRadius: BorderRadius.circular(20)),
-                                  child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                                    Icon(Icons.person_add_rounded, size: 12, color: Colors.white),
-                                    SizedBox(width: 5),
-                                    Text('Assign',
-                                        style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w700,
-                                            color: Colors.white)),
-                                  ]),
-                                ),
-                              ),
-                          ]),
-                  ),
-                ]),
-              ),
+    return PremiumCard(
+      glow: statusColor,
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          IconBadge(icon: _statusIcon(status), color: statusColor),
+          const SizedBox(width: 12),
+          Expanded(
+            child: RouteTimeline(
+              pickup: _shortAddr(d['pickup_address']?.toString() ?? '—'),
+              dropoff: _shortAddr(d['delivery_address']?.toString() ?? '—'),
             ),
-          ]),
+          ),
+          const SizedBox(width: 8),
+          StatusPill(label: _statusLabel(status), color: statusColor),
+        ]),
+        const SizedBox(height: 14),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+              color: EzizaColors.kSurface,
+              borderRadius: BorderRadius.circular(14)),
+          child: assignedRider != null
+              ? Row(children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                        color: EzizaColors.kPurple.withValues(alpha: 0.1),
+                        shape: BoxShape.circle),
+                    child: const Icon(Icons.two_wheeler_rounded,
+                        size: 14, color: EzizaColors.kPurpleD),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text('Assigned to ${assignedRider['full_name'] ?? ''}',
+                        style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: EzizaColors.kText),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
+                  ),
+                ])
+              : Row(children: [
+                  const Icon(Icons.person_off_outlined,
+                      size: 16, color: EzizaColors.kMuted),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text('No rider assigned yet',
+                        style: TextStyle(fontSize: 12, color: EzizaColors.kMuted)),
+                  ),
+                  if (_assigning)
+                    const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: EzizaColors.kPurpleD))
+                  else if (_riders.isEmpty)
+                    const Text('Add riders first',
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: EzizaColors.kMuted,
+                            fontStyle: FontStyle.italic))
+                  else
+                    GestureDetector(
+                      onTap: () => _showAssignSheet(delivId),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                                colors: [EzizaColors.kPurple, EzizaColors.kPurpleD]),
+                            borderRadius: BorderRadius.circular(20)),
+                        child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(Icons.person_add_rounded, size: 12, color: Colors.white),
+                          SizedBox(width: 5),
+                          Text('Assign',
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white)),
+                        ]),
+                      ),
+                    ),
+                ]),
         ),
-      ),
+      ]),
     );
   }
 
   Widget _pendingBidCard(Map<String, dynamic> bid) {
     final amount  = (bid['amount'] as num?)?.toDouble() ?? 0;
     final delivId = (bid['delivery_id'] as String? ?? '').substring(0, 8);
-    return Container(
+    return PremiumCard(
       margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-          color: EzizaColors.kWhite,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: EzizaColors.kBorder),
-          boxShadow: [
-            BoxShadow(
-                color: EzizaColors.kPurple.withValues(alpha: 0.04),
-                blurRadius: 6,
-                offset: const Offset(0, 2))
-          ]),
+      padding: const EdgeInsets.all(14),
       child: Row(children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-              color: EzizaColors.kPurple.withValues(alpha: 0.1), shape: BoxShape.circle),
-          child: const Icon(Icons.local_offer_rounded, size: 16, color: EzizaColors.kPurpleD),
-        ),
+        const IconBadge(icon: Icons.local_offer_rounded, color: EzizaColors.kPurpleD, size: 44),
         const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -2379,7 +2355,7 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
               style: const TextStyle(
                   fontSize: 14, fontWeight: FontWeight.w800, color: EzizaColors.kText)),
           const SizedBox(height: 4),
-          _chip('Pending', EzizaColors.kGold, const Color(0xFFFFF8E1)),
+          const StatusPill(label: 'Pending', color: EzizaColors.kGold),
         ]),
       ]),
     );
@@ -2387,85 +2363,56 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
 
   Widget _openDeliveryCard(Map<String, dynamic> d) {
     final createdAt = DateTime.tryParse(d['created_at'] as String? ?? '');
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        decoration: BoxDecoration(
-            color: EzizaColors.kWhite,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: EzizaColors.kBorder),
-            boxShadow: [
-              BoxShadow(
-                  color: EzizaColors.kPurple.withValues(alpha: 0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3))
-            ]),
-        child: IntrinsicHeight(
-          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Container(
-                width: 4,
-                decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                        colors: [EzizaColors.kPurple, EzizaColors.kPurpleD],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter))),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  _routeLabel(d['pickup_address'], d['delivery_address']),
-                  const SizedBox(height: 8),
-                  Wrap(spacing: 6, runSpacing: 4, children: [
-                    if (createdAt != null)
-                      _metaPill(Icons.access_time_rounded, _ago(createdAt), EzizaColors.kMuted),
-                    if (d['pickup_state'] != null)
-                      _metaPill(Icons.location_city_rounded, d['pickup_state'] as String, EzizaColors.kNavy),
-                  ]),
-                  if (d['package_description'] != null &&
-                      (d['package_description'] as String).isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Text(d['package_description'] as String,
-                        style: const TextStyle(
-                            fontSize: 12,
-                            color: EzizaColors.kMuted,
-                            fontStyle: FontStyle.italic,
-                            height: 1.3),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis),
-                  ],
-                  const SizedBox(height: 12),
-                  GestureDetector(
-                    onTap: () => _showBidSheet(d),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 11),
-                      decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                              colors: [EzizaColors.kPurple, EzizaColors.kPurpleD]),
-                          borderRadius: BorderRadius.circular(10),
-                          boxShadow: [
-                            BoxShadow(
-                                color: EzizaColors.kPurpleD.withValues(alpha: 0.25),
-                                blurRadius: 8,
-                                offset: const Offset(0, 3))
-                          ]),
-                      child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Icon(Icons.local_offer_rounded, size: 14, color: Colors.white),
-                        SizedBox(width: 6),
-                        Text('Make an Offer',
-                            style: TextStyle(
-                                fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
-                      ]),
-                    ),
-                  ),
-                ]),
-              ),
+    return PremiumCard(
+      margin: const EdgeInsets.only(bottom: 10),
+      onTap: () => _showBidSheet(d),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const IconBadge(icon: Icons.local_shipping_rounded, color: EzizaColors.kPurpleD),
+          const SizedBox(width: 12),
+          Expanded(
+            child: RouteTimeline(
+              pickup: _shortAddr(d['pickup_address']?.toString() ?? '—'),
+              dropoff: _shortAddr(d['delivery_address']?.toString() ?? '—'),
             ),
-          ]),
+          ),
+        ]),
+        const SizedBox(height: 12),
+        Wrap(spacing: 6, runSpacing: 6, children: [
+          if (createdAt != null)
+            InfoPill(icon: Icons.access_time_rounded, label: _ago(createdAt)),
+          if (d['pickup_state'] != null)
+            InfoPill(icon: Icons.location_city_rounded,
+                label: d['pickup_state'] as String, color: EzizaColors.kNavy),
+        ]),
+        if (d['package_description'] != null &&
+            (d['package_description'] as String).isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(d['package_description'] as String,
+              style: const TextStyle(
+                  fontSize: 12,
+                  color: EzizaColors.kMuted,
+                  fontStyle: FontStyle.italic,
+                  height: 1.3),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis),
+        ],
+        const SizedBox(height: 14),
+        PremiumButton(
+          label: 'Make an Offer',
+          icon: Icons.local_offer_rounded,
+          onTap: () => _showBidSheet(d),
         ),
-      ),
+      ]),
     );
+  }
+
+  String _ago(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 1) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    return '${diff.inDays}d ago';
   }
 
   Widget _metaPill(IconData icon, String label, Color color) => Container(
@@ -2482,14 +2429,6 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
         ]),
       );
 
-  String _ago(DateTime dt) {
-    final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 1) return 'Just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    return '${diff.inDays}d ago';
-  }
-
   IconData _statusIcon(String s) => switch (s) {
         'assigned'  => Icons.assignment_ind_rounded,
         'picked_up' => Icons.local_shipping_rounded,
@@ -2504,22 +2443,13 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
     final date     = d['created_at'] as String? ?? '';
     final dateLabel =
         date.length >= 10 ? date.substring(0, 10) : date;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-          color: EzizaColors.kWhite,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFDCFCE7))),
+    return PremiumCard(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      glow: EzizaColors.kSuccess,
       child: Row(children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: const BoxDecoration(
-              color: Color(0xFFDCFCE7), shape: BoxShape.circle),
-          child: const Icon(Icons.check_rounded,
-              size: 16, color: EzizaColors.kSuccess),
-        ),
-        const SizedBox(width: 10),
+        const IconBadge(icon: Icons.check_rounded, color: EzizaColors.kSuccess, size: 38),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2563,24 +2493,13 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
         .take(2)
         .join();
 
-    return GestureDetector(
+    return PremiumCard(
+      margin: const EdgeInsets.only(bottom: 10),
+      glow: statusColor,
       onTap: () => Navigator.of(context).push(MaterialPageRoute(
           builder: (_) => CompanyRiderRatingsPage(
               riderId: rider['id'] as String, riderName: riderName))),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-            color: EzizaColors.kWhite,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: statusColor.withValues(alpha: isAvailable ? 0.3 : 0.15)),
-            boxShadow: [
-              BoxShadow(
-                  color: EzizaColors.kPurple.withValues(alpha: 0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3))
-            ]),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Stack(children: [
               Container(
@@ -2646,7 +2565,6 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
               _metaPill(Icons.star_border_rounded, 'No ratings yet', EzizaColors.kMuted),
           ]),
         ]),
-      ),
     );
   }
 
@@ -2659,17 +2577,21 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
       };
 
   Widget _inviteCard(Map<String, dynamic> invite) => Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(12),
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-            color: const Color(0xFFFFF8E1),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-                color: EzizaColors.kGold.withValues(alpha: 0.3))),
+            color: EzizaColors.kWhite,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                  color: EzizaColors.kGold.withValues(alpha: 0.14),
+                  blurRadius: 22,
+                  offset: const Offset(0, 10),
+                  spreadRadius: -8),
+            ]),
         child: Row(children: [
-          const Icon(Icons.mail_outline_rounded,
-              color: EzizaColors.kGold, size: 18),
-          const SizedBox(width: 10),
+          const IconBadge(icon: Icons.mail_outline_rounded, color: EzizaColors.kGold, size: 38),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -2686,7 +2608,7 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
                         fontSize: 12, color: EzizaColors.kMuted)),
             ]),
           ),
-          _chip('Pending', EzizaColors.kGold, const Color(0xFFFFF8E1)),
+          const StatusPill(label: 'Pending', color: EzizaColors.kGold),
         ]),
       );
 
@@ -2988,36 +2910,6 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
                 color: color)),
       ]);
 
-  Widget _routeLabel(dynamic from, dynamic to) => Row(children: [
-        const Icon(Icons.radio_button_unchecked,
-            size: 13, color: EzizaColors.kPurpleD),
-        const SizedBox(width: 4),
-        Flexible(
-          child: Text(_shortAddr(from?.toString() ?? '—'),
-              style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: EzizaColors.kText),
-              overflow: TextOverflow.ellipsis),
-        ),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 5),
-          child: Icon(Icons.arrow_forward_rounded,
-              size: 13, color: EzizaColors.kMuted),
-        ),
-        const Icon(Icons.location_on_rounded,
-            size: 13, color: EzizaColors.kGold),
-        const SizedBox(width: 4),
-        Flexible(
-          child: Text(_shortAddr(to?.toString() ?? '—'),
-              style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: EzizaColors.kText),
-              overflow: TextOverflow.ellipsis),
-        ),
-      ]);
-
   Widget _chip(String label, Color text, Color bg) => Container(
         padding:
             const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
@@ -3139,10 +3031,4 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
         _           => EzizaColors.kMuted,
       };
 
-  Color _statusBg(String s) => switch (s) {
-        'assigned'  => const Color(0xFFE0F2FE),
-        'picked_up' => const Color(0xFFFFF8E1),
-        'delivered' => const Color(0xFFDCFCE7),
-        _           => const Color(0xFFF5F5F5),
-      };
 }

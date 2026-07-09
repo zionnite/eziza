@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -8,8 +9,10 @@ import '../../services/ratings_service.dart';
 import '../../services/wallet_service.dart';
 import '../../utils/currency.dart';
 import '../../widgets/pin_verification_sheet.dart';
+import '../../widgets/premium_card.dart';
 import '../../widgets/rating_sheet.dart';
 import 'delivery_tracking_page.dart';
+import 'public_ratings_page.dart';
 import 'wallet_page.dart';
 
 class CustomerDeliveryDetailPage extends StatefulWidget {
@@ -66,8 +69,8 @@ class _CustomerDeliveryDetailPageState
           .from('delivery_bids')
           .select(
             '*, '
-            'rider:riders(id, full_name, vehicle_type, rating_avg, phone), '
-            'company:companies(id, name, rating_avg, phone)',
+            'rider:riders(id, full_name, vehicle_type, rating_avg, rating_count, avatar_url, phone), '
+            'company:companies(id, name, rating_avg, rating_count, avatar_url, phone)',
           )
           .eq('delivery_id', widget.deliveryId)
           .order('amount', ascending: true);
@@ -97,8 +100,8 @@ class _CustomerDeliveryDetailPageState
                   .from('delivery_bids')
                   .select(
                     '*, '
-                    'rider:riders(id, full_name, vehicle_type, rating_avg, phone), '
-                    'company:companies(id, name, rating_avg, phone)',
+                    'rider:riders(id, full_name, vehicle_type, rating_avg, rating_count, avatar_url, phone), '
+                    'company:companies(id, name, rating_avg, rating_count, avatar_url, phone)',
                   )
                   .eq('id', bid['id'] as String)
                   .single();
@@ -1904,6 +1907,13 @@ class _CustomerDeliveryDetailPageState
     final rating = isCompanyBid
         ? (company?['rating_avg'] as num?)?.toDouble()
         : (rider?['rating_avg'] as num?)?.toDouble();
+    final ratingCount = isCompanyBid
+        ? (company?['rating_count'] as num?)?.toInt() ?? 0
+        : (rider?['rating_count'] as num?)?.toInt() ?? 0;
+    final avatarUrl = isCompanyBid
+        ? (company?['avatar_url'] as String?)
+        : (rider?['avatar_url'] as String?);
+    final rateeId = isCompanyBid ? companyId : riderId;
 
     final initials = name
         .trim()
@@ -1918,23 +1928,18 @@ class _CustomerDeliveryDetailPageState
       margin: const EdgeInsets.only(top: 10),
       decoration: BoxDecoration(
         color: isBest
-            ? EzizaColors.kPurple.withValues(alpha: 0.04)
+            ? EzizaColors.kPurple.withValues(alpha: 0.03)
             : Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isBest
-              ? EzizaColors.kPurple.withValues(alpha: 0.25)
-              : EzizaColors.kBorder,
-        ),
-        boxShadow: isBest
-            ? [
-                BoxShadow(
-                  color: EzizaColors.kPurple.withValues(alpha: 0.08),
-                  blurRadius: 10,
-                  offset: const Offset(0, 3),
-                ),
-              ]
-            : null,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: (isBest ? EzizaColors.kPurple : EzizaColors.kNavy)
+                .withValues(alpha: isBest ? 0.14 : 0.06),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+            spreadRadius: -8,
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -1942,138 +1947,176 @@ class _CustomerDeliveryDetailPageState
             padding: const EdgeInsets.all(14),
             child: Row(
               children: [
-                // Avatar circle
-                Stack(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        gradient: isBest
-                            ? const LinearGradient(
-                                colors: [
-                                  EzizaColors.kPurple,
-                                  EzizaColors.kPurpleD,
-                                ],
-                              )
-                            : null,
-                        color: isBest ? null : EzizaColors.kBorder,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Text(
-                          initials.isEmpty ? '$rank' : initials,
-                          style: TextStyle(
-                            color: isBest ? Colors.white : EzizaColors.kMuted,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (isBest)
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: Container(
-                          width: 16,
-                          height: 16,
-                          decoration: BoxDecoration(
-                            color: EzizaColors.kGold,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 1.5),
-                          ),
-                          child: const Icon(
-                            Icons.star_rounded,
-                            size: 9,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              name,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: EzizaColors.kText,
-                              ),
+                  child: GestureDetector(
+                    onTap: rateeId == null
+                        ? null
+                        : () => Get.to(
+                            () => PublicRatingsPage(
+                              rateeType: isCompanyBid ? 'company' : 'rider',
+                              rateeId: rateeId,
+                              name: name,
+                              ratingAvg: rating ?? 0,
+                              ratingCount: ratingCount,
                             ),
                           ),
-                          if (isBest)
+                    child: Row(
+                      children: [
+                        // Avatar circle
+                        Stack(
+                          children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 7,
-                                vertical: 3,
-                              ),
+                              width: 44,
+                              height: 44,
                               decoration: BoxDecoration(
-                                color: EzizaColors.kGold.withValues(
-                                  alpha: 0.12,
+                                gradient: avatarUrl == null && isBest
+                                    ? const LinearGradient(
+                                        colors: [
+                                          EzizaColors.kPurple,
+                                          EzizaColors.kPurpleD,
+                                        ],
+                                      )
+                                    : null,
+                                color: avatarUrl != null
+                                    ? null
+                                    : (isBest ? null : EzizaColors.kBorder),
+                                shape: BoxShape.circle,
+                                image: avatarUrl != null
+                                    ? DecorationImage(
+                                        image: CachedNetworkImageProvider(
+                                          avatarUrl,
+                                        ),
+                                        fit: BoxFit.cover,
+                                      )
+                                    : null,
+                              ),
+                              child: avatarUrl != null
+                                  ? null
+                                  : Center(
+                                      child: Text(
+                                        initials.isEmpty ? '$rank' : initials,
+                                        style: TextStyle(
+                                          color: isBest
+                                              ? Colors.white
+                                              : EzizaColors.kMuted,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ),
+                            ),
+                            if (isBest)
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: Container(
+                                  width: 16,
+                                  height: 16,
+                                  decoration: BoxDecoration(
+                                    color: EzizaColors.kGold,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.white,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  child: const Icon(
+                                    Icons.star_rounded,
+                                    size: 9,
+                                    color: Colors.white,
+                                  ),
                                 ),
-                                borderRadius: BorderRadius.circular(20),
                               ),
-                              child: const Text(
-                                'Best Deal',
-                                style: TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w800,
-                                  color: EzizaColors.kGold,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: EzizaColors.kSurface,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: EzizaColors.kBorder),
-                            ),
-                            child: Text(
-                              sub,
-                              style: const TextStyle(
-                                fontSize: 10,
-                                color: EzizaColors.kMuted,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          if (rating != null && rating > 0) ...[
-                            const SizedBox(width: 8),
-                            const Icon(
-                              Icons.star_rounded,
-                              size: 11,
-                              color: EzizaColors.kGold,
-                            ),
-                            const SizedBox(width: 2),
-                            Text(
-                              rating.toStringAsFixed(1),
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: EzizaColors.kText,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
                           ],
-                        ],
-                      ),
-                    ],
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      name,
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: EzizaColors.kText,
+                                      ),
+                                    ),
+                                  ),
+                                  if (isBest)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 7,
+                                        vertical: 3,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: EzizaColors.kGold.withValues(
+                                          alpha: 0.12,
+                                        ),
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: const Text(
+                                        'Best Deal',
+                                        style: TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w800,
+                                          color: EzizaColors.kGold,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: EzizaColors.kSurface,
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: EzizaColors.kBorder,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      sub,
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        color: EzizaColors.kMuted,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  if (rating != null && rating > 0) ...[
+                                    const SizedBox(width: 8),
+                                    const Icon(
+                                      Icons.star_rounded,
+                                      size: 11,
+                                      color: EzizaColors.kGold,
+                                    ),
+                                    const SizedBox(width: 2),
+                                    Text(
+                                      rating.toStringAsFixed(1),
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: EzizaColors.kText,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -2112,46 +2155,10 @@ class _CustomerDeliveryDetailPageState
                         ),
                       ),
                     )
-                  : GestureDetector(
+                  : PremiumButton(
+                      label: 'Accept This Offer',
+                      icon: Icons.check_rounded,
                       onTap: () => _confirmAccept(bid),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [EzizaColors.kPurple, EzizaColors.kPurpleD],
-                          ),
-                          borderRadius: BorderRadius.circular(10),
-                          boxShadow: [
-                            BoxShadow(
-                              color: EzizaColors.kPurpleD.withValues(
-                                alpha: 0.25,
-                              ),
-                              blurRadius: 8,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.check_rounded,
-                              color: Colors.white,
-                              size: 15,
-                            ),
-                            SizedBox(width: 6),
-                            Text(
-                              'Accept This Offer',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
                     ),
             ),
           ],

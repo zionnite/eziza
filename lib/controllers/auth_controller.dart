@@ -80,7 +80,6 @@ class AuthController extends GetxController {
     required String email,
     required String password,
     required String fullName,
-    required String phone,
   }) async {
     loading.value = true;
     try {
@@ -88,7 +87,6 @@ class AuthController extends GetxController {
         email:    email,
         password: password,
         fullName: fullName,
-        phone:    phone,
       );
     } finally {
       loading.value = false;

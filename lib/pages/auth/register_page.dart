@@ -17,7 +17,6 @@ class _RegisterPageState extends State<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
 
   final _fullName = TextEditingController();
-  final _phone    = TextEditingController();
   final _email    = TextEditingController();
   final _password = TextEditingController();
   final _confirm  = TextEditingController();
@@ -29,7 +28,6 @@ class _RegisterPageState extends State<RegisterPage> {
   @override
   void dispose() {
     _fullName.dispose();
-    _phone.dispose();
     _email.dispose();
     _password.dispose();
     _confirm.dispose();
@@ -44,7 +42,6 @@ class _RegisterPageState extends State<RegisterPage> {
         email:    _email.text.trim(),
         password: _password.text.trim(),
         fullName: _fullName.text.trim(),
-        phone:    _phone.text.trim(),
       );
       if (!mounted) return;
       if (result == 'true') {
@@ -146,24 +143,6 @@ class _RegisterPageState extends State<RegisterPage> {
                   ],
                   validator: (v) =>
                       (v?.trim().isEmpty ?? true) ? 'Required' : null,
-                ),
-                const SizedBox(height: 16),
-                _field(
-                  controller: _phone,
-                  label: 'Phone Number',
-                  hint: '08012345678',
-                  icon: Icons.phone_outlined,
-                  keyboardType: TextInputType.phone,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                    LengthLimitingTextInputFormatter(11),
-                  ],
-                  validator: (v) {
-                    final val = v?.trim() ?? '';
-                    if (val.isEmpty) return 'Required';
-                    if (val.length < 10) return 'Enter a valid phone number';
-                    return null;
-                  },
                 ),
                 const SizedBox(height: 16),
                 _field(

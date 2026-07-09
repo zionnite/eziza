@@ -185,6 +185,10 @@ class _SendPackagePageState extends State<SendPackagePage>
       _snack('Describe the package.');
       return;
     }
+    if (_pickupPhoneCtrl.text.trim().isEmpty) {
+      _snack('Enter your phone number so the rider can reach you.');
+      return;
+    }
     if (_deliveryContactCtrl.text.trim().isEmpty) {
       _snack('Enter the recipient\'s name.');
       return;
@@ -204,6 +208,21 @@ class _SendPackagePageState extends State<SendPackagePage>
     }
 
     setState(() => _submitting = true);
+
+    // Persist the phone back to the account so it's pre-filled next time --
+    // relevant for anyone who signed up before phone was collected at
+    // signup, or is correcting it here for the first time.
+    final senderPhone = _pickupPhoneCtrl.text.trim();
+    if (senderPhone != (user.userMetadata?['phone'] as String? ?? '')) {
+      try {
+        await _db.from('customers').update({'phone': senderPhone}).eq('id', user.id);
+        await _db.auth.updateUser(UserAttributes(data: {'phone': senderPhone}));
+      } catch (_) {
+        // Non-fatal -- the delivery itself still records the phone via
+        // pickup_contact_phone below regardless of whether this saved.
+      }
+    }
+
     try {
       final value = parseFormattedAmount(_valueCtrl.text.trim());
       final now   = DateTime.now().toUtc();
@@ -282,7 +301,7 @@ class _SendPackagePageState extends State<SendPackagePage>
                   _field('Sender Name', _pickupContactCtrl,
                       hint: 'Name of person handing over package'),
                   const SizedBox(height: 14),
-                  _field('Sender Phone', _pickupPhoneCtrl,
+                  _field('Sender Phone *', _pickupPhoneCtrl,
                       hint: '080xxxxxxxx',
                       type: TextInputType.phone),
                 ]),

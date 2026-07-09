@@ -36,7 +36,6 @@ class SupabaseService {
     required String email,
     required String password,
     required String fullName,
-    required String phone,
   }) async {
     try {
       final res = await _client.functions.invoke(
@@ -45,7 +44,6 @@ class SupabaseService {
           'email':    email,
           'password': password,
           'fullName': fullName,
-          'phone':    phone,
         },
       );
 

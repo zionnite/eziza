@@ -63,7 +63,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
     if (image == null) return;
 
     setState(() => _uploadingPhoto = true);
-    final url = await BunnyService.upload(image, 'avatars/$uid/photo');
+    // Timestamped path -- a fixed 'photo' path meant re-uploads reused the
+    // same URL, so the CDN edge cache and cached_network_image both kept
+    // serving the old photo even after the DB row updated.
+    final url = await BunnyService.upload(
+        image, 'avatars/$uid/photo_${DateTime.now().millisecondsSinceEpoch}');
     if (url != null) {
       try {
         await _db.from('customers').update({'avatar_url': url}).eq('id', uid);

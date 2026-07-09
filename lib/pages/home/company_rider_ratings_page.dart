@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../constants/colors.dart';
+import '../../widgets/premium_card.dart';
 import 'earnings_widgets.dart';
 
 /// Lets a company see who rated one of their riders — attribution matters
@@ -85,13 +86,8 @@ class _CompanyRiderRatingsPageState extends State<CompanyRiderRatingsPage> {
     final dateLabel = date.length >= 10 ? date.substring(0, 10) : date;
     final roleLabel = role == 'sender' ? 'Sender' : 'Receiver';
 
-    return Container(
+    return PremiumCard(
       margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-          color: EzizaColors.kWhite,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: EzizaColors.kBorder)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -104,17 +100,7 @@ class _CompanyRiderRatingsPageState extends State<CompanyRiderRatingsPage> {
                       fontWeight: FontWeight.w700,
                       color: EzizaColors.kText)),
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                  color: EzizaColors.kPurple.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20)),
-              child: Text(roleLabel,
-                  style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: EzizaColors.kPurpleD)),
-            ),
+            StatusPill(label: roleLabel, color: EzizaColors.kPurpleD),
           ]),
           const SizedBox(height: 8),
           Row(children: List.generate(

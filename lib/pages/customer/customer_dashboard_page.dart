@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../constants/colors.dart';
 import '../../controllers/auth_controller.dart';
+import '../../widgets/premium_card.dart';
 import 'customer_delivery_detail_page.dart';
 import 'delivery_tracking_page.dart';
 import 'send_package_page.dart';
@@ -1392,213 +1393,174 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
       _                         => null,
     };
 
-    return GestureDetector(
-      onTap: () => _openDetail(id),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 14),
-        decoration: BoxDecoration(
-          color: EzizaColors.kWhite,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: EzizaColors.kBorder),
-          boxShadow: [
-            BoxShadow(
-              color: EzizaColors.kPurple.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Left colored accent bar (referral pattern)
-                Container(width: 4, color: statusColor),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: EzizaColors.kWhite,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: statusColor.withValues(alpha: 0.10),
+            blurRadius: 26,
+            offset: const Offset(0, 12),
+            spreadRadius: -10,
+          ),
+          BoxShadow(
+            color: EzizaColors.kNavy.withValues(alpha: 0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => _openDetail(id),
+          splashColor: EzizaColors.kPurple.withValues(alpha: 0.06),
+          highlightColor: EzizaColors.kPurple.withValues(alpha: 0.03),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
 
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+              // Banner for actionable states (custom_fit pattern)
+              if (bannerMsg != null)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 9),
+                  color: statusColor.withValues(alpha: 0.08),
+                  child: Row(children: [
+                    Icon(Icons.info_outline_rounded,
+                        size: 12, color: statusColor),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(bannerMsg,
+                          style: TextStyle(
+                              fontSize: 11,
+                              color: statusColor,
+                              fontWeight: FontWeight.w600)),
+                    ),
+                  ]),
+                ),
 
-                      // Banner for actionable states (custom_fit pattern)
-                      if (bannerMsg != null)
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 8),
-                          color: statusColor.withValues(alpha: 0.07),
-                          child: Row(children: [
-                            Icon(Icons.info_outline_rounded,
-                                size: 12, color: statusColor),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(bannerMsg,
-                                  style: TextStyle(
-                                      fontSize: 11,
-                                      color: statusColor,
-                                      fontWeight: FontWeight.w600)),
-                            ),
-                          ]),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+
+                    // Top row: icon + route summary + status chip
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        IconBadge(icon: statusIcon, color: statusColor),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: RouteTimeline(
+                            pickup: _shortAddr(pickup),
+                            dropoff: _shortAddr(dropoff),
+                          ),
                         ),
+                        const SizedBox(width: 8),
+                        _statusChip(status),
+                      ],
+                    ),
 
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                    const SizedBox(height: 12),
+
+                    // Info pills row (custom_fit _pill pattern)
+                    Wrap(spacing: 6, runSpacing: 6, children: [
+                      if (createdAt != null)
+                        _infoPill(Icons.schedule_outlined,
+                            _fmtDate(createdAt)),
+                      if (price != null)
+                        _infoPill(Icons.payments_outlined,
+                            '₦${_fmtNum(price)}',
+                            highlight: true),
+                    ]),
+                    if (desc != null && desc.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      Text(desc,
+                          style: const TextStyle(
+                              fontSize: 12,
+                              color: EzizaColors.kMuted,
+                              fontStyle: FontStyle.italic,
+                              height: 1.3),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
+                    ],
+                  ],
+                ),
+              ),
+
+              // Footer: view details button + track button
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                child: Row(children: [
+                  GestureDetector(
+                    onTap: () => _openDetail(id),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: EzizaColors.kPurple.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-
-                            // Top row: icon + route summary + status chip
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Status icon container (referral/_EarningRow pattern)
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: statusColor.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Icon(statusIcon,
-                                      size: 18, color: statusColor),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(_shortAddr(pickup),
-                                          style: const TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w700,
-                                              color: EzizaColors.kText),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis),
-                                      const SizedBox(height: 3),
-                                      Row(children: [
-                                        Icon(Icons.arrow_downward_rounded,
-                                            size: 10,
-                                            color: EzizaColors.kMuted
-                                                .withValues(alpha: 0.6)),
-                                        const SizedBox(width: 4),
-                                        Expanded(
-                                          child: Text(_shortAddr(dropoff),
-                                              style: const TextStyle(
-                                                  fontSize: 12,
-                                                  color: EzizaColors.kMuted),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis),
-                                        ),
-                                      ]),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                _statusChip(status),
-                              ],
-                            ),
-
-                            const SizedBox(height: 12),
-
-                            // Info pills row (custom_fit _pill pattern)
-                            Wrap(spacing: 6, runSpacing: 6, children: [
-                              if (createdAt != null)
-                                _infoPill(Icons.schedule_outlined,
-                                    _fmtDate(createdAt)),
-                              if (price != null)
-                                _infoPill(Icons.payments_outlined,
-                                    '₦${_fmtNum(price)}',
-                                    highlight: true),
-                            ]),
-                            if (desc != null && desc.isNotEmpty) ...[
-                              const SizedBox(height: 10),
-                              Text(desc,
-                                  style: const TextStyle(
-                                      fontSize: 12,
-                                      color: EzizaColors.kMuted,
-                                      fontStyle: FontStyle.italic,
-                                      height: 1.3),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis),
-                            ],
+                        Text('View Details',
+                            style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: EzizaColors.kPurpleD)),
+                        SizedBox(width: 3),
+                        Icon(Icons.arrow_forward_rounded,
+                            size: 12, color: EzizaColors.kPurpleD),
+                      ]),
+                    ),
+                  ),
+                  const Spacer(),
+                  if (isTrackable)
+                    GestureDetector(
+                      onTap: () => Get.to(
+                          () => DeliveryTrackingPage(deliveryId: id)),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 7),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(colors: [
+                            EzizaColors.kPurple,
+                            EzizaColors.kPurpleD,
+                          ]),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                                color: EzizaColors.kPurpleD
+                                    .withValues(alpha: 0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3))
                           ],
                         ),
+                        child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.location_on_rounded,
+                                  size: 12, color: EzizaColors.kGold),
+                              SizedBox(width: 5),
+                              Text('Track Live',
+                                  style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white)),
+                            ]),
                       ),
-
-                      // Footer: view details button + track button
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-                        child: Row(children: [
-                          GestureDetector(
-                            onTap: () => _openDetail(id),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 7),
-                              decoration: BoxDecoration(
-                                color: EzizaColors.kPurple.withValues(alpha: 0.08),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                    color: EzizaColors.kPurpleD.withValues(alpha: 0.25)),
-                              ),
-                              child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                Text('View Details',
-                                    style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
-                                        color: EzizaColors.kPurpleD)),
-                                SizedBox(width: 3),
-                                Icon(Icons.arrow_forward_rounded,
-                                    size: 12, color: EzizaColors.kPurpleD),
-                              ]),
-                            ),
-                          ),
-                          const Spacer(),
-                          if (isTrackable)
-                            GestureDetector(
-                              onTap: () => Get.to(
-                                  () => DeliveryTrackingPage(deliveryId: id)),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 7),
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(colors: [
-                                    EzizaColors.kPurple,
-                                    EzizaColors.kPurpleD,
-                                  ]),
-                                  borderRadius: BorderRadius.circular(20),
-                                  boxShadow: [
-                                    BoxShadow(
-                                        color: EzizaColors.kPurpleD
-                                            .withValues(alpha: 0.3),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 3))
-                                  ],
-                                ),
-                                child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.location_on_rounded,
-                                          size: 12, color: EzizaColors.kGold),
-                                      SizedBox(width: 5),
-                                      Text('Track Live',
-                                          style: TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w700,
-                                              color: Colors.white)),
-                                    ]),
-                              ),
-                            ),
-                        ]),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+                    ),
+                ]),
+              ),
+            ],
           ),
         ),
       ),
@@ -2042,233 +2004,190 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
 
     final (Color statusColor, _, IconData statusIcon) = _statusMeta(status);
 
-    return GestureDetector(
-      onTap: () => _openIncomingDetail(id),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 14),
-        decoration: BoxDecoration(
-          color: EzizaColors.kWhite,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: needsConfirm
-                ? EzizaColors.kGold.withValues(alpha: 0.5)
-                : EzizaColors.kBorder,
-            width: needsConfirm ? 1.5 : 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: (needsConfirm ? EzizaColors.kGold : EzizaColors.kPurple)
-                  .withValues(alpha: 0.07),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Container(width: 4, color: statusColor),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // "Incoming" label banner
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 7),
-                        color: needsConfirm
-                            ? EzizaColors.kGold.withValues(alpha: 0.08)
-                            : EzizaColors.kTeal.withValues(alpha: 0.07),
-                        child: Row(children: [
-                          Icon(
-                            needsConfirm
-                                ? Icons.check_circle_outline_rounded
-                                : Icons.move_to_inbox_rounded,
-                            size: 12,
-                            color: needsConfirm
-                                ? EzizaColors.kGold
-                                : EzizaColors.kTeal,
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              needsConfirm
-                                  ? 'Package delivered — tap to confirm receipt'
-                                  : 'Incoming delivery addressed to you',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: needsConfirm
-                                    ? EzizaColors.kGold
-                                    : EzizaColors.kTeal,
-                              ),
-                            ),
-                          ),
-                        ]),
-                      ),
+    final accentColor = needsConfirm ? EzizaColors.kGold : EzizaColors.kTeal;
 
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: statusColor.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child:
-                                      Icon(statusIcon, size: 18, color: statusColor),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(_shortAddr(pickup),
-                                          style: const TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w700,
-                                              color: EzizaColors.kText),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis),
-                                      const SizedBox(height: 3),
-                                      Row(children: [
-                                        Icon(Icons.arrow_downward_rounded,
-                                            size: 10,
-                                            color: EzizaColors.kMuted
-                                                .withValues(alpha: 0.6)),
-                                        const SizedBox(width: 4),
-                                        Expanded(
-                                          child: Text(_shortAddr(dropoff),
-                                              style: const TextStyle(
-                                                  fontSize: 12,
-                                                  color: EzizaColors.kMuted),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis),
-                                        ),
-                                      ]),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                _statusChip(status, isRecipient: true),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Wrap(spacing: 6, runSpacing: 6, children: [
-                              if (createdAt != null)
-                                _infoPill(Icons.schedule_outlined,
-                                    _fmtDate(createdAt)),
-                              if (price != null)
-                                _infoPill(Icons.payments_outlined,
-                                    '₦${_fmtNum(price)}',
-                                    highlight: true),
-                            ]),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: EzizaColors.kWhite,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: accentColor.withValues(alpha: needsConfirm ? 0.18 : 0.10),
+            blurRadius: 26,
+            offset: const Offset(0, 12),
+            spreadRadius: -10,
+          ),
+          BoxShadow(
+            color: EzizaColors.kNavy.withValues(alpha: 0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => _openIncomingDetail(id),
+          splashColor: accentColor.withValues(alpha: 0.06),
+          highlightColor: accentColor.withValues(alpha: 0.03),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // "Incoming" label banner
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 9),
+                color: accentColor.withValues(alpha: 0.09),
+                child: Row(children: [
+                  Icon(
+                    needsConfirm
+                        ? Icons.check_circle_outline_rounded
+                        : Icons.move_to_inbox_rounded,
+                    size: 12,
+                    color: accentColor,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      needsConfirm
+                          ? 'Package delivered — tap to confirm receipt'
+                          : 'Incoming delivery addressed to you',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: accentColor,
+                      ),
+                    ),
+                  ),
+                ]),
+              ),
+
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        IconBadge(icon: statusIcon, color: statusColor),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: RouteTimeline(
+                            pickup: _shortAddr(pickup),
+                            dropoff: _shortAddr(dropoff),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        _statusChip(status, isRecipient: true),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(spacing: 6, runSpacing: 6, children: [
+                      if (createdAt != null)
+                        _infoPill(Icons.schedule_outlined,
+                            _fmtDate(createdAt)),
+                      if (price != null)
+                        _infoPill(Icons.payments_outlined,
+                            '₦${_fmtNum(price)}',
+                            highlight: true),
+                    ]),
+                  ],
+                ),
+              ),
+
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                child: Row(children: [
+                  const Row(children: [
+                    Text('View Details',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: EzizaColors.kPurpleD)),
+                    SizedBox(width: 3),
+                    Icon(Icons.arrow_forward_rounded,
+                        size: 12, color: EzizaColors.kPurpleD),
+                  ]),
+                  const Spacer(),
+                  if (isTrackable && !needsConfirm)
+                    GestureDetector(
+                      onTap: () => Get.to(() => DeliveryTrackingPage(
+                            deliveryId: id,
+                            isRecipient: true,
+                          )),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 7),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(colors: [
+                            EzizaColors.kPurple,
+                            EzizaColors.kPurpleD,
+                          ]),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                                color: EzizaColors.kPurpleD
+                                    .withValues(alpha: 0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3))
                           ],
                         ),
+                        child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.location_on_rounded,
+                                  size: 12, color: EzizaColors.kGold),
+                              SizedBox(width: 5),
+                              Text('Track Live',
+                                  style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white)),
+                            ]),
                       ),
-
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-                        child: Row(children: [
-                          const Row(children: [
-                            Text('View Details',
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: EzizaColors.kPurpleD)),
-                            SizedBox(width: 3),
-                            Icon(Icons.arrow_forward_rounded,
-                                size: 12, color: EzizaColors.kPurpleD),
+                    ),
+                  if (needsConfirm)
+                    GestureDetector(
+                      onTap: () => _openIncomingDetail(id),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 7),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(colors: [
+                            EzizaColors.kGold,
+                            Color(0xFFD97706),
                           ]),
-                          const Spacer(),
-                          if (isTrackable && !needsConfirm)
-                            GestureDetector(
-                              onTap: () => Get.to(() => DeliveryTrackingPage(
-                                    deliveryId: id,
-                                    isRecipient: true,
-                                  )),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 7),
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(colors: [
-                                    EzizaColors.kPurple,
-                                    EzizaColors.kPurpleD,
-                                  ]),
-                                  borderRadius: BorderRadius.circular(20),
-                                  boxShadow: [
-                                    BoxShadow(
-                                        color: EzizaColors.kPurpleD
-                                            .withValues(alpha: 0.3),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 3))
-                                  ],
-                                ),
-                                child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.location_on_rounded,
-                                          size: 12, color: EzizaColors.kGold),
-                                      SizedBox(width: 5),
-                                      Text('Track Live',
-                                          style: TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w700,
-                                              color: Colors.white)),
-                                    ]),
-                              ),
-                            ),
-                          if (needsConfirm)
-                            GestureDetector(
-                              onTap: () => _openIncomingDetail(id),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 7),
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(colors: [
-                                    EzizaColors.kGold,
-                                    Color(0xFFD97706),
-                                  ]),
-                                  borderRadius: BorderRadius.circular(20),
-                                  boxShadow: [
-                                    BoxShadow(
-                                        color: EzizaColors.kGold
-                                            .withValues(alpha: 0.35),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 3))
-                                  ],
-                                ),
-                                child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.verified_rounded,
-                                          size: 12, color: Colors.white),
-                                      SizedBox(width: 5),
-                                      Text('Confirm Receipt',
-                                          style: TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w700,
-                                              color: Colors.white)),
-                                    ]),
-                              ),
-                            ),
-                        ]),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                                color: EzizaColors.kGold
+                                    .withValues(alpha: 0.35),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3))
+                          ],
+                        ),
+                        child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.verified_rounded,
+                                  size: 12, color: Colors.white),
+                              SizedBox(width: 5),
+                              Text('Confirm Receipt',
+                                  style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white)),
+                            ]),
                       ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+                    ),
+                ]),
+              ),
+            ],
           ),
         ),
       ),

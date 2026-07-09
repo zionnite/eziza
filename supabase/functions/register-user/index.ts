@@ -15,9 +15,12 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
 
   try {
-    const { email, password, fullName, phone } = await req.json()
+    // phone is deliberately not collected at signup anymore -- customers
+    // are prompted for it later, at the point they actually need it
+    // (Send Package requires a sender phone before submitting).
+    const { email, password, fullName } = await req.json()
 
-    if (!email || !password || !fullName || !phone) {
+    if (!email || !password || !fullName) {
       return json({ error: 'Missing required fields' }, 400)
     }
 
@@ -25,7 +28,7 @@ serve(async (req) => {
       email,
       password,
       email_confirm: true,
-      user_metadata: { full_name: fullName, phone },
+      user_metadata: { full_name: fullName },
     })
 
     if (authErr) {

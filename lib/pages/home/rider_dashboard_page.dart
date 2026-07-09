@@ -16,6 +16,7 @@ import '../../services/rider_location_task.dart';
 import '../../services/ratings_service.dart';
 import '../../utils/currency.dart';
 import '../../widgets/delivery_trip_summary.dart';
+import '../../widgets/premium_card.dart';
 import '../../widgets/rating_sheet.dart';
 import '../shared/bank_account_page.dart';
 import '../shared/change_password_page.dart';
@@ -1791,29 +1792,47 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
                             : ListView(
                                 padding:
                                     const EdgeInsets.fromLTRB(16, 16, 16, 60),
-                                children: [
-                                  if (_activeDeliveries.isNotEmpty) ...[
-                                    _sectionHeader('In Progress',
-                                        Icons.local_shipping_rounded,
-                                        EzizaColors.kPurpleD,
-                                        badge: '${_activeDeliveries.length}'),
-                                    const SizedBox(height: 12),
-                                    ..._activeDeliveries.map(_activeDeliveryCard),
-                                    const SizedBox(height: 24),
-                                  ],
-                                  if (!_isCompanyRider) ...[
-                                    _sectionHeader('Open for Offers',
-                                        Icons.inbox_rounded,
-                                        const Color(0xFF0284C7),
-                                        badge: _openDeliveries.isNotEmpty
-                                            ? '${_openDeliveries.length}'
-                                            : null),
-                                    const SizedBox(height: 12),
-                                    if (_openDeliveries.isEmpty)
-                                      _emptyRequests(),
-                                    ..._openDeliveries.map(_deliveryCard),
-                                  ],
-                                ],
+                                // New open jobs bump "Open for Offers" above
+                                // "In Progress" so a rider sees jobs they can
+                                // still act on first; with nothing new to
+                                // offer on, "In Progress" leads instead.
+                                children: !_isCompanyRider && _openDeliveries.isNotEmpty
+                                    ? [
+                                        _sectionHeader('Open for Offers',
+                                            Icons.inbox_rounded,
+                                            const Color(0xFF0284C7),
+                                            badge: '${_openDeliveries.length}'),
+                                        const SizedBox(height: 12),
+                                        ..._openDeliveries.map(_deliveryCard),
+                                        if (_activeDeliveries.isNotEmpty) ...[
+                                          const SizedBox(height: 24),
+                                          _sectionHeader('In Progress',
+                                              Icons.local_shipping_rounded,
+                                              EzizaColors.kPurpleD,
+                                              badge: '${_activeDeliveries.length}'),
+                                          const SizedBox(height: 12),
+                                          ..._activeDeliveries.map(_activeDeliveryCard),
+                                        ],
+                                      ]
+                                    : [
+                                        if (_activeDeliveries.isNotEmpty) ...[
+                                          _sectionHeader('In Progress',
+                                              Icons.local_shipping_rounded,
+                                              EzizaColors.kPurpleD,
+                                              badge: '${_activeDeliveries.length}'),
+                                          const SizedBox(height: 12),
+                                          ..._activeDeliveries.map(_activeDeliveryCard),
+                                          const SizedBox(height: 24),
+                                        ],
+                                        if (!_isCompanyRider) ...[
+                                          _sectionHeader('Open for Offers',
+                                              Icons.inbox_rounded,
+                                              const Color(0xFF0284C7),
+                                              badge: null),
+                                          const SizedBox(height: 12),
+                                          _emptyRequests(),
+                                        ],
+                                      ],
                               ),
                       ),
                       // ── History tab ────────────────────────────────
@@ -1946,13 +1965,8 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
     final dateLabel = date.length >= 10 ? date.substring(0, 10) : date;
     final roleLabel = role == 'sender' ? 'Sender' : 'Receiver';
 
-    return Container(
+    return PremiumCard(
       margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-          color: EzizaColors.kWhite,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: EzizaColors.kBorder)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1965,17 +1979,7 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
                       fontWeight: FontWeight.w700,
                       color: EzizaColors.kText)),
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                  color: EzizaColors.kPurple.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20)),
-              child: Text(roleLabel,
-                  style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: EzizaColors.kPurpleD)),
-            ),
+            StatusPill(label: roleLabel, color: EzizaColors.kPurpleD),
           ]),
           const SizedBox(height: 8),
           Row(children: List.generate(
@@ -2158,88 +2162,49 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
     final companyName =
         (invite['company'] as Map?)?['name'] ?? 'A logistics company';
     final inviteId = invite['id'] as int;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        decoration: BoxDecoration(
-            color: EzizaColors.kWhite,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: EzizaColors.kGold.withValues(alpha: 0.35)),
-            boxShadow: [BoxShadow(color: EzizaColors.kGold.withValues(alpha: 0.1),
-                blurRadius: 10, offset: const Offset(0, 3))]),
-        child: IntrinsicHeight(
-          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Container(width: 4,
-                decoration: const BoxDecoration(
-                    gradient: LinearGradient(colors: [EzizaColors.kGold, Color(0xFFD97706)],
-                        begin: Alignment.topCenter, end: Alignment.bottomCenter))),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Row(children: [
-                    Container(padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                            color: EzizaColors.kGold.withValues(alpha: 0.1),
-                            shape: BoxShape.circle),
-                        child: const Icon(Icons.business_rounded,
-                            size: 16, color: EzizaColors.kGold)),
-                    const SizedBox(width: 10),
-                    Expanded(child: Text(companyName,
-                        style: const TextStyle(fontWeight: FontWeight.w700,
-                            fontSize: 14, color: EzizaColors.kText))),
-                  ]),
-                  const SizedBox(height: 4),
-                  const Padding(
-                    padding: EdgeInsets.only(left: 42),
-                    child: Text('Invited you to join their delivery team',
-                        style: TextStyle(fontSize: 12, color: EzizaColors.kMuted)),
-                  ),
-                  const SizedBox(height: 12),
-                  _inviteLoading
-                      ? const Center(child: SizedBox(width: 18, height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2,
-                              color: EzizaColors.kPurpleD)))
-                      : Row(children: [
-                          Expanded(child: GestureDetector(
-                            onTap: () => _respondInvite(inviteId, false),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              decoration: BoxDecoration(color: EzizaColors.kSurface,
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: EzizaColors.kBorder)),
-                              child: const Center(child: Text('Decline',
-                                  style: TextStyle(fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                      color: EzizaColors.kMuted))),
-                            ),
-                          )),
-                          const SizedBox(width: 10),
-                          Expanded(child: GestureDetector(
-                            onTap: () => _respondInvite(inviteId, true),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              decoration: BoxDecoration(
-                                  gradient: const LinearGradient(colors: [
-                                    EzizaColors.kPurple, EzizaColors.kPurpleD]),
-                                  borderRadius: BorderRadius.circular(10),
-                                  boxShadow: [BoxShadow(
-                                      color: EzizaColors.kPurpleD.withValues(alpha: 0.25),
-                                      blurRadius: 8, offset: const Offset(0, 3))]),
-                              child: const Center(child: Text('Accept',
-                                  style: TextStyle(fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                      color: EzizaColors.kWhite))),
-                            ),
-                          )),
-                        ]),
-                ]),
-              ),
-            ),
-          ]),
+    return PremiumCard(
+      margin: const EdgeInsets.only(bottom: 10),
+      glow: EzizaColors.kGold,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const IconBadge(icon: Icons.business_rounded, color: EzizaColors.kGold),
+          const SizedBox(width: 12),
+          Expanded(child: Text('$companyName',
+              style: const TextStyle(fontWeight: FontWeight.w700,
+                  fontSize: 14, color: EzizaColors.kText))),
+        ]),
+        const SizedBox(height: 4),
+        const Padding(
+          padding: EdgeInsets.only(left: 52),
+          child: Text('Invited you to join their delivery team',
+              style: TextStyle(fontSize: 12, color: EzizaColors.kMuted)),
         ),
-      ),
+        const SizedBox(height: 14),
+        _inviteLoading
+            ? const Center(child: SizedBox(width: 18, height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2,
+                    color: EzizaColors.kPurpleD)))
+            : Row(children: [
+                Expanded(child: GestureDetector(
+                  onTap: () => _respondInvite(inviteId, false),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 11),
+                    decoration: BoxDecoration(color: EzizaColors.kSurface,
+                        borderRadius: BorderRadius.circular(12)),
+                    child: const Center(child: Text('Decline',
+                        style: TextStyle(fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: EzizaColors.kMuted))),
+                  ),
+                )),
+                const SizedBox(width: 10),
+                Expanded(child: PremiumButton(
+                  label: 'Accept',
+                  icon: Icons.check_rounded,
+                  onTap: () => _respondInvite(inviteId, true),
+                )),
+              ]),
+      ]),
     );
   }
 
@@ -2253,354 +2218,168 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
     final deliveryId        = d['id'] as String;
     final fee               = (d['agreed_price'] as num?)?.toDouble();
 
-    final (Color accentColor, Color chipText, Color chipBg, String chipLabel) =
+    final (Color accentColor, IconData statusIcon, String chipLabel) =
         switch (status) {
-      'delivered'               => (EzizaColors.kSuccess, EzizaColors.kSuccess,
-                                    const Color(0xFFDCFCE7), 'Delivered'),
-      'picked_up'               => (const Color(0xFF0284C7), const Color(0xFF0284C7),
-                                    const Color(0xFFE0F2FE), 'In Transit'),
-      'awaiting_pickup_confirm' => (EzizaColors.kGold, const Color(0xFF92400E),
-                                    const Color(0xFFFFF8E1), 'At Pickup'),
-      _                         => (EzizaColors.kPurpleD, EzizaColors.kPurpleD,
-                                    const Color(0xFFF3E5F5), 'Assigned'),
+      'delivered'               => (EzizaColors.kSuccess, Icons.task_alt_rounded, 'Delivered'),
+      'picked_up'               => (const Color(0xFF0284C7), Icons.local_shipping_rounded, 'In Transit'),
+      'awaiting_pickup_confirm' => (EzizaColors.kGold, Icons.storefront_rounded, 'At Pickup'),
+      _                         => (EzizaColors.kPurpleD, Icons.assignment_turned_in_rounded, 'Assigned'),
     };
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-            color: EzizaColors.kWhite,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: accentColor.withValues(alpha: 0.25)),
-            boxShadow: [BoxShadow(color: accentColor.withValues(alpha: 0.08),
-                blurRadius: 12, offset: const Offset(0, 4))]),
-        child: IntrinsicHeight(
-          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Container(width: 4, color: accentColor),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  // Header row
-                  Row(children: [
-                    Expanded(child: Row(children: [
-                      Icon(Icons.radio_button_checked_rounded,
-                          size: 12, color: EzizaColors.kPurpleD),
-                      const SizedBox(width: 4),
-                      Flexible(child: Text('${d['pickup_address'] ?? '—'}',
-                          style: const TextStyle(fontSize: 12,
-                              fontWeight: FontWeight.w700, color: EzizaColors.kText),
-                          overflow: TextOverflow.ellipsis)),
-                      const Padding(padding: EdgeInsets.symmetric(horizontal: 4),
-                          child: Icon(Icons.arrow_forward_rounded,
-                              size: 11, color: EzizaColors.kMuted)),
-                      Icon(Icons.location_on_rounded, size: 12, color: EzizaColors.kGold),
-                      const SizedBox(width: 4),
-                      Flexible(child: Text('${d['delivery_address'] ?? '—'}',
-                          style: const TextStyle(fontSize: 12,
-                              fontWeight: FontWeight.w700, color: EzizaColors.kText),
-                          overflow: TextOverflow.ellipsis)),
-                    ])),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                      decoration: BoxDecoration(color: chipBg,
-                          borderRadius: BorderRadius.circular(20)),
-                      child: Text(chipLabel, style: TextStyle(fontSize: 10,
-                          fontWeight: FontWeight.w800, color: chipText)),
-                    ),
-                  ]),
-                  const SizedBox(height: 12),
-                  // Address boxes
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                        color: EzizaColors.kPurple.withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                            color: EzizaColors.kPurple.withValues(alpha: 0.15))),
-                    child: Row(children: [
-                      const Icon(Icons.store_rounded,
-                          size: 13, color: EzizaColors.kPurpleD),
-                      const SizedBox(width: 8),
-                      Expanded(child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        const Text('PICKUP', style: TextStyle(fontSize: 9,
-                            color: EzizaColors.kPurpleD,
-                            fontWeight: FontWeight.w800, letterSpacing: 0.8)),
-                        Text('${d['pickup_address'] ?? '—'}',
-                            style: const TextStyle(fontSize: 12,
-                                fontWeight: FontWeight.w600, color: EzizaColors.kText,
-                                height: 1.3),
-                            maxLines: 1, overflow: TextOverflow.ellipsis),
-                        if (d['pickup_contact_name'] != null ||
-                            d['pickup_contact_phone'] != null) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            '${d['pickup_contact_name'] ?? ''} ${d['pickup_contact_phone'] ?? ''}'.trim(),
-                            style: const TextStyle(fontSize: 10, color: EzizaColors.kMuted),
-                          ),
-                        ],
-                      ])),
-                    ]),
-                  ),
-                  const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                        color: EzizaColors.kGold.withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                            color: EzizaColors.kGold.withValues(alpha: 0.2))),
-                    child: Row(children: [
-                      const Icon(Icons.home_rounded,
-                          size: 13, color: EzizaColors.kGold),
-                      const SizedBox(width: 8),
-                      Expanded(child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        const Text('DROP-OFF', style: TextStyle(fontSize: 9,
-                            color: EzizaColors.kGold,
-                            fontWeight: FontWeight.w800, letterSpacing: 0.8)),
-                        Text('${d['delivery_address'] ?? '—'}',
-                            style: const TextStyle(fontSize: 12,
-                                fontWeight: FontWeight.w600, color: EzizaColors.kText,
-                                height: 1.3),
-                            maxLines: 1, overflow: TextOverflow.ellipsis),
-                      ])),
-                    ]),
-                  ),
-                  if (fee != null) ...[
-                    const SizedBox(height: 10),
-                    Row(children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: EzizaColors.kSuccess.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                              color: EzizaColors.kSuccess.withValues(alpha: 0.2)),
-                        ),
-                        child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          const Icon(Icons.payments_rounded,
-                              size: 12, color: EzizaColors.kSuccess),
-                          const SizedBox(width: 5),
-                          Text('${formatNaira(fee)}  ·  Earning',
-                              style: const TextStyle(fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: EzizaColors.kSuccess)),
-                        ]),
-                      ),
-                    ]),
-                  ],
-                  const SizedBox(height: 12),
-                  // Action area
-                  if (_actionLoading)
-                    const Center(child: SizedBox(width: 20, height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2,
-                            color: EzizaColors.kPurpleD)))
-                  else if (isDelivered)
-                    Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFDCFCE7),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                            color: EzizaColors.kSuccess.withValues(alpha: 0.3)),
-                      ),
-                      child: const Row(children: [
-                        SizedBox(width: 14, height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2,
-                                color: EzizaColors.kSuccess)),
-                        SizedBox(width: 10),
-                        Expanded(child: Text(
-                            'Package delivered — waiting for customer to confirm receipt…',
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
-                                color: Color(0xFF166534)))),
-                      ]),
-                    )
-                  else if (isPickedUp) ...[
-                    _actionBtn(
-                      label: 'Mark Delivered',
-                      icon: Icons.check_circle_outline_rounded,
-                      gradient: [const Color(0xFF16A34A), const Color(0xFF15803D)],
-                      glowColor: const Color(0xFF16A34A),
-                      onTap: () => _markStatus(deliveryId, 'delivered'),
-                    ),
-                    const SizedBox(height: 8),
-                    _viewRouteBtn(d),
-                  ] else if (isAwaitingHandoff)
-                    Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFF8E1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                            color: EzizaColors.kGold.withValues(alpha: 0.4)),
-                      ),
-                      child: const Row(children: [
-                        SizedBox(width: 14, height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2,
-                                color: Color(0xFFD97706))),
-                        SizedBox(width: 10),
-                        Expanded(child: Text(
-                            'Waiting for merchant to confirm handoff…',
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
-                                color: Color(0xFF92400E)))),
-                      ]),
-                    )
-                  else ...[
-                    _actionBtn(
-                      label: "I'm at Pickup — Notify Merchant",
-                      icon: Icons.store_rounded,
-                      gradient: [EzizaColors.kPurple, EzizaColors.kPurpleD],
-                      glowColor: EzizaColors.kPurpleD,
-                      onTap: () => _markStatus(deliveryId, 'awaiting_pickup_confirm'),
-                    ),
-                    const SizedBox(height: 8),
-                    _viewRouteBtn(d),
-                  ],
-                ]),
-              ),
+    return PremiumCard(
+      glow: accentColor,
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // Header row
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          IconBadge(icon: statusIcon, color: accentColor),
+          const SizedBox(width: 12),
+          Expanded(
+            child: RouteTimeline(
+              pickup: '${d['pickup_address'] ?? '—'}',
+              dropoff: '${d['delivery_address'] ?? '—'}',
             ),
-          ]),
-        ),
-      ),
+          ),
+          const SizedBox(width: 8),
+          StatusPill(label: chipLabel, color: accentColor),
+        ]),
+        if (d['pickup_contact_name'] != null || d['pickup_contact_phone'] != null) ...[
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.only(left: 52),
+            child: Text(
+              '${d['pickup_contact_name'] ?? ''} ${d['pickup_contact_phone'] ?? ''}'.trim(),
+              style: const TextStyle(fontSize: 11, color: EzizaColors.kMuted, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+        if (fee != null) ...[
+          const SizedBox(height: 12),
+          MoneyTag(amount: '${formatNaira(fee)} · Earning'),
+        ],
+        const SizedBox(height: 14),
+        // Action area
+        if (_actionLoading)
+          const Center(child: SizedBox(width: 20, height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2,
+                  color: EzizaColors.kPurpleD)))
+        else if (isDelivered)
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+            decoration: BoxDecoration(
+              color: EzizaColors.kSuccess.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Row(children: [
+              SizedBox(width: 14, height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2,
+                      color: EzizaColors.kSuccess)),
+              SizedBox(width: 10),
+              Expanded(child: Text(
+                  'Package delivered — waiting for customer to confirm receipt…',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+                      color: Color(0xFF166534)))),
+            ]),
+          )
+        else if (isPickedUp) ...[
+          PremiumButton(
+            label: 'Mark Delivered',
+            icon: Icons.check_circle_outline_rounded,
+            colors: const [Color(0xFF22C55E), Color(0xFF15803D)],
+            onTap: () => _markStatus(deliveryId, 'delivered'),
+          ),
+          const SizedBox(height: 8),
+          _viewRouteBtn(d),
+        ] else if (isAwaitingHandoff)
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+            decoration: BoxDecoration(
+              color: EzizaColors.kGold.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Row(children: [
+              SizedBox(width: 14, height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2,
+                      color: Color(0xFFD97706))),
+              SizedBox(width: 10),
+              Expanded(child: Text(
+                  'Waiting for merchant to confirm handoff…',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+                      color: Color(0xFF92400E)))),
+            ]),
+          )
+        else ...[
+          PremiumButton(
+            label: "I'm at Pickup — Notify Merchant",
+            icon: Icons.store_rounded,
+            onTap: () => _markStatus(deliveryId, 'awaiting_pickup_confirm'),
+          ),
+          const SizedBox(height: 8),
+          _viewRouteBtn(d),
+        ],
+      ]),
     );
   }
 
-  Widget _viewRouteBtn(Map<String, dynamic> d) => GestureDetector(
+  Widget _viewRouteBtn(Map<String, dynamic> d) => PremiumButton(
+    label: 'View Route on Map',
+    icon: Icons.map_rounded,
+    colors: const [EzizaColors.kNavy, EzizaColors.kNavy],
+    iconColor: EzizaColors.kGold,
     onTap: () async {
       await Get.to(() => RiderMapPage(delivery: d, riderId: _rider!.id));
       _load();
     },
-    child: Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 11),
-      decoration: BoxDecoration(color: EzizaColors.kNavy,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [BoxShadow(color: EzizaColors.kNavy.withValues(alpha: 0.35),
-              blurRadius: 8, offset: const Offset(0, 3))]),
-      child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Icon(Icons.map_rounded, size: 15, color: EzizaColors.kGold),
-        SizedBox(width: 7),
-        Text('View Route on Map', style: TextStyle(fontSize: 12,
-            fontWeight: FontWeight.w700, color: EzizaColors.kWhite)),
-      ]),
-    ),
   );
 
   // ── Job board card ────────────────────────────────────────────
 
   Widget _deliveryCard(Map<String, dynamic> d) {
     final dist = _pickupDistance(d);
-    return GestureDetector(
+    final desc = d['package_description'] as String?;
+    return PremiumCard(
       onTap: () => _showBidSheet(d),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          decoration: BoxDecoration(
-              color: EzizaColors.kWhite,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: EzizaColors.kBorder),
-              boxShadow: [BoxShadow(color: EzizaColors.kPurple.withValues(alpha: 0.05),
-                  blurRadius: 8, offset: const Offset(0, 3))]),
-          child: IntrinsicHeight(
-            child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Container(width: 4,
-                  decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                          colors: [EzizaColors.kPurple, EzizaColors.kPurpleD],
-                          begin: Alignment.topCenter, end: Alignment.bottomCenter))),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    // Route
-                    Row(children: [
-                      const Icon(Icons.radio_button_checked_rounded,
-                          size: 12, color: EzizaColors.kPurpleD),
-                      const SizedBox(width: 4),
-                      Flexible(child: Text('${d['pickup_address'] ?? '—'}',
-                          style: const TextStyle(fontSize: 12,
-                              fontWeight: FontWeight.w700, color: EzizaColors.kText),
-                          overflow: TextOverflow.ellipsis)),
-                      const Padding(padding: EdgeInsets.symmetric(horizontal: 4),
-                          child: Icon(Icons.arrow_forward_rounded,
-                              size: 11, color: EzizaColors.kMuted)),
-                      const Icon(Icons.location_on_rounded,
-                          size: 12, color: EzizaColors.kGold),
-                      const SizedBox(width: 4),
-                      Flexible(child: Text('${d['delivery_address'] ?? '—'}',
-                          style: const TextStyle(fontSize: 12,
-                              fontWeight: FontWeight.w700, color: EzizaColors.kText),
-                          overflow: TextOverflow.ellipsis)),
-                    ]),
-                    const SizedBox(height: 8),
-                    // Meta pills
-                    Wrap(spacing: 6, runSpacing: 4, children: [
-                      _metaPill(Icons.access_time_rounded,
-                          _ago(d['created_at'] as String?), EzizaColors.kMuted),
-                      if (dist != null)
-                        _metaPill(Icons.near_me_rounded,
-                          dist < 1
-                              ? '${(dist * 1000).round()} m'
-                              : '${dist.toStringAsFixed(1)} km away',
-                          EzizaColors.kGold),
-                      if (d['pickup_state'] != null)
-                        _metaPill(Icons.location_city_rounded,
-                            d['pickup_state'] as String, EzizaColors.kNavy),
-                    ]),
-                    if (d['package_description'] != null &&
-                        (d['package_description'] as String).isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Text(d['package_description'] as String,
-                          style: const TextStyle(fontSize: 12, color: EzizaColors.kMuted,
-                              fontStyle: FontStyle.italic, height: 1.3),
-                          maxLines: 1, overflow: TextOverflow.ellipsis),
-                    ],
-                    const SizedBox(height: 12),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 11),
-                      decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                              colors: [EzizaColors.kPurple, EzizaColors.kPurpleD]),
-                          borderRadius: BorderRadius.circular(10),
-                          boxShadow: [BoxShadow(
-                              color: EzizaColors.kPurpleD.withValues(alpha: 0.25),
-                              blurRadius: 8, offset: const Offset(0, 3))]),
-                      child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Icon(Icons.local_offer_rounded, size: 14, color: Colors.white),
-                        SizedBox(width: 6),
-                        Text('Make an Offer', style: TextStyle(fontSize: 12,
-                            fontWeight: FontWeight.w800, color: Colors.white)),
-                      ]),
-                    ),
-                  ]),
-                ),
-              ),
-            ]),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const IconBadge(
+              icon: Icons.local_shipping_rounded, color: EzizaColors.kPurpleD),
+          const SizedBox(width: 12),
+          Expanded(
+            child: RouteTimeline(
+              pickup: '${d['pickup_address'] ?? '—'}',
+              dropoff: '${d['delivery_address'] ?? '—'}',
+            ),
           ),
-        ),
-      ),
+        ]),
+        const SizedBox(height: 12),
+        Wrap(spacing: 6, runSpacing: 6, children: [
+          InfoPill(icon: Icons.access_time_rounded,
+              label: _ago(d['created_at'] as String?)),
+          if (dist != null)
+            InfoPill(icon: Icons.near_me_rounded,
+                label: dist < 1
+                    ? '${(dist * 1000).round()} m'
+                    : '${dist.toStringAsFixed(1)} km away',
+                color: EzizaColors.kGold),
+          if (d['pickup_state'] != null)
+            InfoPill(icon: Icons.location_city_rounded,
+                label: d['pickup_state'] as String, color: EzizaColors.kNavy),
+        ]),
+        if (desc != null && desc.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(desc,
+              style: const TextStyle(fontSize: 12, color: EzizaColors.kMuted,
+                  fontStyle: FontStyle.italic, height: 1.3),
+              maxLines: 1, overflow: TextOverflow.ellipsis),
+        ],
+        const SizedBox(height: 14),
+        PremiumButton(
+            label: 'Make an Offer',
+            icon: Icons.local_offer_rounded,
+            onTap: () => _showBidSheet(d)),
+      ]),
     );
   }
-
-  Widget _metaPill(IconData icon, String label, Color color) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-    decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.2))),
-    child: Row(mainAxisSize: MainAxisSize.min, children: [
-      Icon(icon, size: 10, color: color),
-      const SizedBox(width: 4),
-      Text(label, style: TextStyle(fontSize: 10, color: color,
-          fontWeight: FontWeight.w600)),
-    ]),
-  );
 
   // ── Job history card ──────────────────────────────────────────
 
@@ -2620,23 +2399,12 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
         dateLabel = '${createdAt.day}/${createdAt.month}/${createdAt.year}';
       }
     }
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-          color: EzizaColors.kWhite,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: EzizaColors.kBorder),
-          boxShadow: [BoxShadow(color: EzizaColors.kPurple.withValues(alpha: 0.04),
-              blurRadius: 6, offset: const Offset(0, 2))]),
+    return PremiumCard(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      glow: EzizaColors.kSuccess,
       child: Row(children: [
-        Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-                color: EzizaColors.kSuccess.withValues(alpha: 0.1),
-                shape: BoxShape.circle),
-            child: const Icon(Icons.check_circle_rounded,
-                color: EzizaColors.kSuccess, size: 16)),
+        const IconBadge(icon: Icons.check_circle_rounded, color: EzizaColors.kSuccess, size: 38),
         const SizedBox(width: 12),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('${d['pickup_address'] ?? '—'}',
@@ -2689,14 +2457,24 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
           gradient: const LinearGradient(
               colors: [Color(0xFF3D1A6E), EzizaColors.kNavy],
               begin: Alignment.topLeft, end: Alignment.bottomRight),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [BoxShadow(color: EzizaColors.kPurpleD.withValues(alpha: 0.35),
-              blurRadius: 16, offset: const Offset(0, 6))]),
-      child: Stack(children: [
-        Positioned(right: -20, top: -20,
-            child: Container(width: 120, height: 120,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(color: EzizaColors.kPurpleD.withValues(alpha: 0.30),
+                blurRadius: 28, offset: const Offset(0, 16), spreadRadius: -8),
+            BoxShadow(color: EzizaColors.kNavy.withValues(alpha: 0.20),
+                blurRadius: 10, offset: const Offset(0, 3)),
+          ]),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Stack(children: [
+        Positioned(right: -30, top: -30,
+            child: Container(width: 140, height: 140,
                 decoration: BoxDecoration(shape: BoxShape.circle,
-                    color: EzizaColors.kPurple.withValues(alpha: 0.15)))),
+                    color: EzizaColors.kPurple.withValues(alpha: 0.18)))),
+        Positioned(left: -30, bottom: -40,
+            child: Container(width: 130, height: 130,
+                decoration: BoxDecoration(shape: BoxShape.circle,
+                    color: EzizaColors.kGold.withValues(alpha: 0.08)))),
         Padding(
           padding: const EdgeInsets.all(20),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -2788,7 +2566,8 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
                   ),
           ]),
         ),
-      ]),
+        ]),
+      ),
     );
   }
 
@@ -3299,29 +3078,4 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
         ]),
       );
 
-  Widget _actionBtn({
-    required String label,
-    required IconData icon,
-    required List<Color> gradient,
-    required Color glowColor,
-    required VoidCallback onTap,
-  }) =>
-      GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 13),
-          decoration: BoxDecoration(
-              gradient: LinearGradient(colors: gradient),
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [BoxShadow(color: glowColor.withValues(alpha: 0.3),
-                  blurRadius: 10, offset: const Offset(0, 4))]),
-          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(icon, size: 16, color: Colors.white),
-            const SizedBox(width: 7),
-            Text(label, style: const TextStyle(fontSize: 13,
-                fontWeight: FontWeight.w800, color: Colors.white)),
-          ]),
-        ),
-      );
 }

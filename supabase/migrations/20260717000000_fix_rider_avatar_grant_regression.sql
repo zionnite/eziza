@@ -1,0 +1,12 @@
+-- 20260713020000_rider_company_avatar.sql granted riders UPDATE on
+-- avatar_url. The very next migration, 20260714000000_rider_bank_code.sql,
+-- did a full REVOKE UPDATE ON public.riders FROM authenticated followed by
+-- a fresh GRANT UPDATE (...) to add bank_code -- but that column list
+-- forgot to re-include avatar_url, silently regressing the previous day's
+-- grant. Net effect: rider profile-photo uploads (individual and
+-- company-employed riders alike, same `riders` table) have been silently
+-- failing to save ever since -- the Bunny CDN upload succeeds, but the
+-- Supabase UPDATE afterwards touches 0 rows under the missing column
+-- privilege. companies.avatar_url was untouched by that migration, which
+-- is why company avatar upload kept working.
+GRANT UPDATE (avatar_url) ON public.riders TO authenticated;

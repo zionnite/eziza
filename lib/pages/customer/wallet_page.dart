@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../constants/colors.dart';
 import '../../services/wallet_service.dart';
 import '../../utils/currency.dart';
+import '../../widgets/premium_card.dart';
 import 'paystack_checkout_page.dart';
 
 class WalletPage extends StatefulWidget {
@@ -242,14 +243,24 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
             gradient: const LinearGradient(
                 colors: [Color(0xFF3D1A6E), EzizaColors.kNavy],
                 begin: Alignment.topLeft, end: Alignment.bottomRight),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [BoxShadow(color: EzizaColors.kPurpleD.withValues(alpha: 0.35),
-                blurRadius: 16, offset: const Offset(0, 6))]),
-        child: Stack(children: [
-          Positioned(right: -20, top: -20,
-              child: Container(width: 120, height: 120,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(color: EzizaColors.kPurpleD.withValues(alpha: 0.30),
+                  blurRadius: 28, offset: const Offset(0, 16), spreadRadius: -8),
+              BoxShadow(color: EzizaColors.kNavy.withValues(alpha: 0.20),
+                  blurRadius: 10, offset: const Offset(0, 3)),
+            ]),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: Stack(children: [
+          Positioned(right: -30, top: -30,
+              child: Container(width: 140, height: 140,
                   decoration: BoxDecoration(shape: BoxShape.circle,
-                      color: EzizaColors.kPurple.withValues(alpha: 0.15)))),
+                      color: EzizaColors.kPurple.withValues(alpha: 0.18)))),
+          Positioned(left: -30, bottom: -40,
+              child: Container(width: 130, height: 130,
+                  decoration: BoxDecoration(shape: BoxShape.circle,
+                      color: EzizaColors.kGold.withValues(alpha: 0.08)))),
           Padding(
             padding: const EdgeInsets.all(20),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -261,23 +272,16 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
                   style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w900,
                       color: EzizaColors.kWhite, letterSpacing: -1.5)),
               const SizedBox(height: 18),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _showTopUpSheet,
-                  icon: const Icon(Icons.add_rounded, size: 18),
-                  label: const Text('Top Up', style: TextStyle(fontWeight: FontWeight.w700)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: EzizaColors.kGold,
-                    foregroundColor: EzizaColors.kNavy,
-                    padding: const EdgeInsets.symmetric(vertical: 13),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
+              PremiumButton(
+                label: 'Top Up',
+                icon: Icons.add_rounded,
+                colors: const [EzizaColors.kGold, Color(0xFFD97706)],
+                onTap: _showTopUpSheet,
               ),
             ]),
           ),
-        ]),
+          ]),
+        ),
       );
 
   Widget _transactionCard(Map<String, dynamic> t) {
@@ -286,25 +290,17 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     final isCredit = type == 'credit' || type == 'refunded';
     final date = (t['created_at'] as String?)?.substring(0, 10) ?? '';
     final desc = t['description'] as String? ?? type;
+    final accent = isCredit ? const Color(0xFFD97706) : EzizaColors.kPurpleD;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+    return PremiumCard(
+      margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-          color: EzizaColors.kWhite,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: EzizaColors.kBorder)),
+      glow: accent,
       child: Row(children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-              color: (isCredit ? EzizaColors.kGold : EzizaColors.kPurple).withValues(alpha: 0.12),
-              shape: BoxShape.circle),
-          child: Icon(
-              isCredit ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
-              size: 16,
-              color: isCredit ? const Color(0xFFD97706) : EzizaColors.kPurpleD),
-        ),
+        IconBadge(
+            icon: isCredit ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
+            color: accent,
+            size: 38),
         const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

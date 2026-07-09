@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../constants/colors.dart';
 import '../../utils/currency.dart';
+import '../../widgets/premium_card.dart';
 
 // Shared earnings/payout card + empty-state widgets, used by both the
 // company and individual rider Earnings tabs so the two stay visually
@@ -23,23 +24,13 @@ Widget earningsHistoryCard(Map<String, dynamic> d) {
   final delivery = d['delivery_address'] as String? ?? '';
   final date     = d['confirmed_at'] as String? ?? d['created_at'] as String? ?? '';
   final dateLabel = date.length >= 10 ? date.substring(0, 10) : date;
-  return Container(
-    margin: const EdgeInsets.only(bottom: 8),
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-        color: EzizaColors.kWhite,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: EzizaColors.kBorder)),
+  return PremiumCard(
+    margin: const EdgeInsets.only(bottom: 10),
+    padding: const EdgeInsets.all(14),
+    glow: EzizaColors.kSuccess,
     child: Row(children: [
-      Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-            color: EzizaColors.kSuccess.withValues(alpha: 0.1),
-            shape: BoxShape.circle),
-        child: const Icon(Icons.check_rounded,
-            size: 16, color: EzizaColors.kSuccess),
-      ),
-      const SizedBox(width: 10),
+      const IconBadge(icon: Icons.check_rounded, color: EzizaColors.kSuccess, size: 38),
+      const SizedBox(width: 12),
       Expanded(
         child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -89,37 +80,23 @@ Widget payoutHistoryCard(Map<String, dynamic> p) {
       ? DateTime.tryParse(procRaw.toString())?.toLocal()
       : null;
 
-  final (Color sc, Color sbg, IconData sicon, String slabel) =
-      switch (status) {
-    'pending'  => (EzizaColors.kGold,              const Color(0xFFFFF8E1), Icons.hourglass_top_rounded,          'Pending'),
-    'approved' => (const Color(0xFF0284C7),         const Color(0xFFE0F2FE), Icons.check_circle_outline_rounded,   'Approved'),
-    'paid'     => (EzizaColors.kSuccess,            const Color(0xFFDCFCE7), Icons.payments_rounded,               'Paid'),
-    'rejected' => (EzizaColors.kError,              const Color(0xFFFFEDED), Icons.cancel_outlined,                'Rejected'),
-    _          => (EzizaColors.kMuted,              const Color(0xFFF5F5F5), Icons.info_outline_rounded,            status),
+  final (Color sc, IconData sicon, String slabel) = switch (status) {
+    'pending'  => (EzizaColors.kGold,              Icons.hourglass_top_rounded,        'Pending'),
+    'approved' => (const Color(0xFF0284C7),        Icons.check_circle_outline_rounded, 'Approved'),
+    'paid'     => (EzizaColors.kSuccess,           Icons.payments_rounded,             'Paid'),
+    'rejected' => (EzizaColors.kError,             Icons.cancel_outlined,              'Rejected'),
+    _          => (EzizaColors.kMuted,             Icons.info_outline_rounded,          status),
   };
 
   String fmt(DateTime? dt) =>
       dt != null ? '${dt.day}/${dt.month}/${dt.year}' : '';
 
-  return Container(
-    margin: const EdgeInsets.only(bottom: 8),
+  return PremiumCard(
+    margin: const EdgeInsets.only(bottom: 10),
     padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-        color: EzizaColors.kWhite,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: EzizaColors.kBorder),
-        boxShadow: [
-          BoxShadow(
-              color: EzizaColors.kPurple.withValues(alpha: 0.04),
-              blurRadius: 6,
-              offset: const Offset(0, 2))
-        ]),
+    glow: sc,
     child: Row(children: [
-      Container(
-          padding: const EdgeInsets.all(9),
-          decoration:
-              BoxDecoration(color: sbg, shape: BoxShape.circle),
-          child: Icon(sicon, color: sc, size: 16)),
+      IconBadge(icon: sicon, color: sc, size: 40),
       const SizedBox(width: 12),
       Expanded(
         child: Column(
@@ -141,15 +118,7 @@ Widget payoutHistoryCard(Map<String, dynamic> p) {
           ),
         ]),
       ),
-      Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-            color: sbg, borderRadius: BorderRadius.circular(20)),
-        child: Text(slabel,
-            style: TextStyle(
-                fontSize: 11, fontWeight: FontWeight.w700, color: sc)),
-      ),
+      StatusPill(label: slabel, color: sc),
     ]),
   );
 }
