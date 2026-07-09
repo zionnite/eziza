@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../constants/colors.dart';
 import '../../controllers/auth_controller.dart';
+import '../../main.dart';
 import 'forgot_password_page.dart';
 import 'register_page.dart';
 
@@ -39,7 +40,15 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
     if (email.isEmpty || password.isEmpty) return;
 
     final result = await _auth.signIn(email, password);
-    if (result != 'true' && mounted) {
+    if (!mounted) return;
+    if (result == 'true') {
+      // LoginPage/WelcomePage are pushed routes on top of AuthRouter, not
+      // its inline build output -- AuthRouter's Obx updates reactively
+      // underneath, but that's invisible until we actually clear back to
+      // it. Without this, login silently "does nothing" from the user's
+      // perspective even though the sign-in succeeded.
+      Get.offAll(() => const AuthRouter());
+    } else {
       Get.snackbar('Error', result,
           backgroundColor: EzizaColors.kError,
           colorText: EzizaColors.kWhite,
