@@ -90,6 +90,18 @@ class _EzizaRiderAppState extends State<EzizaRiderApp> {
             fontWeight: FontWeight.w600,
           ),
         ),
+        // Material 3's seeded colorScheme tints bottom sheets/dialogs with
+        // colorScheme.surface by default (a faint purple-grey, not pure
+        // white) unless overridden here.
+        bottomSheetTheme: const BottomSheetThemeData(
+          backgroundColor: EzizaColors.kWhite,
+          modalBackgroundColor: EzizaColors.kWhite,
+          surfaceTintColor: EzizaColors.kWhite,
+        ),
+        dialogTheme: const DialogThemeData(
+          backgroundColor: EzizaColors.kWhite,
+          surfaceTintColor: EzizaColors.kWhite,
+        ),
       ),
       home: const SplashPage(),
     );

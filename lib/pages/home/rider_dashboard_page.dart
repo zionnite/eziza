@@ -1010,7 +1010,6 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
       return;
     }
     final amtCtrl  = TextEditingController();
-    final noteCtrl = TextEditingController();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1039,15 +1038,6 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
                   borderRadius: BorderRadius.circular(12)),
             ),
           ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: noteCtrl,
-            decoration: InputDecoration(
-              labelText: 'Note (optional)',
-              border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12)),
-            ),
-          ),
           const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
@@ -1068,9 +1058,6 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
                     'rider_id':    _rider!.id,
                     'amount':      amount,
                     'status':      'pending',
-                    'note': noteCtrl.text.trim().isEmpty
-                        ? null
-                        : noteCtrl.text.trim(),
                   }, onConflict: 'delivery_id,rider_id');
                   Get.snackbar('Bid placed',
                       'Your bid has been submitted.',
