@@ -2075,16 +2075,18 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
                                 : EzizaColors.kTeal,
                           ),
                           const SizedBox(width: 6),
-                          Text(
-                            needsConfirm
-                                ? 'Package delivered — tap to confirm receipt'
-                                : 'Incoming delivery addressed to you',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: needsConfirm
-                                  ? EzizaColors.kGold
-                                  : EzizaColors.kTeal,
+                          Expanded(
+                            child: Text(
+                              needsConfirm
+                                  ? 'Package delivered — tap to confirm receipt'
+                                  : 'Incoming delivery addressed to you',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: needsConfirm
+                                    ? EzizaColors.kGold
+                                    : EzizaColors.kTeal,
+                              ),
                             ),
                           ),
                         ]),

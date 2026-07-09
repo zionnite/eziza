@@ -1092,12 +1092,14 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
             const Icon(Icons.check_circle_rounded,
                 color: Color(0xFF16A34A), size: 18),
             const SizedBox(width: 8),
-            Text(
-                widget.isRecipient
-                    ? 'You confirmed receipt — delivery complete!'
-                    : 'Receiver has confirmed receipt — delivery complete!',
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
-                    color: Color(0xFF166534))),
+            Expanded(
+              child: Text(
+                  widget.isRecipient
+                      ? 'You confirmed receipt — delivery complete!'
+                      : 'Receiver has confirmed receipt — delivery complete!',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+                      color: Color(0xFF166534))),
+            ),
           ]),
         ),
       ],
