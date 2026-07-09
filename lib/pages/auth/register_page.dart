@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import '../../constants/colors.dart';
 import '../../controllers/auth_controller.dart';
+import '../shared/eula_page.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -214,7 +215,33 @@ class _RegisterPageState extends State<RegisterPage> {
                   validator: (v) =>
                       v != _password.text ? 'Passwords do not match' : null,
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
+                GestureDetector(
+                  onTap: () => Get.to(() => const EulaPage()),
+                  child: RichText(
+                    text: TextSpan(children: [
+                      const TextSpan(
+                        text: 'By creating an account you agree to our ',
+                        style: TextStyle(color: EzizaColors.kMuted, fontSize: 12, height: 1.5),
+                      ),
+                      TextSpan(
+                        text: 'End-User License Agreement',
+                        style: TextStyle(
+                          color: EzizaColors.kPurple,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          decoration: TextDecoration.underline,
+                          decorationColor: EzizaColors.kPurple.withValues(alpha: 0.4),
+                        ),
+                      ),
+                      const TextSpan(
+                        text: '.',
+                        style: TextStyle(color: EzizaColors.kMuted, fontSize: 12, height: 1.5),
+                      ),
+                    ]),
+                  ),
+                ),
+                const SizedBox(height: 20),
                 SizedBox(
                   width: double.infinity,
                   height: 52,

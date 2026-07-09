@@ -8,6 +8,8 @@ import 'customer_delivery_detail_page.dart';
 import 'delivery_tracking_page.dart';
 import 'send_package_page.dart';
 import '../shared/change_password_page.dart';
+import '../shared/delete_account_page.dart';
+import '../shared/eula_page.dart';
 import '../shared/support_tickets_page.dart';
 import 'edit_profile_page.dart';
 import 'security_page.dart';
@@ -705,6 +707,14 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
                     onTap: () {},
                     showTrailing: false,
                   ),
+                  _tileDivider(),
+                  _settingsTile(
+                    icon: Icons.gavel_outlined,
+                    iconColor: Colors.blueGrey,
+                    iconBg: Colors.blueGrey.shade50,
+                    title: 'End-User License Agreement',
+                    onTap: () => Get.to(() => const EulaPage()),
+                  ),
                 ]),
                 const SizedBox(height: 20),
 
@@ -718,6 +728,15 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
                     titleColor: EzizaColors.kError,
                     showTrailing: false,
                     onTap: _confirmSignOut,
+                  ),
+                  _tileDivider(),
+                  _settingsTile(
+                    icon: Icons.delete_forever_rounded,
+                    iconColor: EzizaColors.kError,
+                    iconBg: EzizaColors.kError.withValues(alpha: 0.08),
+                    title: 'Delete Account',
+                    titleColor: EzizaColors.kError,
+                    onTap: () => Get.to(() => const DeleteAccountPage()),
                   ),
                 ]),
 

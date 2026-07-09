@@ -17,6 +17,8 @@ import '../../widgets/delivery_trip_summary.dart';
 import '../../widgets/rating_sheet.dart';
 import '../shared/bank_account_page.dart';
 import '../shared/change_password_page.dart';
+import '../shared/delete_account_page.dart';
+import '../shared/eula_page.dart';
 import '../shared/support_tickets_page.dart';
 import 'earnings_widgets.dart';
 import 'profile_page.dart';
@@ -2937,6 +2939,14 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
                     onTap: () {},
                     showTrailing: false,
                   ),
+                  _acctDivider(),
+                  _acctTile(
+                    icon: Icons.gavel_outlined,
+                    iconColor: Colors.blueGrey,
+                    iconBg: Colors.blueGrey.shade50,
+                    title: 'End-User License Agreement',
+                    onTap: () => Get.to(() => const EulaPage()),
+                  ),
                 ]),
                 const SizedBox(height: 20),
 
@@ -2950,6 +2960,15 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
                     titleColor: EzizaColors.kError,
                     showTrailing: false,
                     onTap: _confirmSignOut,
+                  ),
+                  _acctDivider(),
+                  _acctTile(
+                    icon: Icons.delete_forever_rounded,
+                    iconColor: EzizaColors.kError,
+                    iconBg: EzizaColors.kError.withValues(alpha: 0.08),
+                    title: 'Delete Account',
+                    titleColor: EzizaColors.kError,
+                    onTap: () => Get.to(() => const DeleteAccountPage()),
                   ),
                 ]),
                 const SizedBox(height: 40),

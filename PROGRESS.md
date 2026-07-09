@@ -424,6 +424,33 @@ The app had no branded entry flow at all — a fresh install went straight to `L
 - [ ] **Needs a real on-device test for the email-link → deep-link → reset-password step specifically** — everything else in this flow was verified by code review + `flutter analyze` (can't simulate tapping a real emailed link from this environment). Also needs the Supabase Dashboard's Authentication → URL Configuration → Redirect URLs to include `eziza://reset` (or `eziza://**`) — this is a project-level Auth setting, not something in a migration file, and I have no visibility into whether it's already set.
 - [x] **Fixed 2026-07-15**: `wallet_page.dart`'s `AppLinks` listener matched on `uri.scheme == 'eziza'` only, so an `eziza://reset` link tapped while the wallet page happened to be open would have incorrectly triggered a "Checking your payment…" toast + wallet reload. Now also checks `uri.host == 'wallet-topup-complete'`.
 
+### Account Deletion & EULA (Apple App Store compliance) — BUILT + live-verified 2026-07-16
+
+Apple Guideline 5.1.1(v) requires in-app account deletion for any app that supports account creation. Also added an EULA, linked from signup per explicit request.
+
+**Account deletion — the design was forced by empirical testing, not assumption.** Queried this project's actual live FK constraints (`information_schema`, via a throwaway `debug_check_fk_behavior` RPC, dropped after use) and found:
+- `customers.id → auth.users(id) ON DELETE CASCADE`, but `wallet_transactions.customer_id → customers(id) ON DELETE NO ACTION`
+- `deliveries.rider_id`/`delivery_bids.rider_id`/`earnings_ledger.rider_id`/`rider_payout_requests.rider_id` → `riders(id) ON DELETE NO ACTION`
+- `earnings_ledger.company_id` → `companies(id) ON DELETE NO ACTION`
+
+Live-tested three approaches against a throwaway account with real delivery/wallet history attached before writing any app code:
+1. `auth.admin.deleteUser(uid)` (hard delete) — fails outright the moment any `wallet_transactions` row exists (true for anyone who's ever paid for or been paid for a delivery — the common case): `500, "violates foreign key constraint wallet_transactions_customer_id_fkey"`.
+2. `?should_soft_delete=true` — despite the name, still attempts a real delete under the hood and fails identically for the same reason. Confirmed by testing both with and without a `wallet_transactions` row attached: without one it "succeeds" (misleadingly, since nothing blocked the cascade); with one it 500s.
+3. **Permanent ban** (`auth.admin.updateUserById(uid, { ban_duration: '876000h' })`) — never issues a DELETE against `auth.users` at all, so no FK cascade is ever attempted, regardless of history. Verified: login blocked (`user_banned`), all history-holding rows (`customers`, `wallet_transactions`) untouched.
+
+So the shipped design: **never delete `auth.users`.** Anonymise PII on `customers`/`riders`/`companies` (rows survive — required for delivery/bid/earnings/wallet referential integrity, which other parties and the business have a legitimate ongoing interest in), delete `device_tokens`, then permanently ban the auth user. Same trade-off ride-sharing/delivery apps commonly make for this exact reason.
+
+- [x] `supabase/functions/delete-account/index.ts` — new edge function, verifies the caller's own JWT, anonymises whichever of `customers`/`riders`/`companies` rows exist for them, clears `device_tokens`, bans permanently. Deployed.
+- [x] **Real bug caught by testing, not by review**: the first version set `phone`/`email`/`contact_person` to `null` on `riders`/`companies` without checking the UPDATE's error — `riders.phone` and `companies.email`/`phone`/`contact_person` are all `NOT NULL`, so the whole anonymisation silently failed while the ban still succeeded (account got banned with zero PII actually scrubbed). Caught by adding temporary debug instrumentation to the function, live-testing again, and reading the real error message instead of assuming success from the `{"ok":true}` response. Fixed (those columns use `''` instead of `null`), debug instrumentation stripped before final deploy, and now every step's error is checked and surfaced instead of being silently swallowed.
+- [x] `lib/pages/shared/delete_account_page.dart` — new, shared across all 3 roles. Explains what happens in plain terms (permanently signed out, PII removed, delivery/payment records involving other people kept but unlinked from personal info), requires typing `DELETE` to enable the button (stronger friction than a plain confirm dialog, appropriate for an irreversible action).
+- [x] "Delete Account" tile added next to "Sign Out" in all 3 dashboards' Account tabs (rider/company/customer).
+- [x] `lib/pages/shared/eula_page.dart` — new, content structurally ported from ZeeFashion's `policy.dart` EULA sections, adapted for Eziza's logistics context (added Delivery & Package Handling and Wallet & Payments sections neither needed in a fashion marketplace; dropped nothing).
+- [x] EULA link added to `register_page.dart` ("By creating an account you agree to our End-User License Agreement", tappable, matches ZeeFashion sign_up.dart's pattern) — this is the one place an Eziza account actually gets created; rider/company applications add role data to an already-existing, already-agreed account, so didn't need their own link.
+- [x] Also added a standing "End-User License Agreement" tile to all 3 dashboards' Support sections, so it's reachable after signup too, not just during it.
+- [x] `flutter analyze` clean.
+- [x] **Live-verified 2026-07-16** end-to-end for all 3 role paths (customer-only, rider, company), each with a throwaway account: called the real deployed edge function with a real JWT, confirmed PII correctly anonymised (`full_name`/`phone`/`email`/bank details/docs all scrubbed), confirmed delivery/company rows with real history survive untouched, confirmed login fails with `user_banned` immediately after. All throwaway rows/auth users cleaned up after.
+- [ ] Not yet clicked through the actual app UI by a human (type-DELETE-to-confirm flow, EULA page rendering) — verified via direct API calls only, matching this session's bar
+
 ---
 
 ## Key Credentials & URLs
