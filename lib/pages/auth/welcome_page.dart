@@ -51,35 +51,16 @@ class _WelcomePageState extends State<WelcomePage> with SingleTickerProviderStat
     return Scaffold(
       backgroundColor: EzizaColors.kNavy,
       body: Stack(children: [
-        // ── TOP: hero gradient — 56% of screen ───────────────────
+        // ── TOP: hero image — 56% of screen ───────────────────────
         Positioned(
           top: 0,
           left: 0,
           right: 0,
           height: size.height * 0.56,
-          child: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF1A1A6E), EzizaColors.kPurpleD, EzizaColors.kPurple],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-            child: Center(
-              child: Container(
-                width: 168,
-                height: 168,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.06),
-                  border: Border.all(color: EzizaColors.kGold.withValues(alpha: 0.35), width: 1.5),
-                  boxShadow: [
-                    BoxShadow(color: EzizaColors.kGold.withValues(alpha: 0.2), blurRadius: 50, spreadRadius: 6),
-                  ],
-                ),
-                child: const Icon(Icons.local_shipping_rounded, size: 74, color: EzizaColors.kGold),
-              ),
-            ),
+          child: Image.asset(
+            'assets/images/d.jpg',
+            fit: BoxFit.cover,
+            alignment: Alignment.topCenter,
           ),
         ),
 

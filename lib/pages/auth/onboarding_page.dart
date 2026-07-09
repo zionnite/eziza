@@ -9,54 +9,68 @@ import 'package:path_provider/path_provider.dart';
 import '../../constants/colors.dart';
 import 'welcome_page.dart';
 
-/// First-run intro carousel. Structurally ported from ZeeFashion's
-/// onboarding_screen.dart (full-bleed layer + gradient overlay + glass
-/// bottom card + page dots), but Eziza has no photography assets, so the
-/// "full-bleed layer" is a gradient + large icon instead of a photo -- same
-/// visual weight, matches the icon+gradient hero language already used
-/// throughout the rest of the app (profile/bank/change-password pages).
+/// First-run intro carousel. Ported structurally from ZeeFashion's
+/// onboarding_screen.dart (full-bleed photo + gradient overlay + glass
+/// bottom card + page dots) -- now using real delivery/courier photography
+/// dropped into assets/images/ rather than the icon+gradient stand-in this
+/// page shipped with before those existed.
 class _Slide {
-  final IconData icon;
+  final String image;
   final String tagline;
   final String title;
   final String subtitle;
   final Color accent;
-  final List<Color> bg;
+  final List<Color> overlay; // 4 stops: top → bottom
 
   const _Slide({
-    required this.icon,
+    required this.image,
     required this.tagline,
     required this.title,
     required this.subtitle,
     required this.accent,
-    required this.bg,
+    required this.overlay,
   });
 }
 
 const _slides = [
   _Slide(
-    icon: Icons.local_shipping_rounded,
+    image: 'assets/images/a.jpg',
     tagline: 'WELCOME TO EZIZA',
     title: 'Send Anything,\nAnywhere,\nFast',
     subtitle: 'Request a pickup in seconds and get matched with a nearby rider or logistics company.',
     accent: EzizaColors.kGold,
-    bg: [EzizaColors.kNavy, Color(0xFF1A1A6E), EzizaColors.kPurpleD],
+    overlay: [
+      Color(0xF00D0D3E),
+      Color(0xAA1A1A6E),
+      Color(0x554A1480),
+      Color(0xF00D0D3E),
+    ],
   ),
   _Slide(
-    icon: Icons.location_on_rounded,
+    image: 'assets/images/b.jpg',
     tagline: 'REAL-TIME TRACKING',
     title: 'Watch Your\nPackage\nMove Live',
     subtitle: 'Track your rider on the map from pickup to drop-off, with status updates every step of the way.',
     accent: EzizaColors.kTeal,
-    bg: [EzizaColors.kNavy, Color(0xFF0A2050), EzizaColors.kPurpleD],
+    overlay: [
+      Color(0xF00D0D3E),
+      Color(0xAA0A2050),
+      Color(0x5500C3E3),
+      Color(0xF00D0D3E),
+    ],
   ),
   _Slide(
-    icon: Icons.payments_rounded,
+    image: 'assets/images/c.jpg',
     tagline: 'RIDERS & COMPANIES',
     title: 'Earn on\nYour Own\nSchedule',
     subtitle: 'Bid on delivery jobs, get paid straight to your wallet, and cash out whenever you\'re ready.',
     accent: EzizaColors.kGold,
-    bg: [EzizaColors.kNavy, EzizaColors.kPurpleD, EzizaColors.kPurple],
+    overlay: [
+      Color(0xF00D0D3E),
+      Color(0xAA4A1480),
+      Color(0x556C3483),
+      Color(0xF00D0D3E),
+    ],
   ),
 ];
 
@@ -74,6 +88,7 @@ class _OnboardingPageState extends State<OnboardingPage> with TickerProviderStat
   late final AnimationController _float;
   late final Animation<double> _fadeA;
   late final Animation<Offset> _slideA;
+  late final Animation<double> _scaleA;
   late final Animation<double> _floatA;
 
   @override
@@ -89,6 +104,8 @@ class _OnboardingPageState extends State<OnboardingPage> with TickerProviderStat
 
     _fadeA = CurvedAnimation(parent: _entrance, curve: Curves.easeOut);
     _slideA = Tween<Offset>(begin: const Offset(0, 0.22), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _entrance, curve: Curves.easeOutCubic));
+    _scaleA = Tween<double>(begin: 1.06, end: 1.0)
         .animate(CurvedAnimation(parent: _entrance, curve: Curves.easeOutCubic));
     _floatA = Tween<double>(begin: 0, end: 10).animate(CurvedAnimation(parent: _float, curve: Curves.easeInOut));
 
@@ -137,48 +154,47 @@ class _OnboardingPageState extends State<OnboardingPage> with TickerProviderStat
     return Scaffold(
       backgroundColor: EzizaColors.kNavy,
       body: Stack(children: [
-        // ── 1. Full-bleed gradient layer (swipeable) ─────────────
+        // ── 1. Full-bleed image (swipeable) ─────────────────────
         PageView.builder(
           controller: _pageCtrl,
           onPageChanged: _onPageChanged,
           itemCount: _slides.length,
           physics: const BouncingScrollPhysics(),
-          itemBuilder: (_, i) => _BgLayer(slide: _slides[i], size: size),
+          itemBuilder: (_, i) => _ImageLayer(image: _slides[i].image, scaleAnim: _scaleA, size: size),
         ),
 
-        // ── 2. Floating accent orbs ───────────────────────────────
+        // ── 2. Cinematic gradient overlay ────────────────────────
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 700),
+          curve: Curves.easeInOut,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              stops: const [0.0, 0.3, 0.6, 1.0],
+              colors: slide.overlay,
+            ),
+          ),
+        ),
+
+        // ── 3. Subtle vignette on sides ───────────────────────────
+        Container(
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              center: Alignment.center,
+              radius: 1.2,
+              colors: [Colors.transparent, EzizaColors.kNavy.withValues(alpha: 0.55)],
+            ),
+          ),
+        ),
+
+        // ── 4. Floating accent orbs ───────────────────────────────
         AnimatedBuilder(
           animation: _floatA,
           builder: (_, _) => _Orbs(slide: slide, size: size, float: _floatA.value),
         ),
 
-        // ── 3. Center icon ────────────────────────────────────────
-        Positioned(
-          top: size.height * 0.16,
-          left: 0,
-          right: 0,
-          child: Center(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 500),
-              child: Container(
-                key: ValueKey(_page),
-                width: 140,
-                height: 140,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.06),
-                  border: Border.all(color: slide.accent.withValues(alpha: 0.35), width: 1.5),
-                  boxShadow: [
-                    BoxShadow(color: slide.accent.withValues(alpha: 0.25), blurRadius: 40, spreadRadius: 4),
-                  ],
-                ),
-                child: Icon(slide.icon, size: 62, color: slide.accent),
-              ),
-            ),
-          ),
-        ),
-
-        // ── 4. Top bar: logo + skip ───────────────────────────────
+        // ── 5. Top bar: logo + skip ───────────────────────────────
         Positioned(
           top: padding.top + 14,
           left: 24,
@@ -222,7 +238,25 @@ class _OnboardingPageState extends State<OnboardingPage> with TickerProviderStat
           ),
         ),
 
-        // ── 5. Glass card at bottom ───────────────────────────────
+        // ── 6. Swipe hint (first page only) ──────────────────────
+        if (_page == 0)
+          Positioned(
+            bottom: padding.bottom + 170,
+            left: 0,
+            right: 0,
+            child: FadeTransition(
+              opacity: _fadeA,
+              child: Center(
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.swipe_rounded, size: 14, color: Colors.white.withValues(alpha: 0.3)),
+                  const SizedBox(width: 6),
+                  Text('Swipe to explore', style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 11, letterSpacing: 0.5)),
+                ]),
+              ),
+            ),
+          ),
+
+        // ── 7. Glass card at bottom ───────────────────────────────
         Positioned(
           bottom: 0,
           left: 0,
@@ -230,7 +264,8 @@ class _OnboardingPageState extends State<OnboardingPage> with TickerProviderStat
           child: ClipRRect(
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-              child: Container(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 600),
                 padding: EdgeInsets.fromLTRB(28, 26, 28, padding.bottom + 28),
                 decoration: BoxDecoration(
                   color: EzizaColors.kNavy.withValues(alpha: 0.7),
@@ -243,7 +278,13 @@ class _OnboardingPageState extends State<OnboardingPage> with TickerProviderStat
                     FadeTransition(
                       opacity: _fadeA,
                       child: Row(children: [
-                        Container(width: 20, height: 1.5, color: slide.accent, margin: const EdgeInsets.only(right: 8)),
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 400),
+                          width: 20,
+                          height: 1.5,
+                          decoration: BoxDecoration(color: slide.accent, borderRadius: BorderRadius.circular(1)),
+                          margin: const EdgeInsets.only(right: 8),
+                        ),
                         Text(slide.tagline,
                             style: TextStyle(color: slide.accent, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 2.5)),
                       ]),
@@ -254,7 +295,7 @@ class _OnboardingPageState extends State<OnboardingPage> with TickerProviderStat
                       child: FadeTransition(
                         opacity: _fadeA,
                         child: Text(slide.title,
-                            style: const TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w800, height: 1.08, letterSpacing: -0.6)),
+                            style: const TextStyle(color: Colors.white, fontSize: 38, fontWeight: FontWeight.w800, height: 1.08, letterSpacing: -0.8)),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -263,7 +304,7 @@ class _OnboardingPageState extends State<OnboardingPage> with TickerProviderStat
                       child: FadeTransition(
                         opacity: _fadeA,
                         child: Text(slide.subtitle,
-                            style: TextStyle(color: Colors.white.withValues(alpha: 0.55), fontSize: 14, height: 1.6, fontWeight: FontWeight.w400)),
+                            style: TextStyle(color: Colors.white.withValues(alpha: 0.55), fontSize: 14, height: 1.65, fontWeight: FontWeight.w400, letterSpacing: 0.1)),
                       ),
                     ),
                     const SizedBox(height: 26),
@@ -335,19 +376,18 @@ class _OnboardingPageState extends State<OnboardingPage> with TickerProviderStat
   }
 }
 
-class _BgLayer extends StatelessWidget {
-  final _Slide slide;
+class _ImageLayer extends StatelessWidget {
+  final String image;
+  final Animation<double> scaleAnim;
   final Size size;
-  const _BgLayer({required this.slide, required this.size});
+
+  const _ImageLayer({required this.image, required this.scaleAnim, required this.size});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: size.width,
-      height: size.height,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(colors: slide.bg, begin: Alignment.topLeft, end: Alignment.bottomRight),
-      ),
+    return ScaleTransition(
+      scale: scaleAnim,
+      child: Image.asset(image, width: size.width, height: size.height, fit: BoxFit.cover, alignment: Alignment.topCenter),
     );
   }
 }
@@ -356,6 +396,7 @@ class _Orbs extends StatelessWidget {
   final _Slide slide;
   final Size size;
   final double float;
+
   const _Orbs({required this.slide, required this.size, required this.float});
 
   @override
@@ -374,7 +415,7 @@ class _Orbs extends StatelessWidget {
         ),
       ),
       Positioned(
-        top: size.height * 0.55 - float * 0.4,
+        top: size.height * 0.35 - float * 0.4,
         left: -size.width * 0.08,
         child: Container(
           width: size.width * 0.35,
