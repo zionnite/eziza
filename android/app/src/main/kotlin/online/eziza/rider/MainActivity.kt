@@ -1,4 +1,4 @@
-package com.eziza.eziza_rider
+package online.eziza.rider
 
 import io.flutter.embedding.android.FlutterActivity
 
