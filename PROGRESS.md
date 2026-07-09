@@ -422,7 +422,7 @@ The app had no branded entry flow at all — a fresh install went straight to `L
 - [x] `main.dart`: `EzizaRiderApp` converted to `StatefulWidget` to host the `onAuthStateChange` listener; `home:` is now `SplashPage` instead of the auth router directly; `_AuthRouter` renamed to public `AuthRouter` (referenced by the new pages).
 - [x] `flutter analyze` clean across the whole `lib/` tree.
 - [ ] **Needs a real on-device test for the email-link → deep-link → reset-password step specifically** — everything else in this flow was verified by code review + `flutter analyze` (can't simulate tapping a real emailed link from this environment). Also needs the Supabase Dashboard's Authentication → URL Configuration → Redirect URLs to include `eziza://reset` (or `eziza://**`) — this is a project-level Auth setting, not something in a migration file, and I have no visibility into whether it's already set.
-- [ ] **Noted but not fixed**: `wallet_page.dart`'s existing `AppLinks` listener matches on `uri.scheme == 'eziza'` only (not the specific `wallet-topup-complete` path), so if the wallet page happened to be mounted at the exact moment an `eziza://reset` link was tapped, it would incorrectly treat it as a Paystack return too. Pre-existing looseness, not introduced by this change, and very low real-world likelihood (would need the wallet page open during password reset) — flagged rather than fixed since it's outside this task's scope.
+- [x] **Fixed 2026-07-15**: `wallet_page.dart`'s `AppLinks` listener matched on `uri.scheme == 'eziza'` only, so an `eziza://reset` link tapped while the wallet page happened to be open would have incorrectly triggered a "Checking your payment…" toast + wallet reload. Now also checks `uri.host == 'wallet-topup-complete'`.
 
 ---
 

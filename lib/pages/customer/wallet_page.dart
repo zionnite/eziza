@@ -37,8 +37,12 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     // the OS hands control back to the app and this stream fires. Falls
     // back to a lifecycle-resume refresh below in case the redirect is
     // ever missed (e.g. the user backs out of the browser manually).
+    // Matched on host, not just scheme -- eziza://reset (password recovery)
+    // shares the same scheme and would otherwise also trigger this.
     _linkSub = _appLinks.uriLinkStream.listen((uri) {
-      if (uri.scheme == 'eziza') _onReturnedFromPayment();
+      if (uri.scheme == 'eziza' && uri.host == 'wallet-topup-complete') {
+        _onReturnedFromPayment();
+      }
     });
   }
 
