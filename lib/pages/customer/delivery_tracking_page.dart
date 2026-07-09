@@ -858,6 +858,17 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                 color: EzizaColors.kMuted, height: 1.4)),
       ]);
 
+  Future<void> _callPhone(String phone) async {
+    final uri = Uri(scheme: 'tel', path: phone);
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!launched) {
+      Get.snackbar('Could not open dialler', 'Try dialling $phone manually.',
+          backgroundColor: EzizaColors.kError,
+          colorText: EzizaColors.kWhite,
+          snackPosition: SnackPosition.BOTTOM);
+    }
+  }
+
   Widget _liveCard() {
     final name    = _riderInfo?['full_name']    as String? ?? 'Your Rider';
     final phone   = _riderInfo?['phone']        as String? ?? '';
@@ -911,7 +922,7 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
         ),
         if (phone.isNotEmpty)
           GestureDetector(
-            onTap: () => launchUrl(Uri.parse('tel:$phone')),
+            onTap: () => _callPhone(phone),
             child: Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
