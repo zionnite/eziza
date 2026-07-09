@@ -1356,6 +1356,7 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
     final pickup    = d['pickup_address']   as String? ?? '';
     final dropoff   = d['delivery_address'] as String? ?? '';
     final price     = (d['agreed_price']    as num?)?.toDouble();
+    final desc      = d['package_description'] as String?;
     final createdAt = DateTime.tryParse(d['created_at'] as String? ?? '');
     final id        = d['id'] as String;
     final isTrackable = [
@@ -1492,24 +1493,50 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
                                     '₦${_fmtNum(price)}',
                                     highlight: true),
                             ]),
+                            if (desc != null && desc.isNotEmpty) ...[
+                              const SizedBox(height: 10),
+                              Text(desc,
+                                  style: const TextStyle(
+                                      fontSize: 12,
+                                      color: EzizaColors.kMuted,
+                                      fontStyle: FontStyle.italic,
+                                      height: 1.3),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis),
+                            ],
                           ],
                         ),
                       ),
 
-                      // Footer: view details link + track button
+                      // Footer: view details button + track button
                       Padding(
                         padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
                         child: Row(children: [
-                          const Row(children: [
-                            Text('View Details',
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: EzizaColors.kPurpleD)),
-                            SizedBox(width: 3),
-                            Icon(Icons.arrow_forward_rounded,
-                                size: 12, color: EzizaColors.kPurpleD),
-                          ]),
+                          GestureDetector(
+                            onTap: () => _openDetail(id),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 7),
+                              decoration: BoxDecoration(
+                                color: EzizaColors.kPurple.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                    color: EzizaColors.kPurpleD.withValues(alpha: 0.25)),
+                              ),
+                              child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                Text('View Details',
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: EzizaColors.kPurpleD)),
+                                SizedBox(width: 3),
+                                Icon(Icons.arrow_forward_rounded,
+                                    size: 12, color: EzizaColors.kPurpleD),
+                              ]),
+                            ),
+                          ),
                           const Spacer(),
                           if (isTrackable)
                             GestureDetector(
