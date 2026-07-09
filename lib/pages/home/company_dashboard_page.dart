@@ -2203,86 +2203,118 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
         : null;
     final status  = d['status'] as String? ?? 'assigned';
     final delivId = d['id'] as String;
+    final statusColor = _statusText(status);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-          color: EzizaColors.kWhite,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-              color: EzizaColors.kGold.withValues(alpha: 0.35)),
-          boxShadow: [
-            BoxShadow(
-                color: EzizaColors.kGold.withValues(alpha: 0.08),
-                blurRadius: 8,
-                offset: const Offset(0, 2))
-          ]),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Expanded(
-              child: _routeLabel(
-                  d['pickup_address'], d['delivery_address'])),
-          const SizedBox(width: 8),
-          _chip(_statusLabel(status), _statusText(status),
-              _statusBg(status)),
-        ]),
-        const SizedBox(height: 10),
-        if (assignedRider != null)
-          Row(children: [
-            const Icon(Icons.two_wheeler_rounded,
-                size: 14, color: EzizaColors.kMuted),
-            const SizedBox(width: 6),
-            Text('Assigned: ${assignedRider['full_name'] ?? ''}',
-                style: const TextStyle(
-                    fontSize: 12, color: EzizaColors.kMuted)),
-          ])
-        else ...[
-          const Text('No rider assigned yet',
-              style: TextStyle(fontSize: 12, color: EzizaColors.kMuted)),
-          const SizedBox(height: 8),
-          if (_assigning)
-            const Center(
-                child: SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: EzizaColors.kPurpleD)))
-          else if (_riders.isEmpty)
-            const Text('Add riders to your team first',
-                style: TextStyle(
-                    fontSize: 11,
-                    color: EzizaColors.kMuted,
-                    fontStyle: FontStyle.italic))
-          else
-            GestureDetector(
-              onTap: () => _showAssignSheet(delivId),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                    color: EzizaColors.kPurple.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                        color: EzizaColors.kPurpleD
-                            .withValues(alpha: 0.3))),
-                child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                  Icon(Icons.person_add_rounded,
-                      size: 14, color: EzizaColors.kPurpleD),
-                  SizedBox(width: 6),
-                  Text('Assign a Rider',
-                      style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: EzizaColors.kPurpleD)),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+            color: EzizaColors.kWhite,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: statusColor.withValues(alpha: 0.25)),
+            boxShadow: [
+              BoxShadow(
+                  color: statusColor.withValues(alpha: 0.08),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4))
+            ]),
+        child: IntrinsicHeight(
+          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Container(width: 4, color: statusColor),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                          color: statusColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10)),
+                      child: Icon(_statusIcon(status), size: 18, color: statusColor),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(child: _routeLabel(d['pickup_address'], d['delivery_address'])),
+                    const SizedBox(width: 8),
+                    _chip(_statusLabel(status), statusColor, _statusBg(status)),
+                  ]),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                        color: EzizaColors.kSurface,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: EzizaColors.kBorder)),
+                    child: assignedRider != null
+                        ? Row(children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                  color: EzizaColors.kPurple.withValues(alpha: 0.1),
+                                  shape: BoxShape.circle),
+                              child: const Icon(Icons.two_wheeler_rounded,
+                                  size: 14, color: EzizaColors.kPurpleD),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text('Assigned to ${assignedRider['full_name'] ?? ''}',
+                                  style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: EzizaColors.kText),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis),
+                            ),
+                          ])
+                        : Row(children: [
+                            const Icon(Icons.person_off_outlined,
+                                size: 16, color: EzizaColors.kMuted),
+                            const SizedBox(width: 8),
+                            const Expanded(
+                              child: Text('No rider assigned yet',
+                                  style: TextStyle(fontSize: 12, color: EzizaColors.kMuted)),
+                            ),
+                            if (_assigning)
+                              const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2, color: EzizaColors.kPurpleD))
+                            else if (_riders.isEmpty)
+                              const Text('Add riders first',
+                                  style: TextStyle(
+                                      fontSize: 11,
+                                      color: EzizaColors.kMuted,
+                                      fontStyle: FontStyle.italic))
+                            else
+                              GestureDetector(
+                                onTap: () => _showAssignSheet(delivId),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                          colors: [EzizaColors.kPurple, EzizaColors.kPurpleD]),
+                                      borderRadius: BorderRadius.circular(20)),
+                                  child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                                    Icon(Icons.person_add_rounded, size: 12, color: Colors.white),
+                                    SizedBox(width: 5),
+                                    Text('Assign',
+                                        style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.white)),
+                                  ]),
+                                ),
+                              ),
+                          ]),
+                  ),
                 ]),
               ),
             ),
-        ],
-      ]),
+          ]),
+        ),
+      ),
     );
   }
 
@@ -2290,75 +2322,158 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
     final amount  = (bid['amount'] as num?)?.toDouble() ?? 0;
     final delivId = (bid['delivery_id'] as String? ?? '').substring(0, 8);
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
           color: EzizaColors.kWhite,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: EzizaColors.kBorder)),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: EzizaColors.kBorder),
+          boxShadow: [
+            BoxShadow(
+                color: EzizaColors.kPurple.withValues(alpha: 0.04),
+                blurRadius: 6,
+                offset: const Offset(0, 2))
+          ]),
       child: Row(children: [
-        const Icon(Icons.gavel_rounded,
-            size: 16, color: EzizaColors.kPurpleD),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text('Delivery #$delivId…',
-              style: const TextStyle(
-                  fontSize: 13, color: EzizaColors.kText)),
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+              color: EzizaColors.kPurple.withValues(alpha: 0.1), shape: BoxShape.circle),
+          child: const Icon(Icons.gavel_rounded, size: 16, color: EzizaColors.kPurpleD),
         ),
-        Text('₦${amount.toStringAsFixed(0)}',
-            style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                color: EzizaColors.kText)),
-        const SizedBox(width: 8),
-        _chip('Pending', EzizaColors.kMuted, const Color(0xFFF5F5F5)),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Delivery #$delivId…',
+                style: const TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w700, color: EzizaColors.kText)),
+            const SizedBox(height: 2),
+            const Text('Awaiting sender\'s decision',
+                style: TextStyle(fontSize: 11, color: EzizaColors.kMuted)),
+          ]),
+        ),
+        Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Text('₦${amount.toStringAsFixed(0)}',
+              style: const TextStyle(
+                  fontSize: 14, fontWeight: FontWeight.w800, color: EzizaColors.kText)),
+          const SizedBox(height: 4),
+          _chip('Pending', EzizaColors.kGold, const Color(0xFFFFF8E1)),
+        ]),
       ]),
     );
   }
 
-  Widget _openDeliveryCard(Map<String, dynamic> d) => Container(
+  Widget _openDeliveryCard(Map<String, dynamic> d) {
+    final createdAt = DateTime.tryParse(d['created_at'] as String? ?? '');
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
         margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
             color: EzizaColors.kWhite,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: EzizaColors.kBorder)),
-        child:
-            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
+            border: Border.all(color: EzizaColors.kBorder),
+            boxShadow: [
+              BoxShadow(
+                  color: EzizaColors.kPurple.withValues(alpha: 0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3))
+            ]),
+        child: IntrinsicHeight(
+          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Container(
+                width: 4,
+                decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                        colors: [EzizaColors.kPurple, EzizaColors.kPurpleD],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter))),
             Expanded(
-                child: _routeLabel(
-                    d['pickup_address'], d['delivery_address'])),
-            const SizedBox(width: 8),
-            GestureDetector(
-              onTap: () => _showBidSheet(d),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: [
-                      EzizaColors.kPurple,
-                      EzizaColors.kPurpleD
-                    ]),
-                    borderRadius: BorderRadius.circular(20)),
-                child: const Text('Place Bid',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700)),
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  _routeLabel(d['pickup_address'], d['delivery_address']),
+                  const SizedBox(height: 8),
+                  Wrap(spacing: 6, runSpacing: 4, children: [
+                    if (createdAt != null)
+                      _metaPill(Icons.access_time_rounded, _ago(createdAt), EzizaColors.kMuted),
+                    if (d['pickup_state'] != null)
+                      _metaPill(Icons.location_city_rounded, d['pickup_state'] as String, EzizaColors.kNavy),
+                  ]),
+                  if (d['package_description'] != null &&
+                      (d['package_description'] as String).isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(d['package_description'] as String,
+                        style: const TextStyle(
+                            fontSize: 12,
+                            color: EzizaColors.kMuted,
+                            fontStyle: FontStyle.italic,
+                            height: 1.3),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
+                  ],
+                  const SizedBox(height: 12),
+                  GestureDetector(
+                    onTap: () => _showBidSheet(d),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 11),
+                      decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                              colors: [EzizaColors.kPurple, EzizaColors.kPurpleD]),
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
+                                color: EzizaColors.kPurpleD.withValues(alpha: 0.25),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3))
+                          ]),
+                      child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        Icon(Icons.gavel_rounded, size: 14, color: Colors.white),
+                        SizedBox(width: 6),
+                        Text('Place a Bid',
+                            style: TextStyle(
+                                fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
+                      ]),
+                    ),
+                  ),
+                ]),
               ),
             ),
           ]),
-          if (d['package_description'] != null) ...[
-            const SizedBox(height: 6),
-            Text(d['package_description'] as String,
-                style: const TextStyle(
-                    fontSize: 11, color: EzizaColors.kMuted),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis),
-          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _metaPill(IconData icon, String label, Color color) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: color.withValues(alpha: 0.2))),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: 10, color: color),
+          const SizedBox(width: 4),
+          Text(label,
+              style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w600)),
         ]),
       );
+
+  String _ago(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 1) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    return '${diff.inDays}d ago';
+  }
+
+  IconData _statusIcon(String s) => switch (s) {
+        'assigned'  => Icons.assignment_ind_rounded,
+        'picked_up' => Icons.local_shipping_rounded,
+        'delivered' => Icons.check_circle_rounded,
+        _           => Icons.inventory_2_outlined,
+      };
 
   Widget _historyCard(Map<String, dynamic> d) {
     final price    = (d['agreed_price'] as num?)?.toDouble() ?? 0;
