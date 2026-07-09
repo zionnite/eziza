@@ -898,6 +898,17 @@ class _RiderMapPageState extends State<RiderMapPage> {
     ); // PopScope
   }
 
+  Future<void> _callPhone(String phone) async {
+    final uri = Uri(scheme: 'tel', path: phone);
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!launched) {
+      Get.snackbar('Could not open dialler', 'Try dialling $phone manually.',
+          backgroundColor: EzizaColors.kError,
+          colorText: EzizaColors.kWhite,
+          snackPosition: SnackPosition.BOTTOM);
+    }
+  }
+
   Widget _bottomContent() {
     final isPickup = _phase == 'to_pickup';
     final contact  = isPickup ? _pickupContact  : _dropoffContact;
@@ -970,7 +981,7 @@ class _RiderMapPageState extends State<RiderMapPage> {
       if (phone.isNotEmpty) ...[
         const SizedBox(height: 10),
         GestureDetector(
-          onTap: () => launchUrl(Uri.parse('tel:$phone')),
+          onTap: () => _callPhone(phone),
           child: Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),

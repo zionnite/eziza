@@ -1,10 +1,22 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../constants/colors.dart';
 import 'route_preview_map.dart';
+
+Future<void> _callPhone(String phone) async {
+  final uri = Uri(scheme: 'tel', path: phone);
+  final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+  if (!launched) {
+    Get.snackbar('Could not open dialler', 'Try dialling $phone manually.',
+        backgroundColor: EzizaColors.kError,
+        colorText: EzizaColors.kWhite,
+        snackPosition: SnackPosition.BOTTOM);
+  }
+}
 
 double _distKm(double lat1, double lng1, double lat2, double lng2) {
   const r = 6371.0;
@@ -179,7 +191,7 @@ class DeliveryTripSummary extends StatelessWidget {
         ),
         if (phone != null && phone.isNotEmpty)
           GestureDetector(
-            onTap: () => launchUrl(Uri.parse('tel:$phone')),
+            onTap: () => _callPhone(phone),
             child: Container(
               padding: const EdgeInsets.all(9),
               decoration: BoxDecoration(color: color, shape: BoxShape.circle),
