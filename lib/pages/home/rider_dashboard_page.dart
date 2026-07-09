@@ -390,7 +390,7 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
                 _openDeliveries.removeWhere((r) => r['id'] == d['id']);
                 _activeDeliveries.insert(0, d);
               });
-              Get.snackbar('Bid Accepted! 🎉',
+              Get.snackbar('Offer Accepted! 🎉',
                   'You have been assigned a delivery. Head to pickup.',
                   backgroundColor: EzizaColors.kSuccess,
                   colorText: EzizaColors.kWhite,
@@ -506,7 +506,7 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
               _openDeliveries.removeWhere((r) => r['id'] == delivId);
               _activeDeliveries.insert(0, d);
             });
-            Get.snackbar('Bid Accepted! 🎉',
+            Get.snackbar('Offer Accepted! 🎉',
                 'You have been assigned a delivery. Head to pickup.',
                 backgroundColor: EzizaColors.kSuccess,
                 colorText: EzizaColors.kWhite,
@@ -1001,8 +1001,8 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
   void _showBidSheet(Map<String, dynamic> delivery) {
     if (_isCompanyRider) {
       Get.snackbar(
-        'Bidding Disabled',
-        'You\'re part of a company fleet. Your company bids on deliveries on your behalf.',
+        'Offers Disabled',
+        'You\'re part of a company fleet. Your company makes offers on deliveries on your behalf.',
         backgroundColor: EzizaColors.kPurpleD,
         colorText: EzizaColors.kWhite,
         snackPosition: SnackPosition.BOTTOM,
@@ -1020,7 +1020,7 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
             24, 24, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
         child: SingleChildScrollView(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Text('Place a Bid',
+          const Text('Make an Offer',
               style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
@@ -1059,20 +1059,20 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
                     'amount':      amount,
                     'status':      'pending',
                   }, onConflict: 'delivery_id,rider_id');
-                  Get.snackbar('Bid placed',
-                      'Your bid has been submitted.',
+                  Get.snackbar('Offer sent',
+                      'Your offer has been submitted.',
                       backgroundColor: EzizaColors.kSuccess,
                       colorText: EzizaColors.kWhite,
                       snackPosition: SnackPosition.BOTTOM);
                 } catch (_) {
-                  Get.snackbar('Could not place bid',
+                  Get.snackbar('Could not send offer',
                       'Please try again.',
                       backgroundColor: EzizaColors.kError,
                       colorText: EzizaColors.kWhite,
                       snackPosition: SnackPosition.BOTTOM);
                 }
               },
-              child: const Text('Submit Bid'),
+              child: const Text('Submit Offer'),
             ),
           ),
         ]),
@@ -1355,7 +1355,7 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
           const SizedBox(height: 3),
           Text(
             _isOnline
-                ? 'Tap to browse and place bids'
+                ? 'Tap to browse and make offers'
                 : 'Toggle online to start receiving requests',
             style: const TextStyle(color: Colors.white60, fontSize: 12),
           ),
@@ -1791,7 +1791,7 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
                                     const SizedBox(height: 24),
                                   ],
                                   if (!_isCompanyRider) ...[
-                                    _sectionHeader('Available to Bid',
+                                    _sectionHeader('Open for Offers',
                                         Icons.inbox_rounded,
                                         const Color(0xFF0284C7),
                                         badge: _openDeliveries.isNotEmpty
@@ -2561,9 +2561,9 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
                               color: EzizaColors.kPurpleD.withValues(alpha: 0.25),
                               blurRadius: 8, offset: const Offset(0, 3))]),
                       child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Icon(Icons.gavel_rounded, size: 14, color: Colors.white),
+                        Icon(Icons.local_offer_rounded, size: 14, color: Colors.white),
                         SizedBox(width: 6),
-                        Text('Place a Bid', style: TextStyle(fontSize: 12,
+                        Text('Make an Offer', style: TextStyle(fontSize: 12,
                             fontWeight: FontWeight.w800, color: Colors.white)),
                       ]),
                     ),

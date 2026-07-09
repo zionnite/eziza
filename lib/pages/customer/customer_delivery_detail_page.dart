@@ -175,16 +175,16 @@ class _CustomerDeliveryDetailPageState
         bidId: bid['id'] as String,
         customerId: user.id,
       );
-      _snack('Bid accepted! Your package is being arranged.');
+      _snack('Offer accepted! Your package is being arranged.');
       await _load();
     } on PostgrestException catch (e) {
       if (e.message.contains('Insufficient wallet balance')) {
         await _showInsufficientBalanceDialog();
       } else {
-        _snack('Could not accept bid. Please try again.');
+        _snack('Could not accept offer. Please try again.');
       }
     } catch (_) {
-      _snack('Could not accept bid. Please try again.');
+      _snack('Could not accept offer. Please try again.');
     }
     if (mounted) setState(() => _accepting = false);
   }
@@ -196,7 +196,7 @@ class _CustomerDeliveryDetailPageState
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Insufficient Balance'),
         content: const Text(
-          'Your wallet balance is too low to accept this bid. Top up your wallet and try again.',
+          'Your wallet balance is too low to accept this offer. Top up your wallet and try again.',
         ),
         actions: [
           TextButton(
@@ -766,7 +766,7 @@ class _CustomerDeliveryDetailPageState
       (
         'open',
         'Request Placed',
-        'Your delivery is open for bids',
+        'Your delivery is open for offers',
         Icons.receipt_long_outlined,
       ),
       (
@@ -1832,8 +1832,8 @@ class _CustomerDeliveryDetailPageState
 
     return _sectionCard(
       header: _sectionHeader(
-        isOpen ? Icons.gavel_rounded : Icons.check_circle_rounded,
-        isOpen ? 'Bids Received' : 'Accepted Bid',
+        isOpen ? Icons.local_offer_rounded : Icons.check_circle_rounded,
+        isOpen ? 'Offers Received' : 'Accepted Offer',
         badge: isOpen && pendingBids.isNotEmpty
             ? '${pendingBids.length}'
             : null,
@@ -1859,7 +1859,7 @@ class _CustomerDeliveryDetailPageState
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'No bids yet. Riders and companies can bid for 24h.',
+                      'No offers yet. Riders and companies can make an offer for 24h.',
                       style: TextStyle(
                         fontSize: 12,
                         color: EzizaColors.kMuted,
@@ -2141,7 +2141,7 @@ class _CustomerDeliveryDetailPageState
                             ),
                             SizedBox(width: 6),
                             Text(
-                              'Accept This Bid',
+                              'Accept This Offer',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w800,
@@ -2179,14 +2179,14 @@ class _CustomerDeliveryDetailPageState
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
-                  Icons.gavel_rounded,
+                  Icons.local_offer_rounded,
                   color: Colors.white,
                   size: 28,
                 ),
               ),
               const SizedBox(height: 16),
               const Text(
-                'Accept Bid?',
+                'Accept Offer?',
                 style: TextStyle(
                   fontWeight: FontWeight.w800,
                   fontSize: 18,
@@ -2195,8 +2195,8 @@ class _CustomerDeliveryDetailPageState
               ),
               const SizedBox(height: 8),
               Text(
-                'Accept this bid of ₦${amount.toStringAsFixed(0)}?\n'
-                'All other bids will be declined.',
+                'Accept this offer of ₦${amount.toStringAsFixed(0)}?\n'
+                'All other offers will be declined.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: EzizaColors.kMuted,
@@ -2390,7 +2390,7 @@ class _CustomerDeliveryDetailPageState
   };
 
   String _statusSubtitle(String s) => switch (s) {
-    'open' => 'Waiting for bids',
+    'open' => 'Waiting for offers',
     'assigned' => 'Rider heading to pickup',
     'awaiting_pickup_confirm' =>
       widget.isRecipient

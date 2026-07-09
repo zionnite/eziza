@@ -1078,7 +1078,7 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
               ],
             ),
             child: Row(children: [
-              _floatStat('$open', 'Awaiting\nBid', EzizaColors.kPurpleD),
+              _floatStat('$open', 'Awaiting\nOffer', EzizaColors.kPurpleD),
               _floatDiv(),
               _floatStat('$inTransit', 'In\nTransit', const Color(0xFF0284C7)),
               _floatDiv(),
@@ -1367,7 +1367,7 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
 
     // Contextual banner (custom_fit pattern — only for actionable states)
     final String? bannerMsg = switch (status) {
-      'open'                    => 'Waiting for rider bids',
+      'open'                    => 'Waiting for rider offers',
       'awaiting_pickup_confirm' => 'Rider arrived — confirm handoff to start delivery',
       'delivered'               => 'Package delivered — confirm receipt to complete',
       _                         => null,
@@ -2260,7 +2260,7 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
         'open' => (
             EzizaColors.kPurpleD,
             const Color(0xFFF3E5F5),
-            Icons.gavel_rounded,
+            Icons.local_offer_rounded,
           ),
         'assigned' => (
             const Color(0xFF0284C7),
@@ -2422,7 +2422,7 @@ class _CustomerDashboardPageState extends State<CustomerDashboardPage>
       _                         => (EzizaColors.kMuted,      const Color(0xFFF5F5F5)),
     };
     final label = switch (status) {
-      'open'                    => 'Awaiting Bids',
+      'open'                    => 'Awaiting Offers',
       'assigned'                => 'Rider Assigned',
       'awaiting_pickup_confirm' => isRecipient ? 'Awaiting Handoff' : 'Confirm Handoff',
       'picked_up'               => 'In Transit',

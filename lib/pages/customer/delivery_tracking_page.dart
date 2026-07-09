@@ -852,7 +852,7 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
         ]),
         SizedBox(height: 10),
         Text(
-            'Your request is open for bids. Once a rider is assigned, '
+            'Your request is open for offers. Once a rider is assigned, '
             'their live location will appear here.',
             style: TextStyle(fontSize: 13,
                 color: EzizaColors.kMuted, height: 1.4)),

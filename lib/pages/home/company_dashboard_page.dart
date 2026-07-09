@@ -292,7 +292,7 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
           _activeDeliveries.insert(0, Map<String, dynamic>.from(d));
         });
         Get.snackbar(
-          'Bid Accepted! 🎉',
+          'Offer Accepted! 🎉',
           'Your company won a delivery — assign it to a rider.',
           backgroundColor: EzizaColors.kSuccess,
           colorText: EzizaColors.kWhite,
@@ -316,10 +316,10 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
         'status':      'pending',
       }, onConflict: 'delivery_id,company_id');
       _bidCtrl.clear();
-      _snack('Bid of ₦${amount.toStringAsFixed(0)} submitted.');
+      _snack('Offer of ₦${amount.toStringAsFixed(0)} submitted.');
       await _load();
     } catch (e) {
-      _snack('Could not place bid: ${e.toString()}');
+      _snack('Could not send offer: ${e.toString()}');
     }
     if (mounted) setState(() => _bidding = false);
   }
@@ -673,7 +673,7 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
                   const SizedBox(height: 3),
                   Text(
                     _openDeliveries.isNotEmpty
-                        ? 'Place bids to win new jobs'
+                        ? 'Make offers to win new jobs'
                         : 'New requests will appear here',
                     style: const TextStyle(
                         color: Colors.white60, fontSize: 12),
@@ -849,7 +849,7 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
                                   letterSpacing: -0.3)),
                           const SizedBox(height: 3),
                           Text(
-                            '${_activeDeliveries.length + _jobHistory.length} total · ${pendingBids.length} bid${pendingBids.length == 1 ? '' : 's'} pending',
+                            '${_activeDeliveries.length + _jobHistory.length} total · ${pendingBids.length} offer${pendingBids.length == 1 ? '' : 's'} pending',
                             style: const TextStyle(
                                 fontSize: 13, color: Colors.white60),
                           ),
@@ -1009,8 +1009,8 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
                             const SizedBox(height: 20),
                           ],
                           if (pendingBids.isNotEmpty) ...[
-                            _sectionLabel('Your Pending Bids',
-                                Icons.gavel_rounded, EzizaColors.kPurpleD),
+                            _sectionLabel('Your Pending Offers',
+                                Icons.local_offer_rounded, EzizaColors.kPurpleD),
                             const SizedBox(height: 10),
                             ...pendingBids.map(_pendingBidCard),
                             const SizedBox(height: 20),
@@ -2341,7 +2341,7 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
               color: EzizaColors.kPurple.withValues(alpha: 0.1), shape: BoxShape.circle),
-          child: const Icon(Icons.gavel_rounded, size: 16, color: EzizaColors.kPurpleD),
+          child: const Icon(Icons.local_offer_rounded, size: 16, color: EzizaColors.kPurpleD),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -2431,9 +2431,9 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
                                 offset: const Offset(0, 3))
                           ]),
                       child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Icon(Icons.gavel_rounded, size: 14, color: Colors.white),
+                        Icon(Icons.local_offer_rounded, size: 14, color: Colors.white),
                         SizedBox(width: 6),
-                        Text('Place a Bid',
+                        Text('Make an Offer',
                             style: TextStyle(
                                 fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
                       ]),
@@ -2809,7 +2809,7 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-            const Text('Place a Bid',
+            const Text('Make an Offer',
                 style: TextStyle(
                     fontSize: 18, fontWeight: FontWeight.w800, color: EzizaColors.kText)),
             const SizedBox(height: 16),
@@ -2825,7 +2825,7 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
                 ? const Center(
                     child: CircularProgressIndicator(
                         color: EzizaColors.kPurpleD))
-                : _gradientBtn('Submit Bid', () {
+                : _gradientBtn('Submit Offer', () {
                     final amt =
                         double.tryParse(_bidCtrl.text.trim());
                     if (amt == null || amt <= 0) {

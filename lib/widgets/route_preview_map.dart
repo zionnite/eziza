@@ -5,9 +5,10 @@ import 'package:latlong2/latlong.dart';
 import '../constants/colors.dart';
 
 /// Small, interactive-but-static-feeling map preview showing the pickup and
-/// drop-off pins for a delivery. Used before a rider/company commits to a
-/// bid so they can actually see where the job is and roughly how far apart
-/// the two points are, instead of bidding on two lines of address text.
+/// drop-off pins for a delivery. Used before a rider/company commits to an
+/// offer so they can actually see where the job is and roughly how far
+/// apart the two points are, instead of committing off two lines of
+/// address text.
 class RoutePreviewMap extends StatelessWidget {
   final double pickupLat;
   final double pickupLng;

@@ -3,7 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { json } from '../_shared/cors.ts'
 
 // Triggered by DB webhook on delivery_bids UPDATE when status → 'accepted'.
-// Notifies the winning rider or company that their bid was accepted.
+// Notifies the winning rider or company that their offer was accepted.
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -62,8 +62,8 @@ serve(async (req) => {
       headers: { 'Content-Type': 'application/json', Authorization: authHeader },
       body: JSON.stringify({
         token: tokenRow.token,
-        title: '🎉 Bid Accepted!',
-        body: `Your bid${amountStr} was accepted. Head to the pickup location now!`,
+        title: '🎉 Offer Accepted!',
+        body: `Your offer${amountStr} was accepted. Head to the pickup location now!`,
         data: {
           type: 'bid_accepted',
           delivery_id: record.delivery_id as string,

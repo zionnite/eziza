@@ -3,7 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { json } from '../_shared/cors.ts'
 
 // Triggered by Supabase DB webhook on delivery_bids INSERT.
-// Notifies the customer that a new bid has arrived on their delivery.
+// Notifies the customer that a new offer has arrived on their delivery.
 //
 // Supabase Dashboard → Database → Webhooks → New:
 //   Table: delivery_bids, Event: INSERT, URL: .../functions/v1/notify-bid-placed
@@ -47,8 +47,8 @@ serve(async (req) => {
       headers: { 'Content-Type': 'application/json', Authorization: authHeader },
       body:    JSON.stringify({
         token: tokenRow.token,
-        title: '📬 New Bid Received',
-        body:  'Someone has placed a bid on your delivery request.',
+        title: '📬 New Offer Received',
+        body:  'Someone has made an offer on your delivery request.',
         data:  { type: 'bid_placed', delivery_id: deliveryId },
       }),
     })

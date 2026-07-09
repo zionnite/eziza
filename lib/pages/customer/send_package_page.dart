@@ -356,7 +356,7 @@ class _SendPackagePageState extends State<SendPackagePage>
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Riders and companies can bid on your request for 24 hours. '
+                        'Riders and companies can make an offer on your request for 24 hours. '
                         "You'll review and accept the best offer.",
                         style: TextStyle(
                             fontSize: 12,

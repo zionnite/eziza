@@ -29,12 +29,12 @@ double _distKm(double lat1, double lng1, double lat2, double lng2) {
 
 String _fmtKm(double km) => km < 1 ? '${(km * 1000).round()} m' : '${km.toStringAsFixed(1)} km';
 
-/// Uber/Bolt-style trip summary shown before committing to a bid: full
+/// Uber/Bolt-style trip summary shown before committing to an offer: full
 /// pickup/drop-off addresses on a route timeline, a map preview, trip and
 /// (for a rider, if their live location is known) rider-to-pickup distance,
 /// and sender/receiver contact cards with a tap-to-call button. Shared
-/// between rider_dashboard_page.dart and company_dashboard_page.dart's bid
-/// sheets so both look and behave identically.
+/// between rider_dashboard_page.dart and company_dashboard_page.dart's
+/// offer sheets so both look and behave identically.
 class DeliveryTripSummary extends StatelessWidget {
   final Map<String, dynamic> delivery;
   final double? riderLat;

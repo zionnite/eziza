@@ -66,7 +66,7 @@ const _slides = [
     tagline: 'RIDERS & COMPANIES',
     title: 'Earn on\nYour Own\nSchedule',
     subtitle:
-        'Bid on delivery jobs, get paid straight to your wallet, and cash out whenever you\'re ready.',
+        'Make offers on delivery jobs, get paid straight to your wallet, and cash out whenever you\'re ready.',
     accent: EzizaColors.kGold,
     overlay: [
       Color(0xF00D0D3E),
