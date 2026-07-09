@@ -7,6 +7,7 @@ import '../../controllers/auth_controller.dart';
 import '../../models/delivery.dart';
 import '../../models/payout_request.dart';
 import '../../services/supabase_service.dart';
+import '../../utils/currency.dart';
 
 class EarningsPage extends StatefulWidget {
   const EarningsPage({super.key});
@@ -67,7 +68,7 @@ class _EarningsPageState extends State<EarningsPage> {
       return;
     }
 
-    final amountCtrl  = TextEditingController(text: balance.toStringAsFixed(0));
+    final amountCtrl  = TextEditingController(text: formatAmount(balance));
     final bankCtrl    = TextEditingController(text: rider.bankName ?? '');
     final accNumCtrl  = TextEditingController(text: rider.accountNumber ?? '');
     final accNameCtrl = TextEditingController(text: rider.accountName ?? '');
@@ -114,9 +115,12 @@ class _EarningsPageState extends State<EarningsPage> {
                   controller: amountCtrl,
                   label: 'Amount (₦)',
                   keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    ThousandsSeparatorInputFormatter(),
+                  ],
                   validator: (v) {
-                    final amt = double.tryParse(v?.trim() ?? '');
+                    final amt = parseFormattedAmount(v?.trim() ?? '');
                     if (amt == null || amt <= 0) return 'Enter a valid amount';
                     if (amt > balance) {
                       return 'Cannot exceed balance (${_naira.format(balance)})';
@@ -179,7 +183,7 @@ class _EarningsPageState extends State<EarningsPage> {
                               final result =
                                   await SupabaseService.requestPayout(
                                 riderId:       rider.id,
-                                amount:        double.parse(amountCtrl.text.trim()),
+                                amount:        parseFormattedAmount(amountCtrl.text.trim())!,
                                 bankName:      bankCtrl.text.trim(),
                                 accountNumber: accNumCtrl.text.trim(),
                                 accountName:   accNameCtrl.text.trim(),

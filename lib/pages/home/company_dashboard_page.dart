@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../constants/colors.dart';
 import '../../controllers/auth_controller.dart';
+import '../../utils/currency.dart';
 import '../../widgets/delivery_trip_summary.dart';
 import '../shared/bank_account_page.dart';
 import '../shared/change_password_page.dart';
@@ -318,7 +319,7 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
         'status':      'pending',
       }, onConflict: 'delivery_id,company_id');
       _bidCtrl.clear();
-      _snack('Offer of ₦${amount.toStringAsFixed(0)} submitted.');
+      _snack('Offer of ${formatNaira(amount)} submitted.');
       await _load();
     } catch (e) {
       _snack('Could not send offer: ${e.toString()}');
@@ -1500,7 +1501,7 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
                           letterSpacing: -0.3)),
                   const SizedBox(height: 3),
                   Text(
-                    '₦${balance.toStringAsFixed(2)} available',
+                    '${formatNairaDecimal(balance)} available',
                     style: const TextStyle(
                         fontSize: 13, color: Colors.white60),
                   ),
@@ -1535,7 +1536,7 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
                       color: Colors.white54,
                       fontWeight: FontWeight.w600)),
               const SizedBox(height: 4),
-              Text('₦${balance.toStringAsFixed(2)}',
+              Text(formatNairaDecimal(balance),
                   style: const TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.w800,
@@ -1543,17 +1544,17 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
               if (hasPending) ...[
                 const SizedBox(height: 2),
                 Text(
-                    '₦${pendingPayout.toStringAsFixed(2)} held for pending payout',
+                    '${formatNairaDecimal(pendingPayout)} held for pending payout',
                     style: const TextStyle(
                         fontSize: 11, color: Colors.white54)),
               ],
               const SizedBox(height: 12),
               Row(children: [
                 _walletStat('Total Earned',
-                    '₦${(company['total_earned'] as num?)?.toStringAsFixed(0) ?? '0'}'),
+                    formatNaira((company['total_earned'] as num?) ?? 0)),
                 const SizedBox(width: 20),
                 _walletStat('Paid Out',
-                    '₦${(company['paid_out'] as num?)?.toStringAsFixed(0) ?? '0'}'),
+                    formatNaira((company['paid_out'] as num?) ?? 0)),
                 const SizedBox(width: 20),
                 _walletStat('Rating',
                     '${company['rating_avg'] ?? 0} ★'),
@@ -1801,7 +1802,7 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
                     iconColor: EzizaColors.kPurpleD,
                     iconBg: EzizaColors.kPurpleD.withValues(alpha: 0.1),
                     title: 'Earnings',
-                    subtitle: '₦${balance.toStringAsFixed(2)} balance',
+                    subtitle: '${formatNairaDecimal(balance)} balance',
                     onTap: () => setState(() => _tab = 3),
                   ),
                 ]),
@@ -2374,7 +2375,7 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
           ]),
         ),
         Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Text('₦${amount.toStringAsFixed(0)}',
+          Text(formatNaira(amount),
               style: const TextStyle(
                   fontSize: 14, fontWeight: FontWeight.w800, color: EzizaColors.kText)),
           const SizedBox(height: 4),
@@ -2536,7 +2537,7 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
           ]),
         ),
         if (price > 0)
-          Text('₦${price.toStringAsFixed(0)}',
+          Text(formatNaira(price),
               style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
@@ -2718,7 +2719,7 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
                     fontWeight: FontWeight.w800,
                     color: EzizaColors.kText)),
             const SizedBox(height: 4),
-            Text('Available: ₦${balance.toStringAsFixed(2)}',
+            Text('Available: ${formatNairaDecimal(balance)}',
                 style: const TextStyle(
                     fontSize: 13, color: EzizaColors.kMuted)),
             const SizedBox(height: 20),
@@ -2726,7 +2727,8 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
                 _payoutCtrl,
                 'Amount to withdraw (₦)',
                 Icons.payments_outlined,
-                const TextInputType.numberWithOptions(decimal: true)),
+                const TextInputType.numberWithOptions(decimal: true),
+                money: true),
             const SizedBox(height: 20),
             _payoutLoading
                 ? const Center(
@@ -2734,14 +2736,14 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
                         color: EzizaColors.kPurpleD))
                 : _gradientBtn('Request Payout', () async {
                     final amt =
-                        double.tryParse(_payoutCtrl.text.trim());
+                        parseFormattedAmount(_payoutCtrl.text.trim());
                     if (amt == null || amt <= 0) {
                       _snack('Enter a valid amount.');
                       return;
                     }
                     if (amt > balance) {
                       _snack(
-                          'Only ₦${balance.toStringAsFixed(2)} available.');
+                          'Only ${formatNairaDecimal(balance)} available.');
                       return;
                     }
                     Navigator.of(ctx).pop();
@@ -2838,7 +2840,8 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
                 _bidCtrl,
                 'Your delivery fee (₦)',
                 Icons.payments_outlined,
-                const TextInputType.numberWithOptions(decimal: true)),
+                const TextInputType.numberWithOptions(decimal: true),
+                money: true),
             const SizedBox(height: 14),
             _bidding
                 ? const Center(
@@ -2846,7 +2849,7 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
                         color: EzizaColors.kPurpleD))
                 : _gradientBtn('Submit Offer', () {
                     final amt =
-                        double.tryParse(_bidCtrl.text.trim());
+                        parseFormattedAmount(_bidCtrl.text.trim());
                     if (amt == null || amt <= 0) {
                       _snack('Enter a valid amount.');
                       return;
@@ -3041,7 +3044,7 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
       );
 
   Widget _inputField(TextEditingController ctrl, String hint,
-          IconData icon, TextInputType type) =>
+          IconData icon, TextInputType type, {bool money = false}) =>
       Container(
         decoration: BoxDecoration(
             color: EzizaColors.kSurface,
@@ -3049,14 +3052,20 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
             border: Border.all(color: EzizaColors.kBorder)),
         child: TextField(
           controller: ctrl,
-          keyboardType: type,
+          keyboardType: money ? TextInputType.number : type,
           style:
               const TextStyle(fontSize: 14, color: EzizaColors.kText),
-          inputFormatters: type == TextInputType.number ||
-                  type ==
-                      const TextInputType.numberWithOptions(decimal: true)
-              ? [FilteringTextInputFormatter.allow(RegExp(r'[\d.]'))]
-              : null,
+          inputFormatters: money
+              ? [
+                  FilteringTextInputFormatter.digitsOnly,
+                  ThousandsSeparatorInputFormatter(),
+                ]
+              : (type == TextInputType.number ||
+                      type ==
+                          const TextInputType.numberWithOptions(
+                              decimal: true)
+                  ? [FilteringTextInputFormatter.allow(RegExp(r'[\d.]'))]
+                  : null),
           decoration: InputDecoration(
             prefixIcon: Icon(icon, size: 18, color: EzizaColors.kMuted),
             hintText: hint,

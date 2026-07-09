@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
@@ -13,6 +14,7 @@ import '../../models/rider.dart';
 import '../../services/location_service.dart';
 import '../../services/rider_location_task.dart';
 import '../../services/ratings_service.dart';
+import '../../utils/currency.dart';
 import '../../widgets/delivery_trip_summary.dart';
 import '../../widgets/rating_sheet.dart';
 import '../shared/bank_account_page.dart';
@@ -863,7 +865,7 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
                         fontWeight: FontWeight.w800,
                         color: EzizaColors.kText)),
                 const SizedBox(height: 4),
-                Text('Available: ₦${balance.toStringAsFixed(0)}',
+                Text('Available: ${formatNaira(balance)}',
                     style: const TextStyle(
                         fontSize: 13, color: EzizaColors.kMuted)),
                 const SizedBox(height: 16),
@@ -903,8 +905,11 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
                       border: Border.all(color: EzizaColors.kBorder)),
                   child: TextField(
                     controller: amtCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      ThousandsSeparatorInputFormatter(),
+                    ],
                     style: const TextStyle(
                         fontSize: 14, color: EzizaColors.kText),
                     decoration: const InputDecoration(
@@ -929,7 +934,7 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
                     : GestureDetector(
                         onTap: () async {
                           final amt =
-                              double.tryParse(amtCtrl.text.trim());
+                              parseFormattedAmount(amtCtrl.text.trim());
                           if (amt == null || amt <= 0) {
                             Get.snackbar(
                                 'Invalid', 'Enter a valid amount',
@@ -1034,6 +1039,10 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
           TextField(
             controller: amtCtrl,
             keyboardType: TextInputType.number,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              ThousandsSeparatorInputFormatter(),
+            ],
             decoration: InputDecoration(
               labelText: 'Your price (₦)',
               border: OutlineInputBorder(
@@ -1051,7 +1060,7 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12))),
               onPressed: () async {
-                final amount = double.tryParse(amtCtrl.text.trim());
+                final amount = parseFormattedAmount(amtCtrl.text.trim());
                 if (amount == null) return;
                 Navigator.pop(ctx);
                 try {
@@ -2376,7 +2385,7 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
                           const Icon(Icons.payments_rounded,
                               size: 12, color: EzizaColors.kSuccess),
                           const SizedBox(width: 5),
-                          Text('₦${fee.toStringAsFixed(0)}  ·  Earning',
+                          Text('${formatNaira(fee)}  ·  Earning',
                               style: const TextStyle(fontSize: 11,
                                   fontWeight: FontWeight.w700,
                                   color: EzizaColors.kSuccess)),
@@ -2651,7 +2660,7 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
         ])),
         if (fee > 0)
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text('₦${fee.toStringAsFixed(0)}',
+            Text(formatNaira(fee),
                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900,
                     color: EzizaColors.kSuccess)),
             const Text('earned',
@@ -2696,14 +2705,14 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
                     fontWeight: FontWeight.w600, letterSpacing: 0.5)),
             const SizedBox(height: 6),
             Text(
-              '₦${available.toStringAsFixed(0).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => ',')}',
+              formatNaira(available),
               style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w900,
                   color: EzizaColors.kWhite, letterSpacing: -1.5),
             ),
             if (hasPending) ...[
               const SizedBox(height: 4),
               Text(
-                '₦${pendingPayout.toStringAsFixed(0).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => ',')} held for pending payout',
+                '${formatNaira(pendingPayout)} held for pending payout',
                 style: const TextStyle(fontSize: 11, color: Colors.white54),
               ),
             ],
@@ -2727,7 +2736,7 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
                 ),
                 _heroDivider(),
                 _walletStat(
-                  '₦${totalEarned.toStringAsFixed(0).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => ',')}',
+                  formatNaira(totalEarned),
                   'Total Earned',
                 ),
               ]),
@@ -2857,7 +2866,7 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
                       iconColor: EzizaColors.kSuccess,
                       iconBg: EzizaColors.kSuccess.withValues(alpha: 0.1),
                       title: 'Earnings & Payouts',
-                      subtitle: '₦${rider.walletBalance.toStringAsFixed(0)} available',
+                      subtitle: '${formatNaira(rider.walletBalance)} available',
                       onTap: () => setState(() => _tab = 2),
                     ),
                   ],

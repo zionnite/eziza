@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../constants/colors.dart';
 import '../../services/ratings_service.dart';
 import '../../services/wallet_service.dart';
+import '../../utils/currency.dart';
 import '../../widgets/pin_verification_sheet.dart';
 import '../../widgets/rating_sheet.dart';
 import 'delivery_tracking_page.dart';
@@ -1481,14 +1482,14 @@ class _CustomerDeliveryDetailPageState
               children: [
                 if (val != null)
                   _infoPill(
-                    '₦${val.toStringAsFixed(0)}',
+                    formatNaira(val),
                     Icons.inventory_outlined,
                     EzizaColors.kNavy,
                     label: 'Value',
                   ),
                 if (price != null)
                   _infoPill(
-                    '₦${price.toStringAsFixed(0)}',
+                    formatNaira(price),
                     Icons.handshake_outlined,
                     EzizaColors.kSuccess,
                     label: 'Agreed',
@@ -2080,7 +2081,7 @@ class _CustomerDeliveryDetailPageState
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      '₦${amount.toStringAsFixed(0)}',
+                      formatNaira(amount),
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w900,
@@ -2195,7 +2196,7 @@ class _CustomerDeliveryDetailPageState
               ),
               const SizedBox(height: 8),
               Text(
-                'Accept this offer of ₦${amount.toStringAsFixed(0)}?\n'
+                'Accept this offer of ${formatNaira(amount)}?\n'
                 'All other offers will be declined.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(

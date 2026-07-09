@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../constants/colors.dart';
+import '../../utils/currency.dart';
 import 'customer_delivery_detail_page.dart';
 import 'location_picker_sheet.dart';
 
@@ -204,7 +205,7 @@ class _SendPackagePageState extends State<SendPackagePage>
 
     setState(() => _submitting = true);
     try {
-      final value = double.tryParse(_valueCtrl.text.trim());
+      final value = parseFormattedAmount(_valueCtrl.text.trim());
       final now   = DateTime.now().toUtc();
       final extId = '${user.id.substring(0, 8)}-${now.millisecondsSinceEpoch}';
 
@@ -333,11 +334,11 @@ class _SendPackagePageState extends State<SendPackagePage>
                       maxLines: 2),
                   const SizedBox(height: 14),
                   _field('Estimated Value (₦, optional)', _valueCtrl,
-                      hint: 'e.g. 15000',
+                      hint: 'e.g. 15,000',
                       type: TextInputType.number,
                       inputFormatters: [
-                        FilteringTextInputFormatter.allow(
-                            RegExp(r'[\d.]'))
+                        FilteringTextInputFormatter.digitsOnly,
+                        ThousandsSeparatorInputFormatter(),
                       ]),
                 ]),
                 const SizedBox(height: 12),

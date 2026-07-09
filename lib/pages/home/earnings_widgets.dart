@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../constants/colors.dart';
+import '../../utils/currency.dart';
 
 // Shared earnings/payout card + empty-state widgets, used by both the
 // company and individual rider Earnings tabs so the two stay visually
@@ -59,13 +60,13 @@ Widget earningsHistoryCard(Map<String, dynamic> d) {
       Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Text('₦${net.toStringAsFixed(0)}',
+          Text(formatNaira(net),
               style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
                   color: EzizaColors.kText)),
           if (fee > 0)
-            Text('–₦${fee.toStringAsFixed(0)} fee',
+            Text('–${formatNaira(fee)} fee',
                 style: const TextStyle(
                     color: EzizaColors.kMuted, fontSize: 11)),
         ],
@@ -124,7 +125,7 @@ Widget payoutHistoryCard(Map<String, dynamic> p) {
         child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-          Text('₦${amount.toStringAsFixed(0)}',
+          Text(formatNaira(amount),
               style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w800,

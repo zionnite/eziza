@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../constants/colors.dart';
 import '../services/local_auth_services.dart';
+import '../utils/currency.dart';
 
 /// Mirrors ZeeFashion's PinVerificationSheet — gates a wallet-spend action
 /// behind the customer's transaction PIN (plaintext, matching ZeeFashion's
@@ -60,8 +61,7 @@ class _PinVerificationSheetState extends State<PinVerificationSheet> {
     }
   }
 
-  String _fmt(double v) =>
-      '₦${v.toStringAsFixed(0).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => ',')}';
+  String _fmt(double v) => formatNaira(v);
 
   Future<void> _confirmPin() async {
     if (_pin == null || _pin!.length < 4) {

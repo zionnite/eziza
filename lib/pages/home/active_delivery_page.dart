@@ -9,6 +9,7 @@ import '../../controllers/delivery_controller.dart';
 import '../../models/delivery.dart';
 import '../../services/location_service.dart';
 import '../../services/nominatim_service.dart';
+import '../../utils/currency.dart';
 
 // ── Page ──────────────────────────────────────────────────────
 
@@ -430,7 +431,7 @@ class _InfoCard extends StatelessWidget {
               const Divider(height: 20),
               _Row(
                 label: 'Your earnings',
-                value: '₦${delivery.agreedPrice!.toStringAsFixed(0)}',
+                value: formatNaira(delivery.agreedPrice!),
                 highlight: true,
               ),
             ],

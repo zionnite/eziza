@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../constants/colors.dart';
 import '../../services/wallet_service.dart';
+import '../../utils/currency.dart';
 import 'paystack_checkout_page.dart';
 
 class WalletPage extends StatefulWidget {
@@ -141,8 +142,11 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
           const SizedBox(height: 16),
           TextField(
             controller: ctrl,
-            keyboardType: const TextInputType.numberWithOptions(decimal: false),
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            keyboardType: TextInputType.number,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              ThousandsSeparatorInputFormatter(),
+            ],
             autofocus: true,
             decoration: InputDecoration(
               prefixText: '₦ ',
@@ -156,13 +160,13 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
           ),
           const SizedBox(height: 8),
           Wrap(spacing: 8, children: [1000, 2000, 5000, 10000].map((v) => GestureDetector(
-            onTap: () => ctrl.text = v.toString(),
+            onTap: () => ctrl.text = formatAmount(v),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                   color: EzizaColors.kPurple.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(20)),
-              child: Text('₦$v', style: const TextStyle(fontSize: 12, color: EzizaColors.kPurpleD, fontWeight: FontWeight.w700)),
+              child: Text(formatNaira(v), style: const TextStyle(fontSize: 12, color: EzizaColors.kPurpleD, fontWeight: FontWeight.w700)),
             ),
           )).toList()),
           const SizedBox(height: 20),
@@ -170,7 +174,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: _topUpLoading ? null : () {
-                final amount = double.tryParse(ctrl.text.trim());
+                final amount = parseFormattedAmount(ctrl.text.trim());
                 if (amount == null || amount < 100) {
                   _snack('Enter a valid amount (minimum ₦100).');
                   return;
@@ -193,7 +197,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
     );
   }
 
-  String _fmt(num n) => '₦${n.toStringAsFixed(0).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => ',')}';
+  String _fmt(num n) => formatNaira(n);
 
   @override
   Widget build(BuildContext context) {
