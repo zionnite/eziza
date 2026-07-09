@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Eziza — Privacy Policy</title>
+<meta name="description" content="How Eziza collects, uses, and protects information for senders, riders, and logistics companies." />
+<style>
+  :root{
+    --purple:#6C3483;
+    --purple-deep:#4A1480;
+    --navy:#0D0D3E;
+    --gold:#E8A838;
+    --teal:#00A9C7;
+
+    --bg:#FFFFFF;
+    --surface:#F8F6FF;
+    --surface-raised:#FFFFFF;
+    --border:#E4DEF2;
+    --text:#1A1A2E;
+    --muted:#655F72;
+    --accent:var(--purple);
+    --link:#5A2C74;
+    --code-bg:#F1ECFB;
+    --shadow: 0 1px 2px rgba(26,26,46,0.04);
+  }
+
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0B0B2E;
+      --surface:#131442;
+      --surface-raised:#171A4E;
+      --border:rgba(255,255,255,0.09);
+      --text:#ECEAF7;
+      --muted:#ACA5C9;
+      --accent:#B98CD1;
+      --link:#D6B8EA;
+      --code-bg:#1B1D52;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0B0B2E;
+    --surface:#131442;
+    --surface-raised:#171A4E;
+    --border:rgba(255,255,255,0.09);
+    --text:#ECEAF7;
+    --muted:#ACA5C9;
+    --accent:#B98CD1;
+    --link:#D6B8EA;
+    --code-bg:#1B1D52;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  :root[data-theme="light"]{
+    --bg:#FFFFFF;
+    --surface:#F8F6FF;
+    --surface-raised:#FFFFFF;
+    --border:#E4DEF2;
+    --text:#1A1A2E;
+    --muted:#655F72;
+    --accent:var(--purple);
+    --link:#5A2C74;
+    --code-bg:#F1ECFB;
+    --shadow: 0 1px 2px rgba(26,26,46,0.04);
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:16px;
+    line-height:1.7;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{ background:var(--purple); color:#fff; }
+
+  h1,h2,h3{
+    font-family:ui-serif,Georgia,"Iowan Old Style","Times New Roman",serif;
+    font-weight:600;
+    color:var(--text);
+    text-wrap:balance;
+    letter-spacing:-0.01em;
+  }
+
+  .mono{
+    font-family:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
+  }
+  .eyebrow{
+    font-family:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
+    font-size:11px;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+
+  a{ color:var(--link); text-decoration-color:color-mix(in srgb, var(--link) 40%, transparent); text-underline-offset:3px; }
+  a:hover{ text-decoration-thickness:2px; }
+  a:focus-visible, button:focus-visible, summary:focus-visible{
+    outline:2px solid var(--gold);
+    outline-offset:2px;
+    border-radius:3px;
+  }
+
+  /* ---------- Masthead ---------- */
+  .masthead{
+    background:linear-gradient(135deg,var(--navy) 0%,var(--purple-deep) 100%);
+    padding:44px 24px 40px;
+  }
+  .masthead-inner{
+    max-width:960px;
+    margin:0 auto;
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+  .wordmark{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .wordmark-mark{
+    width:30px; height:30px;
+    border-radius:8px;
+    background:linear-gradient(135deg,var(--gold),#c9852a);
+    display:flex; align-items:center; justify-content:center;
+    font-family:ui-serif,Georgia,serif;
+    font-weight:700;
+    font-size:16px;
+    color:#241102;
+    flex:none;
+  }
+  .wordmark-name{
+    font-family:ui-serif,Georgia,serif;
+    font-size:17px;
+    font-weight:600;
+    color:#F4F0FF;
+    letter-spacing:0.01em;
+  }
+  .masthead h1{
+    color:#fff;
+    font-size:clamp(28px,4.2vw,40px);
+    margin:6px 0 0;
+    line-height:1.15;
+  }
+  .masthead .rule{
+    width:52px; height:3px; border-radius:2px;
+    background:var(--gold);
+    margin:4px 0 2px;
+  }
+  .meta-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px 18px;
+    margin-top:6px;
+  }
+  .meta-item{
+    font-family:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
+    font-size:12px;
+    letter-spacing:0.04em;
+    color:#C9C2E8;
+  }
+  .meta-item b{ color:#F4F0FF; font-weight:600; }
+
+  /* ---------- Layout ---------- */
+  .page{
+    max-width:960px;
+    margin:0 auto;
+    padding:40px 24px 100px;
+    display:grid;
+    grid-template-columns:220px minmax(0,1fr);
+    gap:48px;
+    align-items:start;
+  }
+  @media (max-width:760px){
+    .page{ grid-template-columns:1fr; }
+  }
+
+  /* ---------- TOC ---------- */
+  nav.toc{
+    position:sticky;
+    top:24px;
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+    border-left:2px solid var(--border);
+    padding-left:16px;
+  }
+  @media (max-width:760px){
+    nav.toc{
+      position:static;
+      border-left:none;
+      padding-left:0;
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:14px 16px;
+      background:var(--surface);
+      margin-bottom:8px;
+    }
+  }
+  nav.toc a{
+    display:flex;
+    gap:8px;
+    padding:6px 0;
+    font-size:13px;
+    color:var(--muted);
+    text-decoration:none;
+  }
+  nav.toc a:hover{ color:var(--accent); }
+  nav.toc a .n{
+    font-family:ui-monospace,"SF Mono",monospace;
+    font-variant-numeric:tabular-nums;
+    color:var(--accent);
+    opacity:0.7;
+    flex:none;
+    width:16px;
+  }
+
+  /* ---------- Article ---------- */
+  article{ min-width:0; }
+  .lede{
+    font-size:17px;
+    color:var(--muted);
+    max-width:66ch;
+    margin:0 0 8px;
+  }
+  section.clause{
+    max-width:70ch;
+    padding-top:34px;
+    margin-top:34px;
+    border-top:1px solid var(--border);
+    scroll-margin-top:24px;
+  }
+  section.clause:first-of-type{ border-top:none; margin-top:20px; padding-top:0; }
+  .clause h2{
+    font-size:21px;
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+    margin:0 0 12px;
+  }
+  .clause h2 .num{
+    font-family:ui-monospace,"SF Mono",monospace;
+    font-size:14px;
+    color:var(--accent);
+    opacity:0.75;
+  }
+  .clause h3{
+    font-size:15px;
+    margin:22px 0 8px;
+    color:var(--text);
+  }
+  .clause p{ margin:0 0 14px; color:var(--text); }
+  .clause p.muted{ color:var(--muted); font-size:14.5px; }
+  .clause ul{ padding-left:1.1em; margin:0 0 14px; }
+  .clause li{ margin-bottom:7px; }
+  .clause li::marker{ color:var(--accent); }
+
+  .callout{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:16px 18px;
+    margin:0 0 18px;
+    box-shadow:var(--shadow);
+  }
+  .callout .eyebrow{ margin-bottom:6px; display:block; }
+  .callout p:last-child{ margin-bottom:0; }
+
+  /* ---------- Data table ---------- */
+  .table-wrap{
+    overflow-x:auto;
+    border:1px solid var(--border);
+    border-radius:12px;
+    margin:0 0 20px;
+    max-width:100%;
+  }
+  table.data{
+    border-collapse:collapse;
+    width:100%;
+    min-width:640px;
+    font-size:13.5px;
+    background:var(--surface-raised);
+  }
+  table.data th{
+    text-align:left;
+    font-family:ui-monospace,"SF Mono",monospace;
+    font-size:11px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--muted);
+    background:var(--surface);
+    padding:11px 14px;
+    border-bottom:1px solid var(--border);
+    white-space:nowrap;
+  }
+  table.data td{
+    padding:12px 14px;
+    border-bottom:1px solid var(--border);
+    vertical-align:top;
+    color:var(--text);
+  }
+  table.data tr:last-child td{ border-bottom:none; }
+  table.data td.role{ white-space:nowrap; }
+  .pill{
+    display:inline-block;
+    font-family:ui-monospace,"SF Mono",monospace;
+    font-size:10.5px;
+    letter-spacing:0.03em;
+    padding:2px 7px;
+    border-radius:999px;
+    background:var(--code-bg);
+    color:var(--accent);
+    margin:2px 4px 2px 0;
+    white-space:nowrap;
+  }
+
+  /* ---------- Providers ---------- */
+  .providers{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(210px,1fr));
+    gap:10px;
+    margin:0 0 18px;
+  }
+  .provider{
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:12px 14px;
+    background:var(--surface-raised);
+  }
+  .provider .name{ font-weight:600; font-size:13.5px; }
+  .provider .role{ font-size:12.5px; color:var(--muted); margin-top:2px; }
+
+  footer{
+    max-width:960px;
+    margin:0 auto;
+    padding:0 24px 60px;
+  }
+  footer .fine{
+    border-top:1px solid var(--border);
+    padding-top:20px;
+    font-size:12.5px;
+    color:var(--muted);
+  }
+
+  @media (prefers-reduced-motion:no-preference){
+    section.clause{ scroll-behavior:smooth; }
+  }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="masthead-inner">
+    <div class="wordmark">
+      <div class="wordmark-mark">E</div>
+      <div class="wordmark-name">Eziza</div>
+    </div>
+    <div class="rule"></div>
+    <h1>Privacy Policy</h1>
+    <div class="meta-row">
+      <span class="meta-item">Effective <b>10 Jul 2026</b></span>
+      <span class="meta-item">Applies to <b>Customer · Rider · Company</b> roles</span>
+      <span class="meta-item">Contact <b>admin@eziza.online</b></span>
+    </div>
+  </div>
+</div>
+
+<div class="page">
+  <nav class="toc" aria-label="Table of contents">
+    <a href="#scope"><span class="n">1</span>Scope</a>
+    <a href="#collect"><span class="n">2</span>Information we collect</a>
+    <a href="#use"><span class="n">3</span>How we use it</a>
+    <a href="#share"><span class="n">4</span>How we share it</a>
+    <a href="#retention"><span class="n">5</span>Retention &amp; deletion</a>
+    <a href="#rights"><span class="n">6</span>Your rights</a>
+    <a href="#security"><span class="n">7</span>Security</a>
+    <a href="#children"><span class="n">8</span>Children</a>
+    <a href="#transfers"><span class="n">9</span>International transfers</a>
+    <a href="#changes"><span class="n">10</span>Changes</a>
+    <a href="#contact"><span class="n">11</span>Contact</a>
+  </nav>
+
+  <article>
+    <p class="lede">Eziza is a delivery and logistics platform connecting senders, independent riders, and logistics companies. This policy explains what personal information we collect across all three roles, why we collect it, who we share it with, and the choices you have.</p>
+
+    <section class="clause" id="scope">
+      <h2><span class="num">01</span>Scope</h2>
+      <p>This policy covers the Eziza mobile application and the backend services behind it, for anyone using it as a <strong>sender</strong> (creating and tracking deliveries), a <strong>rider</strong> (individual or company-employed), or a <strong>logistics company</strong> managing a fleet of riders. Where a rule applies to only one role, it's labelled below.</p>
+      <p>If you were sent a delivery by someone using Eziza, we hold the minimum contact information needed to reach you (name and phone number) even if you never create an account — see <a href="#collect">Section 2</a>.</p>
+    </section>
+
+    <section class="clause" id="collect">
+      <h2><span class="num">02</span>Information we collect</h2>
+
+      <h3>Account &amp; profile</h3>
+      <p>Email address and password (handled by our authentication provider — we never see or store your raw password), full name, phone number, and an optional profile photo.</p>
+
+      <h3>Location</h3>
+      <p><span class="pill">rider</span> While you're online or on an active delivery, we collect your device's precise GPS location so senders and dispatching companies can track your delivery in real time. This location is removed as soon as you go offline or the delivery is confirmed — we do not retain a history of everywhere you've been.</p>
+      <p><span class="pill">customer</span> Your device's location may be used, with your permission, to help you pin a pickup or drop-off point on the map. We store the resulting address, not an ongoing location feed.</p>
+
+      <h3>Rider &amp; company verification</h3>
+      <p><span class="pill">rider</span> Government-issued ID photo, a selfie for identity verification, vehicle type and plate number, and bank account details for payouts.</p>
+      <p><span class="pill">company</span> Business name, CAC registration number, contact person, coverage area, and bank account details for payouts.</p>
+
+      <h3>Delivery &amp; transaction data</h3>
+      <p>Pickup and drop-off addresses, package description, delivery status history, in-app wallet balance and transaction history, and any ratings or written reviews exchanged between senders and riders/companies.</p>
+      <p class="muted">Ratings you leave may be visible to the person you rated and, for company-employed riders, to their employing company. Your identity is not shown to unrelated users browsing public ratings — only an aggregate score and anonymised review text are.</p>
+
+      <h3>Payments</h3>
+      <p>Card and bank-transfer details you use to fund your wallet are entered directly with our payment processor, Paystack, inside their own secure checkout — <strong>Eziza never sees or stores your card number</strong>. We do store the resulting wallet balance and a transaction ledger.</p>
+
+      <h3>Support &amp; communications</h3>
+      <p>Messages and optional photo attachments you send through in-app support tickets, and a device push-notification token so we can alert you about delivery and account activity.</p>
+
+      <div class="callout">
+        <span class="eyebrow">Not collected</span>
+        <p>Eziza does not run advertising or analytics tracking, and we do not sell personal information to anyone, for any purpose.</p>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr><th>Category</th><th>Collected from</th><th>Purpose</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Name, phone, email</td><td class="role">All roles</td><td>Identity, delivery coordination, account recovery</td></tr>
+            <tr><td>Precise location</td><td class="role">Rider (live), Customer (one-off pin)</td><td>Live delivery tracking, route/ETA calculation</td></tr>
+            <tr><td>Government ID + selfie</td><td class="role">Rider</td><td>Identity verification before approval</td></tr>
+            <tr><td>Bank details</td><td class="role">Rider, Company</td><td>Sending payouts for completed deliveries</td></tr>
+            <tr><td>Delivery addresses &amp; package info</td><td class="role">Customer</td><td>Fulfilling and tracking the delivery</td></tr>
+            <tr><td>Ratings &amp; reviews</td><td class="role">All roles</td><td>Trust &amp; safety, reputation between parties</td></tr>
+            <tr><td>Wallet &amp; transaction history</td><td class="role">All roles</td><td>Payments, payouts, dispute resolution</td></tr>
+            <tr><td>Support messages / attachments</td><td class="role">All roles</td><td>Resolving your support requests</td></tr>
+            <tr><td>Push notification token</td><td class="role">All roles</td><td>Delivering in-app alerts</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="clause" id="use">
+      <h2><span class="num">03</span>How we use it</h2>
+      <ul>
+        <li>Matching deliveries to available riders and companies, and calculating routes and ETAs</li>
+        <li>Verifying rider and company identity before they can accept deliveries</li>
+        <li>Processing wallet top-ups, delivery payments, and rider/company payouts</li>
+        <li>Sending delivery, bid, and account push notifications</li>
+        <li>Providing customer support and investigating reported issues</li>
+        <li>Detecting fraud, abuse, and violations of our terms</li>
+        <li>Meeting legal, tax, and accounting obligations</li>
+      </ul>
+    </section>
+
+    <section class="clause" id="share">
+      <h2><span class="num">04</span>How we share it</h2>
+      <p>We share the minimum needed for a delivery to work, and nothing beyond that:</p>
+      <ul>
+        <li><strong>The other party to a delivery</strong> — a rider sees the sender's contact and addresses for their assigned delivery; a sender sees the assigned rider or company's name, photo, rating, and live location.</li>
+        <li><strong>An employing logistics company</strong> — if you're a company-employed rider, your assigned company can see the deliveries, ratings, and earnings tied to your work for them.</li>
+        <li><strong>Service providers who process data on our behalf</strong>, under contract, only for the purpose of providing their service to us — listed below.</li>
+        <li><strong>Legal authorities</strong>, only where required by law or to protect the safety of our users.</li>
+      </ul>
+      <p>We do not share your information with advertisers or data brokers, and we never sell it.</p>
+
+      <h3>Service providers we use</h3>
+      <div class="providers">
+        <div class="provider"><div class="name">Supabase</div><div class="role">Database, authentication, backend infrastructure</div></div>
+        <div class="provider"><div class="name">Firebase Cloud Messaging</div><div class="role">Push notification delivery only — analytics disabled</div></div>
+        <div class="provider"><div class="name">Bunny.net</div><div class="role">Storage/CDN for photos &amp; verification documents</div></div>
+        <div class="provider"><div class="name">Paystack</div><div class="role">Payment processing — card details never reach our servers</div></div>
+        <div class="provider"><div class="name">Termii</div><div class="role">SMS delivery for phone/OTP verification</div></div>
+        <div class="provider"><div class="name">OpenStreetMap</div><div class="role">Map tiles, address search, route calculation</div></div>
+      </div>
+    </section>
+
+    <section class="clause" id="retention">
+      <h2><span class="num">05</span>Retention &amp; deletion</h2>
+      <p>We keep your information for as long as your account is active, and for as long as needed to satisfy legal, accounting, or dispute-resolution obligations afterward.</p>
+      <p>You can permanently delete your account at any time from <strong>Account → Delete Account</strong> in the app. When you do:</p>
+      <ul>
+        <li>Your personal details (name, phone, email, bank information, documents) are permanently anonymised</li>
+        <li>Your device's push notification token is removed</li>
+        <li>Your account is permanently barred from signing in again</li>
+      </ul>
+      <p class="muted">Delivery, payment, and rating records that also belong to someone else (a sender who received a package from you, for example) are kept in this anonymised form rather than deleted outright — this preserves the other party's own transaction history and our accounting/legal records, without leaving any personal information behind that identifies you.</p>
+    </section>
+
+    <section class="clause" id="rights">
+      <h2><span class="num">06</span>Your rights</h2>
+      <ul>
+        <li><strong>Access &amp; correct</strong> — review and update your profile, bank, and contact details directly from Account settings</li>
+        <li><strong>Delete</strong> — permanently delete your account and anonymise your personal data at any time (see above)</li>
+        <li><strong>Location</strong> — you can deny or revoke location permission in your device settings; note that live tracking and rider matching depend on it</li>
+        <li><strong>Notifications</strong> — manage or disable push notifications in your device settings</li>
+        <li><strong>Questions or a formal request</strong> — contact us any time, see <a href="#contact">Section 11</a></li>
+      </ul>
+    </section>
+
+    <section class="clause" id="security">
+      <h2><span class="num">07</span>Security</h2>
+      <p>Data is encrypted in transit between the app and our servers. Access to your data is restricted by row-level authorisation rules scoped to your own account and role. Card payment details are handled entirely by Paystack and never touch our servers. No system is completely immune to risk, but we treat verification documents, bank details, and location data as sensitive and scope access to them accordingly.</p>
+    </section>
+
+    <section class="clause" id="children">
+      <h2><span class="num">08</span>Children's privacy</h2>
+      <p>Eziza is not directed at children under 13, and we do not knowingly collect personal information from them. If you believe a child has provided us with personal information, contact us and we will remove it.</p>
+    </section>
+
+    <section class="clause" id="transfers">
+      <h2><span class="num">09</span>International transfers</h2>
+      <p>Eziza operates from Nigeria. Some of the service providers listed in <a href="#share">Section 4</a> process or store data on infrastructure located outside Nigeria. By using Eziza, you understand your information may be processed in a different country than the one you live in.</p>
+    </section>
+
+    <section class="clause" id="changes">
+      <h2><span class="num">10</span>Changes to this policy</h2>
+      <p>If we make material changes to this policy, we'll update the effective date above and, where appropriate, notify you in the app before the changes take effect.</p>
+    </section>
+
+    <section class="clause" id="contact">
+      <h2><span class="num">11</span>Contact us</h2>
+      <p>Questions about this policy or your data can be sent to <a href="mailto:admin@eziza.online">admin@eziza.online</a>, or through <strong>Help &amp; Support</strong> inside the app.</p>
+    </section>
+  </article>
+</div>
+
+<footer>
+  <div class="fine">Eziza Privacy Policy — effective 10 July 2026. This document describes the Eziza rider/company/customer application only.</div>
+</footer>
+
+</body>
+</html>
