@@ -278,7 +278,7 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
         }
         _confirmedPollTimer?.cancel();
         _confirmedPollTimer = null;
-        if (_activeDeliveries.isEmpty) _stopLocationBroadcast();
+        if (_activeDeliveries.isEmpty) await _onDeliveryFinished();
       }
     } catch (_) {}
   }
@@ -441,14 +441,7 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
               _maybeShowRateCustomerSheet(d['id'] as String);
               _confirmedPollTimer?.cancel();
               _confirmedPollTimer = null;
-              if (_activeDeliveries.isEmpty) {
-                await FlutterForegroundTask.updateService(
-                  notificationTitle: 'Delivery Complete ✅',
-                  notificationText: 'Great work! Earnings credited.',
-                );
-                await Future.delayed(const Duration(seconds: 3));
-                _stopLocationBroadcast();
-              }
+              if (_activeDeliveries.isEmpty) await _onDeliveryFinished();
             } else {
               setState(() => _activeDeliveries[idx] = d);
               // If status just became 'delivered', start the poll fallback.
@@ -700,6 +693,10 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
 
   Future<void> _startForegroundService(String uid) async {
     try {
+      final notifPerm = await FlutterForegroundTask.checkNotificationPermission();
+      if (notifPerm != NotificationPermission.granted) {
+        await FlutterForegroundTask.requestNotificationPermission();
+      }
       await FlutterForegroundTask.saveData(
           key: 'sb_url',
           value: 'https://nvwpsccleewgirlwokys.supabase.co');
@@ -718,7 +715,9 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
             : 'Location tracking active for delivery requests',
         callback: startRiderLocationCallback,
       );
-    } catch (_) {}
+    } catch (e, st) {
+      debugPrint('_startForegroundService failed: $e\n$st');
+    }
   }
 
   Future<void> _upsertLocation(String uid, Position pos) async {
@@ -760,6 +759,31 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
       });
       if (mounted) setState(() => _openDeliveries = filtered);
     } catch (_) {}
+  }
+
+  // Called whenever _activeDeliveries empties out after a confirm. If the
+  // rider is still toggled Online, keep GPS broadcasting for new job
+  // matching instead of fully stopping — _stopLocationBroadcast() also
+  // deletes the rider_locations row, which would otherwise silently break
+  // the open-job-board distance filter for an online-but-idle rider.
+  Future<void> _onDeliveryFinished() async {
+    try {
+      await FlutterForegroundTask.updateService(
+        notificationTitle: 'Delivery Complete ✅',
+        notificationText: 'Great work! Earnings credited.',
+      );
+    } catch (_) {}
+    await Future.delayed(const Duration(seconds: 3));
+    if (_isOnline) {
+      try {
+        await FlutterForegroundTask.updateService(
+          notificationTitle: 'You are online',
+          notificationText: 'Location tracking active for delivery requests',
+        );
+      } catch (_) {}
+    } else {
+      await _stopLocationBroadcast();
+    }
   }
 
   Future<void> _stopLocationBroadcast() async {

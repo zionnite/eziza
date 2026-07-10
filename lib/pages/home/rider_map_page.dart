@@ -552,6 +552,11 @@ class _RiderMapPageState extends State<RiderMapPage> {
       _initialFit     = false;
     });
     _fetchRoute().then((_) => _fitMap());
+    FlutterForegroundTask.updateService(
+      notificationTitle: 'Heading to Dropoff 📦',
+      notificationText:
+          'Delivering to ${widget.delivery['delivery_address'] as String? ?? 'the recipient'}',
+    );
     Get.snackbar(
       'Handoff Confirmed',
       'Customer confirmed pickup. Head to the delivery address!',
@@ -701,7 +706,7 @@ class _RiderMapPageState extends State<RiderMapPage> {
           children: [
             TileLayer(
               urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.eziza.rider',
+              userAgentPackageName: 'online.eziza.rider',
             ),
 
             // Route polyline
