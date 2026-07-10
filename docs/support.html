@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Eziza — Support</title>
+<meta name="description" content="Get help with the Eziza app — email support or raise a ticket in-app, with a 3-hour reply time." />
+<style>
+  :root{
+    --purple:#6C3483;
+    --purple-deep:#4A1480;
+    --navy:#0D0D3E;
+    --gold:#E8A838;
+    --teal:#00A9C7;
+
+    --bg:#FFFFFF;
+    --surface:#F8F6FF;
+    --surface-raised:#FFFFFF;
+    --border:#E4DEF2;
+    --text:#1A1A2E;
+    --muted:#655F72;
+    --accent:var(--purple);
+    --link:#5A2C74;
+    --code-bg:#F1ECFB;
+    --shadow: 0 1px 2px rgba(26,26,46,0.04);
+    --shadow-lg: 0 12px 32px rgba(76,26,128,0.10);
+  }
+
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0B0B2E;
+      --surface:#131442;
+      --surface-raised:#171A4E;
+      --border:rgba(255,255,255,0.09);
+      --text:#ECEAF7;
+      --muted:#ACA5C9;
+      --accent:#B98CD1;
+      --link:#D6B8EA;
+      --code-bg:#1B1D52;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3);
+      --shadow-lg: 0 16px 40px rgba(0,0,0,0.4);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0B0B2E; --surface:#131442; --surface-raised:#171A4E;
+    --border:rgba(255,255,255,0.09); --text:#ECEAF7; --muted:#ACA5C9;
+    --accent:#B98CD1; --link:#D6B8EA; --code-bg:#1B1D52;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3); --shadow-lg: 0 16px 40px rgba(0,0,0,0.4);
+  }
+  :root[data-theme="light"]{
+    --bg:#FFFFFF; --surface:#F8F6FF; --surface-raised:#FFFFFF;
+    --border:#E4DEF2; --text:#1A1A2E; --muted:#655F72;
+    --accent:var(--purple); --link:#5A2C74; --code-bg:#F1ECFB;
+    --shadow: 0 1px 2px rgba(26,26,46,0.04); --shadow-lg: 0 12px 32px rgba(76,26,128,0.10);
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:16px;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{ background:var(--purple); color:#fff; }
+
+  h1,h2{
+    font-family:ui-serif,Georgia,"Iowan Old Style","Times New Roman",serif;
+    font-weight:600;
+    color:var(--text);
+    text-wrap:balance;
+    letter-spacing:-0.01em;
+    margin:0;
+  }
+
+  a{ color:var(--link); text-decoration-color:color-mix(in srgb, var(--link) 40%, transparent); text-underline-offset:3px; }
+  a:hover{ text-decoration-thickness:2px; }
+  a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible{
+    outline:2px solid var(--gold);
+    outline-offset:2px;
+    border-radius:4px;
+  }
+
+  /* ---------- Masthead ---------- */
+  .masthead{
+    background:linear-gradient(135deg,var(--navy) 0%,var(--purple-deep) 100%);
+    padding:44px 24px 56px;
+  }
+  .masthead-inner{ max-width:920px; margin:0 auto; }
+  .wordmark{ display:flex; align-items:center; gap:10px; }
+  .wordmark-mark{
+    width:30px; height:30px; border-radius:8px;
+    background:linear-gradient(135deg,var(--gold),#c9852a);
+    display:flex; align-items:center; justify-content:center;
+    font-family:ui-serif,Georgia,serif; font-weight:700; font-size:16px;
+    color:#241102; flex:none;
+  }
+  .wordmark-name{ font-family:ui-serif,Georgia,serif; font-size:17px; font-weight:600; color:#F4F0FF; letter-spacing:0.01em; }
+  .masthead .rule{ width:52px; height:3px; border-radius:2px; background:var(--gold); margin:16px 0 12px; }
+  .masthead h1{ color:#fff; font-size:clamp(28px,4.2vw,40px); line-height:1.15; }
+  .masthead p{
+    color:#C9C2E8; max-width:52ch; margin:14px 0 0; font-size:15.5px; line-height:1.7;
+  }
+  .sla{
+    display:inline-flex; align-items:center; gap:8px;
+    margin-top:20px; padding:7px 14px 7px 10px;
+    background:rgba(232,168,56,0.14);
+    border:1px solid rgba(232,168,56,0.35);
+    border-radius:999px;
+    font-family:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
+    font-size:12.5px; letter-spacing:0.02em; color:#F4D998;
+  }
+  .sla .dot{ width:7px; height:7px; border-radius:50%; background:var(--gold); flex:none; box-shadow:0 0 0 3px rgba(232,168,56,0.25); }
+
+  /* ---------- Layout ---------- */
+  .page{
+    max-width:920px; margin:0 auto; padding:44px 24px 90px;
+    display:grid; grid-template-columns:1.1fr 0.9fr; gap:28px; align-items:start;
+  }
+  @media (max-width:760px){ .page{ grid-template-columns:1fr; } }
+
+  .card{
+    background:var(--surface-raised);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:26px;
+    box-shadow:var(--shadow);
+  }
+
+  /* ---------- Form ---------- */
+  form{ display:flex; flex-direction:column; gap:16px; margin-top:18px; }
+  .field{ display:flex; flex-direction:column; gap:6px; }
+  .field label{
+    font-family:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
+    font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted);
+  }
+  .field input, .field textarea{
+    font-family:inherit; font-size:14.5px; color:var(--text);
+    background:var(--surface); border:1px solid var(--border); border-radius:10px;
+    padding:11px 13px; resize:vertical;
+  }
+  .field textarea{ min-height:120px; line-height:1.6; }
+  .field input::placeholder, .field textarea::placeholder{ color:var(--muted); opacity:0.7; }
+
+  button.submit{
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    font-family:inherit; font-size:14.5px; font-weight:600;
+    color:#fff; background:linear-gradient(135deg,var(--purple),var(--purple-deep));
+    border:none; border-radius:11px; padding:13px 20px; cursor:pointer;
+    box-shadow:0 6px 18px rgba(108,52,131,0.35);
+  }
+  button.submit:hover{ filter:brightness(1.06); }
+  button.submit:active{ transform:translateY(1px); }
+  .form-note{ font-size:12.5px; color:var(--muted); margin-top:2px; }
+
+  /* ---------- Alt path ---------- */
+  .alt h2{ font-size:18px; margin-bottom:10px; }
+  .alt > p{ color:var(--muted); font-size:14px; margin:0 0 18px; }
+  .steps{ display:flex; flex-direction:column; gap:14px; margin-bottom:22px; }
+  .step{ display:flex; gap:12px; align-items:flex-start; }
+  .step .n{
+    flex:none; width:24px; height:24px; border-radius:7px;
+    background:var(--code-bg); color:var(--accent);
+    font-family:ui-monospace,"SF Mono",monospace; font-size:12px; font-weight:600;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .step p{ margin:0; font-size:13.5px; color:var(--text); line-height:1.6; }
+  .step b{ display:block; font-size:13.5px; margin-bottom:2px; }
+
+  .divider{
+    display:flex; align-items:center; gap:10px; margin:22px 0 20px;
+    color:var(--muted); font-size:11px; letter-spacing:0.1em; text-transform:uppercase;
+    font-family:ui-monospace,"SF Mono",monospace;
+  }
+  .divider::before, .divider::after{ content:""; flex:1; height:1px; background:var(--border); }
+
+  .direct-email{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    background:var(--surface); border:1px solid var(--border); border-radius:10px;
+    padding:12px 14px; font-size:13.5px;
+  }
+  .direct-email a{ font-weight:600; }
+
+  footer{ max-width:920px; margin:0 auto; padding:0 24px 60px; }
+  footer .fine{ border-top:1px solid var(--border); padding-top:20px; font-size:12.5px; color:var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="masthead-inner">
+    <div class="wordmark">
+      <div class="wordmark-mark">E</div>
+      <div class="wordmark-name">Eziza</div>
+    </div>
+    <div class="rule"></div>
+    <h1>Need a hand?</h1>
+    <p>Tell us what's going on and we'll get back to you — whether it's a delivery issue, a payment question, or something with your account.</p>
+    <div class="sla"><span class="dot"></span>We reply within 3 hours</div>
+  </div>
+</div>
+
+<div class="page">
+  <div class="card">
+    <h2 style="font-size:18px;">Email us</h2>
+    <p style="color:var(--muted); font-size:14px; margin:8px 0 0;">Fill this in and it'll open your email app with everything pre-filled — just hit send.</p>
+    <form id="supportForm">
+      <div class="field">
+        <label for="email">Your email</label>
+        <input type="email" id="email" name="email" placeholder="you@example.com" required />
+      </div>
+      <div class="field">
+        <label for="title">Title</label>
+        <input type="text" id="title" name="title" placeholder="e.g. My delivery is showing the wrong status" required />
+      </div>
+      <div class="field">
+        <label for="message">Message</label>
+        <textarea id="message" name="message" placeholder="Tell us what happened, and include your delivery tracking code if this is about a specific delivery." required></textarea>
+      </div>
+      <button class="submit" type="submit">
+        Open email to send
+      </button>
+      <p class="form-note">This opens your device's email app addressed to admin@eziza.online — nothing is sent from this page directly.</p>
+    </form>
+  </div>
+
+  <div class="card alt">
+    <h2>Prefer to stay in the app?</h2>
+    <p>If you already have an Eziza account, raising a ticket in-app is the fastest way to reach us — we can see your account and delivery history right away.</p>
+    <div class="steps">
+      <div class="step">
+        <div class="n">1</div>
+        <p><b>Open the Eziza app</b>Go to your Account tab, on any of the customer, rider, or company dashboards.</p>
+      </div>
+      <div class="step">
+        <div class="n">2</div>
+        <p><b>Tap Help &amp; Support</b>Then "New Ticket" to start a conversation with our team.</p>
+      </div>
+      <div class="step">
+        <div class="n">3</div>
+        <p><b>Describe your issue</b>Add a photo if it helps — we'll reply right in the same thread, usually within 3 hours.</p>
+      </div>
+    </div>
+    <div class="divider">or</div>
+    <div class="direct-email">
+      <span>Email directly</span>
+      <a href="mailto:admin@eziza.online">admin@eziza.online</a>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="fine">Eziza Support — for account, delivery, and payment help. Response time is a target, not a guarantee, and may vary outside normal business hours.</div>
+</footer>
+
+<script>
+  document.getElementById('supportForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var email = document.getElementById('email').value.trim();
+    var title = document.getElementById('title').value.trim();
+    var message = document.getElementById('message').value.trim();
+    var subject = 'Eziza Support: ' + title;
+    var body = message + '\n\n---\nReply-to: ' + email;
+    window.location.href = 'mailto:admin@eziza.online?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+  });
+</script>
+
+</body>
+</html>
