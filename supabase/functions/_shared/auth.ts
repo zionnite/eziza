@@ -24,11 +24,16 @@ export async function validateApiKey(
 
   const { data: key } = await supabase
     .from('api_keys')
-    .select('id, tenant_id, is_active')
+    .select('id, tenant_id, is_active, tenant:tenants(is_active)')
     .eq('key_hash', keyHash)
     .single()
 
   if (!key?.is_active) return null
+  // A deactivated tenant must lose API access entirely, not just outbound
+  // webhooks (dispatch-webhook already checks tenants.is_active on its own) --
+  // otherwise pausing a tenant in the admin UI would be cosmetic.
+  const tenant = Array.isArray(key.tenant) ? key.tenant[0] : key.tenant
+  if (!tenant?.is_active) return null
 
   // Fire-and-forget last_used_at update
   supabase

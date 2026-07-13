@@ -514,6 +514,41 @@ So the shipped design: **never delete `auth.users`.** Anonymise PII on `customer
 
 ---
 
+### Package/bundle identifier rename — com.eziza.* → online.eziza.rider — COMPLETE 2026-07-09
+User couldn't buy `eziza.com`, owns `eziza.online` instead (already the domain behind `admin@eziza.online`). App not yet published to either store, so a clean rename — no store-listing consequences. Chose `online.eziza.rider` as one consistent identifier for both platforms (previously mismatched: Android was `com.eziza.eziza_rider`, iOS was `com.eziza.ezizaRider`).
+- [x] `android/app/build.gradle.kts` — `namespace`/`applicationId` → `online.eziza.rider`
+- [x] Moved `MainActivity.kt` from `android/app/src/main/kotlin/com/eziza/eziza_rider/` to `.../online/eziza/rider/`, updated its `package` declaration
+- [x] `ios/Runner.xcodeproj/project.pbxproj` — all 6 `PRODUCT_BUNDLE_IDENTIFIER` entries (main target ×3, RunnerTests ×3) → `online.eziza.rider(.RunnerTests)`
+- [x] `ios/Runner/Info.plist` — cosmetic `CFBundleURLName` → `online.eziza.rider.paystack` (the actual registered URL *scheme*, `eziza://`, is unchanged and unrelated to the bundle ID)
+- [x] 6× `userAgentPackageName: 'com.eziza.rider'` (OSM/OSRM tile-server User-Agent identification, cosmetic only) → `online.eziza.rider` across `rider_map_page.dart`, `active_delivery_page.dart`, `company_map_page.dart`, `delivery_tracking_page.dart`, `location_picker_sheet.dart`, `route_preview_map.dart`
+- [x] User added the new app registrations in the Firebase console (project `eziza-rider`) themselves — `google-services.json` gained a second Android `client` entry for `online.eziza.rider` (old `com.eziza.eziza_rider` entry left in place alongside it, harmless — Gradle's google-services plugin just picks the client matching the active `applicationId`); `GoogleService-Info.plist` was replaced outright with the new iOS bundle ID + a new `GOOGLE_APP_ID`; `firebase_options.dart` updated to match both new `appId`s and the new `iosBundleId`
+- [x] **Found + fixed an unrelated pre-existing bug while build-verifying**: `AndroidManifest.xml` had a literal `--` inside an XML comment (`"Call" button in the app -- contact cards`) — invalid XML, `SAXParseException: The string "--" is not permitted within comments`. This was failing `processDebugMainManifest` regardless of package name and would have blocked *any* Android Gradle build, rename or not. Fixed by rewording the comment.
+- [x] `flutter analyze` clean
+- [x] **Build-verified 2026-07-09**: `flutter build apk --debug` succeeds end-to-end with `applicationId = online.eziza.rider`, confirming the Firebase Android client match resolved correctly (`No matching client found` would have fired at `processDebugGoogleServices` otherwise)
+- [ ] iOS side not build-verified from this environment (no Xcode/macOS toolchain run attempted here) — same fix pattern applied, should be equivalent, but worth one real `flutter build ios`/Xcode archive before assuming parity with the Android result
+- [ ] Still worth cleaning up the now-orphaned `com.eziza.eziza_rider` Android client entry from the Firebase console at some point (cosmetic — not used, not blocking)
+
+---
+
+### Tenant API — admin onboarding surface + a real auth gap found and fixed — BUILT + live-verified 2026-07-13
+
+ZeeFashion's integration was always the general-purpose pattern any third-party e-commerce platform would use — `create-delivery`/`get-delivery`/`cancel-delivery`/`accept-bid`/`confirm-pickup`/`confirm-receipt` all resolve a `tenant_id` from a hashed `Authorization: Bearer` key via `_shared/auth.ts::validateApiKey()`, nothing ZeeFashion-specific in any of them. What was actually missing: no way to onboard a *new* tenant except by hand (no `tenants` page existed anywhere in `eziza-admin`), and no written integration docs for a partner's engineer to follow (that second piece is still pending — tracked below).
+
+**Two real bugs found while building the admin page, both fixed:**
+- [x] `tenants`/`api_keys` were never locked down the way `riders`/`companies`/`deliveries`/`customers` were in the Phase 4 column-grant fix — Supabase's default blanket grants left both fully readable/writable by the public `anon` key. Anyone could read every tenant's `api_keys` row, mint themselves a working key for **another tenant's account** by inserting their own `key_hash` against any `tenant_id` (obtainable via the same open `SELECT`), or overwrite a tenant's `webhook_url` to hijack their delivery events. Migration `20260713000000_lock_down_tenants_api_keys.sql` — `REVOKE ALL ... FROM anon, authenticated` on both tables (nothing legitimate ever touched them outside `eziza-admin`'s service-role routes and the edge functions, also service role — confirmed by grep before revoking). Live-verified: anon key now gets `42501 permission denied`; `eziza-admin`'s existing tenant billing/list routes (service role) unaffected.
+- [x] `validateApiKey()` checked `api_keys.is_active` but never the parent `tenants.is_active` — deactivating a tenant only stopped their *outbound* webhooks (`dispatch-webhook` already checked `tenants.is_active` on its own), it did nothing to stop them still calling the API. Fixed by joining `tenants` and checking both; redeployed to all 6 tenant-facing functions. Live-verified: an active tenant's key returns a normal 404 (not 401) against `get-delivery`; the identical key gets rejected the instant the tenant is flagged inactive, even though the key itself is still `is_active=true`.
+
+**New admin surface**, `eziza-admin` `/dashboard/tenants`:
+- [x] `app/api/admin/tenants/route.ts` — GET (list with active/total key counts, never exposes `key_hash`), POST (create tenant + auto-issue its first API key), PATCH (name/email/webhook_url/`is_active`)
+- [x] `app/api/admin/tenants/keys/route.ts` — GET (list a tenant's keys, `key_hash` never selected), POST (issue a new key), PATCH (revoke/reactivate by key id)
+- [x] Raw API keys are shown exactly once, at creation, in a dedicated reveal modal with a copy button and an explicit "not stored, can't be shown again" warning — matches the "plaintext never stored" design `_shared/auth.ts` already had
+- [x] `components/Sidebar.tsx` — new "Tenants" nav entry
+- [x] `npm run build` and `npm run lint` clean (same pre-existing `set-state-in-effect`/`exhaustive-deps` warning pattern every other fetch-on-mount page already has, nothing new)
+- [x] **Live-verified 2026-07-13** end-to-end against the real dev server and real deployed edge functions with a throwaway tenant: created via the API → issued key confirmed working against the live `get-delivery` function (404, not 401) → revoked → confirmed 401 → reactivated + issued a second key → deactivated the whole tenant → confirmed even the reactivated, still-`is_active` key is now rejected. Also used a throwaway admin account (real password-grant login, not service-role bypass) to exercise every route as an actual authenticated admin would. All throwaway rows/auth users cleaned up after.
+
+**Still pending:**
+- [ ] Written integration documentation for third-party partners — endpoint reference (`create-delivery`/`get-delivery`/`cancel-delivery`/`accept-bid`/`confirm-pickup`/`confirm-receipt`), auth (`Authorization: Bearer <key>`), and the three webhook payload shapes (`dispatch-webhook` status changes, `dispatch-bid-webhook` new offers, `dispatch-location-webhook` live rider GPS) plus signature verification against `WEBHOOK_SIGNING_SECRET`. Nothing like this exists anywhere in the repo today.
+
 ## Key Credentials & URLs
 
 | Item | Value |
