@@ -35,6 +35,10 @@ serve(async (req) => {
   try {
     const { record } = await req.json()
     if (record?.status !== 'open') return json({ ok: true, reason: 'not open' })
+    // Sandbox deliveries never appear on the real job board (RLS filters
+    // them out) -- pushing "new job near you" for one anyway would be a
+    // real, confusing regression for actual riders/companies.
+    if (record?.is_sandbox) return json({ ok: true, reason: 'sandbox' })
 
     const pickupLat   = typeof record.pickup_lat   === 'number' ? record.pickup_lat   as number : null
     const pickupLng   = typeof record.pickup_lng   === 'number' ? record.pickup_lng   as number : null

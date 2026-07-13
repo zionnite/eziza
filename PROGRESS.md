@@ -618,6 +618,19 @@ Closed the last bit of the sandbox-onboarding loop: a sandbox tenant still had t
 - [x] `eziza-admin`: Tenants list sorts sandbox-tenants-with-a-pending-request to the top and shows a red "Live requested" badge; the tenant detail view's existing sandbox banner shows the request date next to the same "Promote to Live" button (unchanged) that resolves it
 - [x] **Live-verified**: real signup → real `request-live` call → confirmed it sorted first in the admin's real tenant list with the badge showing → promoted via the existing admin action → confirmed the request timestamp persists as historical info without showing as "pending" anymore (since the UI condition is `mode === 'sandbox' && live_requested_at`, and mode is now `live`). Cleaned up after.
 
+### Sandbox blast-radius audit on the real internal app — 2026-07-14
+
+Asked directly: does any of the sandbox work risk breaking ZeeFashion's real integration or Eziza's own internal (rider/company/customer) experience? Went through every DB-trigger-fired function that reacts to `deliveries`/`delivery_bids` changes, since those fire automatically and silently unless traced.
+
+- [x] **Found + fixed a real regression**: `notify-new-job` (fires on every `deliveries` INSERT) had no `is_sandbox` check at all — every sandbox delivery a partner creates was push-notifying every real, available, in-range rider **and** company with "📦 New Job Available," for a job that then doesn't actually appear when they open the app (RLS filters it out). Confusing and trust-eroding for real users. One-line guard added, redeployed.
+- [x] Checked `notify-bid-accepted`, `notify-delivery-update`, `notify-bid-placed`, and `dispatch-webhook`'s own embedded push logic — all four already no-op safely for sandbox data, since they all gate on a specific real identifier (`customer_id`, or a rider's/company's `auth_user_id` looked up and found null for the synthetic sandbox riders) rather than broadcasting to everyone. No fix needed.
+- [x] **Found + fixed a cosmetic issue**: the two synthetic sandbox riders (pre-approved, so no pending-queue noise) were still showing up in `eziza-admin`'s real Riders list — a real admin would see two approved riders with a fake-looking phone number and zero ratings/deliveries with no explanation. Filtered out (`eq('is_sandbox', false)`).
+- [x] Confirmed `tenants.mode` backfill covered **both** existing tenants correctly (`ZeeFashion` and `Eziza Direct` → `live`), so `create-delivery`'s `is_sandbox` stamp evaluates `false` for both, identical to before the column existed — verified via direct query, not assumed.
+- [x] Confirmed the `credit_delivery_earnings()` sandbox-exclusion fix (found earlier, same session) means sandbox activity still can't reach `earnings_ledger`/`wallet_balance` or, by extension, any admin earnings/billing report.
+- [ ] **Open judgment call, not yet decided**: `eziza-admin`'s Deliveries list (`/api/admin/deliveries`) still shows sandbox deliveries mixed in with real ones — unlike the riders case, there's a real argument for an admin wanting to see sandbox traffic too (e.g. debugging a partner's "why isn't my sandbox delivery progressing" report), so this wasn't filtered out unilaterally. Revisit if it turns out to be noise in practice.
+
+Everywhere else (`tenants`/`api_keys` grants, `validateApiKey()`, RLS on `deliveries`, ZeeFashion's actual `webhook_url`/API key/tenant row) was already re-confirmed untouched throughout every live-verification pass in this session — nothing new found there.
+
 ## Key Credentials & URLs
 
 | Item | Value |
