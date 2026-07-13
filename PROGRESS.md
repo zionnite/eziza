@@ -609,6 +609,15 @@ Closes the two remaining onboarding gaps: partners couldn't create their own acc
 
 **Live-verified 2026-07-14**, real signup through real deployed infrastructure, no shortcuts: signed up a throwaway tenant → confirmed `mode='sandbox'`, key prefixed `eziza_test_` → created a real sandbox delivery via the real `create-delivery` function → confirmed a throwaway *real* rider's own RLS-filtered view of the open job board excluded it (while still showing a genuine real open delivery as a positive control) → watched the actual `pg_cron` tick generate a real offer → called the real `accept-bid`/`confirm-pickup`/`confirm-receipt` endpoints myself (playing the tenant's role, exactly as a partner's integration would) → watched the simulator advance `assigned→awaiting_pickup_confirm` and `picked_up→delivered` on schedule, unprompted → confirmed all 7 expected webhook events (`bid.placed` + 6 `delivery.*`/`location.updated`) logged in `webhook_dispatch_log`, visible through the tenant's own portal session (`/api/tenant/deliveries`, `/api/tenant/webhook-log`) → replayed one of two transient `httpbin.org` failures and confirmed it succeeded on retry → promoted the tenant to live via `eziza-admin` → confirmed the *same* old `eziza_test_`-prefixed key still worked but now created a non-sandbox delivery, visible to the real rider this time (then immediately cancelled it) → issued a fresh key post-promotion and confirmed it came back `eziza_live_`-prefixed. All throwaway tenants/keys/deliveries/riders/auth users/earnings-ledger rows cleaned up after; `ZeeFashion`/`Eziza Direct` and the two seed sandbox riders confirmed untouched throughout.
 
+### Self-service "Request Live Access" — BUILT + live-verified 2026-07-14
+
+Closed the last bit of the sandbox-onboarding loop: a sandbox tenant still had to email `admin@eziza.online` to ask for promotion. Now it's a button in their own dashboard.
+
+- [x] Migration `20260714040000_tenant_live_access_request.sql` — `tenants.live_requested_at`, purely a visibility/queue marker; promotion itself is unchanged (still an admin-only `mode` PATCH)
+- [x] `eziza-partners`: `POST /api/tenant/request-live` sets the timestamp (only from `sandbox`, `409` if already `live`); dashboard overview shows "Request Live Access" until requested, then "awaiting review" with the date
+- [x] `eziza-admin`: Tenants list sorts sandbox-tenants-with-a-pending-request to the top and shows a red "Live requested" badge; the tenant detail view's existing sandbox banner shows the request date next to the same "Promote to Live" button (unchanged) that resolves it
+- [x] **Live-verified**: real signup → real `request-live` call → confirmed it sorted first in the admin's real tenant list with the badge showing → promoted via the existing admin action → confirmed the request timestamp persists as historical info without showing as "pending" anymore (since the UI condition is `mode === 'sandbox' && live_requested_at`, and mode is now `live`). Cleaned up after.
+
 ## Key Credentials & URLs
 
 | Item | Value |
