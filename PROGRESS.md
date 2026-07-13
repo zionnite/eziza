@@ -322,6 +322,10 @@ Before this, a customer choosing between offers on a delivery had no way to see 
 - [ ] Customer delivery detail page — "External Carriers" section
 - [ ] Booking flow + tracking poll
 
+### Tenant API / Developer Experience
+- [ ] **Rename `bid` → `offer` in the API** — the app's own UI was renamed from "bid" to "offer" a while back, but `accept-bid`, `delivery_bids`, `bid_id`, and the `bid.placed` webhook event never got the same treatment. Deferred for now: a real rename would touch 4 edge functions (`accept-bid`, `dispatch-bid-webhook`, `notify-bid-accepted`, `notify-bid-placed`) plus the `delivery_bids` table's RLS/triggers/indexes, and would need a coordinated breaking-change deploy with ZeeFashion's `logistics-gateway`, which already calls `accept-bid`/`bid_id` in production. For now just documented as a terminology note in `docs/integration-guide.html`.
+- [ ] **No `list-bids`/`list-offers` endpoint** — a tenant can only discover offers on a delivery via the `bid.placed` webhook; there's no way to fetch existing ones (e.g. after a missed webhook, or if their receiver comes online late). Noted as a known limitation in the integration guide; would need a new tenant-facing edge function if requested.
+
 ### Monetisation
 - [ ] Commission deduction in `pay_and_accept_delivery_bid` RPC
 - [ ] Markup on external carrier quotes
