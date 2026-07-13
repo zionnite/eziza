@@ -573,6 +573,15 @@ Single login per tenant (mirrors `companies`' one-login pattern, not multi-user 
 **Not yet done:**
 - [x] `eziza-partners` pushed to its own GitHub repo — `https://github.com/zionnite/eziza-partners.git`
 - [ ] Multi-user-per-tenant (role-split logins — engineer/support/owner) explicitly deferred per user decision 2026-07-13: speculative team-structure assumption with zero evidence any real tenant needs it yet; revisit if a partner actually asks for it
+- [ ] No self-service tenant signup — the only path in is an Eziza admin manually creating the tenant + login in `eziza-admin` and relaying the generated password out-of-band. Flagged as a real bottleneck (doesn't scale, out-of-band password handoff), but may be intentional for now as a vetting gate given there's no sandbox environment — every tenant hits production immediately. Not changed pending a decision either way.
+
+#### Password management for tenant logins — BUILT + live-verified 2026-07-13
+`eziza-partners` had no way for a partner to change their admin-generated password, and no forgot-password recovery — added both, first time this pattern exists anywhere in the Next.js app family (`eziza-admin` doesn't have it either).
+- [x] `/dashboard/settings` — change password while logged in (`supabase.auth.updateUser({ password })`)
+- [x] `/forgot-password` — email entry, `resetPasswordForEmail`, generic "check your email" confirmation regardless of whether the address exists (not usable to probe which emails have accounts)
+- [x] `/reset-password` — lands here from the emailed link; listens for the `PASSWORD_RECOVERY` auth event (supabase-js parses the recovery token from the URL automatically), then the same `updateUser({ password })` call
+- [x] "Forgot password?" link added to the login page; "Settings" added to the sidebar nav
+- [x] **Live-verified**: since there's no real inbox to check email delivery, verified the actual mechanics directly against a throwaway account — generated a real recovery link server-side (`auth.admin.generateLink`), consumed its `hashed_token` via `verifyOtp({ token_hash, type: 'recovery' })` (exactly what supabase-js's automatic URL-detection does when a user clicks the emailed link), updated the password through that recovery session, confirmed the old password now fails and the new one works, then did the same for the in-app change-password mechanic (update again while already signed in, confirm the newest password works). Cleaned up after.
 
 ## Key Credentials & URLs
 
