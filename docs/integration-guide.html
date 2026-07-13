@@ -214,6 +214,11 @@
   <article>
     <p class="lede">This guide is for an engineer integrating a platform — an e-commerce checkout, for example — with Eziza on behalf of their own buyers and merchants. ZeeFashion isn't a special case here; it's the first tenant built against exactly this API.</p>
 
+    <div class="callout">
+      <span class="eyebrow">Terminology: "bid" = "offer"</span>
+      <p>The Eziza app shows riders/companies submitting <strong>offers</strong> on a delivery — that's the user-facing word. The API and data model underneath still say <strong>bid</strong> everywhere (<code>accept-bid</code>, <code>bid_id</code>, <code>bid.placed</code>). They're the same concept; the API just predates the app's own copy change. Read "bid" as "offer" throughout this guide.</p>
+    </div>
+
     <section class="clause" id="access">
       <h2><span class="num">01</span>Getting access</h2>
       <p>Eziza doesn't have self-service tenant signup yet. Email <a href="mailto:admin@eziza.online">admin@eziza.online</a> with your platform name and a contact email, and we'll create your tenant and issue your first API key from the internal admin console. You'll receive:</p>
