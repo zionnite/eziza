@@ -72,6 +72,7 @@ serve(async (req) => {
         package_value,
         status: 'open',
         bid_closes_at: bidClosesAt,
+        is_sandbox: auth.mode === 'sandbox',
       })
       .select('id, status, bid_closes_at')
       .single()

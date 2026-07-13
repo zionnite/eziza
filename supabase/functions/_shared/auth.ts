@@ -7,7 +7,7 @@ const supabase = createClient(
 
 export async function validateApiKey(
   req: Request,
-): Promise<{ tenantId: string } | null> {
+): Promise<{ tenantId: string; mode: string } | null> {
   const auth = req.headers.get('Authorization')
   if (!auth?.startsWith('Bearer ')) return null
 
@@ -24,7 +24,7 @@ export async function validateApiKey(
 
   const { data: key } = await supabase
     .from('api_keys')
-    .select('id, tenant_id, is_active, tenant:tenants(is_active)')
+    .select('id, tenant_id, is_active, tenant:tenants(is_active, mode)')
     .eq('key_hash', keyHash)
     .single()
 
@@ -42,5 +42,5 @@ export async function validateApiKey(
     .eq('id', key.id)
     .then(() => {})
 
-  return { tenantId: key.tenant_id }
+  return { tenantId: key.tenant_id, mode: tenant.mode }
 }

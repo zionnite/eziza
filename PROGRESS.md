@@ -583,6 +583,32 @@ Single login per tenant (mirrors `companies`' one-login pattern, not multi-user 
 - [x] "Forgot password?" link added to the login page; "Settings" added to the sidebar nav
 - [x] **Live-verified**: since there's no real inbox to check email delivery, verified the actual mechanics directly against a throwaway account — generated a real recovery link server-side (`auth.admin.generateLink`), consumed its `hashed_token` via `verifyOtp({ token_hash, type: 'recovery' })` (exactly what supabase-js's automatic URL-detection does when a user clicks the emailed link), updated the password through that recovery session, confirmed the old password now fails and the new one works, then did the same for the in-app change-password mechanic (update again while already signed in, confirm the newest password works). Cleaned up after.
 
+### Self-service signup + sandbox mode — BUILT + live-verified 2026-07-14
+
+Closes the two remaining onboarding gaps: partners couldn't create their own account (only an admin could), and there was no sandbox — every tenant hit production immediately. Both landed together since the design connects them: self-signup grants **sandbox** automatically (unvetted), admin-created tenants go straight to **live** (the admin creating one manually already is the vetting step).
+
+**Schema** (migration `20260714000000_sandbox_mode.sql`):
+- `tenants.mode` (`sandbox`|`live`, default `sandbox`) — backfilled ZeeFashion + Eziza Direct to `live`
+- `deliveries.is_sandbox` — stamped at `create-delivery` time from the tenant's mode (denormalized, not derived via join — same reliability lesson as the realtime RLS denormalizations earlier in this project)
+- `riders.is_sandbox` + two seed synthetic riders ("Sandbox Rider One/Two", `auth_user_id` NULL — nullable, so no real login needed for a rider that never logs in)
+
+**The hard part — a delivery can't be "fulfilled" without a real human, so it needs a simulator**, not just a data flag. Worked out which lifecycle transitions are actually the *rider's* job vs the *tenant's own* job, and only simulated the former — everything the tenant would normally call for real (`accept-bid`, `confirm-pickup`, `confirm-receipt`) stays theirs to call, so their actual integration code gets exercised, not bypassed:
+- [x] `progress-sandbox-deliveries` edge function — generates 1 fake offer on `open` sandbox deliveries after ~10s, advances `assigned → awaiting_pickup_confirm` after ~15s and `picked_up → delivered` after ~20s, writing a plausible GPS point near pickup/dropoff so `location.updated` fires too
+- [x] Ticked every 15s via `pg_cron` + `pg_net` (`20260714020000_sandbox_simulator_cron.sql`) — `pg_cron` wasn't installed on this project at all (unlike ZeeFashion's, which already uses it), enabled fresh
+- [x] `location.updated` couldn't reuse the existing `rider_locations` → `dispatch-location-webhook` plumbing — that table has no FK to `auth.users`, and the dispatcher's own rider lookup expects a real `auth_user_id` (sandbox riders have none by design). Dispatches this one event type directly instead, same payload/signing as the real thing, rather than bending shared infra to fit a fake rider.
+- [x] `delivery.*` and `bid.placed` webhooks need **no special-casing at all** — the simulator's plain SQL INSERT/UPDATE goes through the exact same existing DB-webhook triggers a real status change or bid would, confirmed by watching them fire correctly during live verification
+- [x] Real riders/companies never see sandbox deliveries — `riders_see_deliveries`/`deliveries_rider_select` RLS policies' "any open delivery" branch now requires `is_sandbox = false` (`20260714010000_hide_sandbox_from_real_riders.sql`)
+- [x] Key prefixes: `eziza_test_`/`eziza_live_`, cosmetic only — `validateApiKey()` and `create-delivery` trust `tenants.mode` server-side, never the prefix. Promoting a tenant doesn't force-revoke its existing key (still works, now against real riders) — the portal recommends issuing a fresh live-prefixed key after promotion instead
+- [x] `eziza-admin` Tenants page — mode badge, "Promote to Live" action (confirm dialog, since it's a real behavior change)
+- [x] `eziza-partners` `/signup` — public, no approval wait. `admin.createUser(..., email_confirm:false)` creates the account+tenant+first key together server-side, then the client separately calls `auth.resend({type:'signup'})` to trigger Supabase's own confirmation email (`admin.createUser` deliberately doesn't send one) — sidesteps the chicken-and-egg problem of needing a session/token before the user has confirmed anything
+- [x] Login page links to both `/signup` and `/forgot-password`; dashboard overview shows a sandbox/live badge and (in sandbox) a reminder of what it means
+
+**Two real bugs found live-verifying, both fixed:**
+- [x] **`credit_delivery_earnings()` didn't know about sandbox** — a simulated delivery reaching `confirmed` created a real `earnings_ledger` row and credited a real `wallet_balance` on the synthetic sandbox rider, fake money mixed into real reporting. Fixed (`20260714030000_exclude_sandbox_from_earnings.sql`, `SECURITY DEFINER` preserved) to skip sandbox deliveries entirely. Caught only because live-verification tried to clean up the test delivery and hit an unexpected FK from `earnings_ledger` — worth remembering that "confirmed" is the one status transition with side effects beyond the row itself.
+- [x] Confirmed `auth.resend()`/`signUp()` reject `@eziza.online` test addresses ("invalid email" — likely no MX records, since that domain's only ever been used for admin placeholder accounts via `admin.createUser`, which doesn't validate deliverability). Not a bug in the app — verified `resend()` works fine against a real domain (`gmail.com`, no error) — just means real partner domains won't have this problem, a throwaway `@eziza.online` test address was the wrong choice for that specific check.
+
+**Live-verified 2026-07-14**, real signup through real deployed infrastructure, no shortcuts: signed up a throwaway tenant → confirmed `mode='sandbox'`, key prefixed `eziza_test_` → created a real sandbox delivery via the real `create-delivery` function → confirmed a throwaway *real* rider's own RLS-filtered view of the open job board excluded it (while still showing a genuine real open delivery as a positive control) → watched the actual `pg_cron` tick generate a real offer → called the real `accept-bid`/`confirm-pickup`/`confirm-receipt` endpoints myself (playing the tenant's role, exactly as a partner's integration would) → watched the simulator advance `assigned→awaiting_pickup_confirm` and `picked_up→delivered` on schedule, unprompted → confirmed all 7 expected webhook events (`bid.placed` + 6 `delivery.*`/`location.updated`) logged in `webhook_dispatch_log`, visible through the tenant's own portal session (`/api/tenant/deliveries`, `/api/tenant/webhook-log`) → replayed one of two transient `httpbin.org` failures and confirmed it succeeded on retry → promoted the tenant to live via `eziza-admin` → confirmed the *same* old `eziza_test_`-prefixed key still worked but now created a non-sandbox delivery, visible to the real rider this time (then immediately cancelled it) → issued a fresh key post-promotion and confirmed it came back `eziza_live_`-prefixed. All throwaway tenants/keys/deliveries/riders/auth users/earnings-ledger rows cleaned up after; `ZeeFashion`/`Eziza Direct` and the two seed sandbox riders confirmed untouched throughout.
+
 ## Key Credentials & URLs
 
 | Item | Value |
@@ -590,6 +616,9 @@ Single login per tenant (mirrors `companies`' one-login pattern, not multi-user 
 | Eziza Supabase project | `nvwpsccleewgirlwokys.supabase.co` |
 | Eziza DB pooler | `postgresql://postgres.nvwpsccleewgirlwokys:V3JYMT0xTUTUosKM@aws-0-eu-west-1.pooler.supabase.com:5432/postgres` |
 | Eziza GitHub | `https://github.com/zionnite/eziza.git` |
+| eziza-admin GitHub | `https://github.com/zionnite/eziza-admin.git` |
+| eziza-partners GitHub | `https://github.com/zionnite/eziza-partners.git` |
+| Sandbox simulator cron job | `progress-sandbox-deliveries-tick`, every 15s (`SELECT * FROM cron.job`) |
 | Termii SMS | Key pending (support ticket open — both `tlv_Hn4r...` and `tlv_VdZ-...` rejected 401) |
 
 ## Tracking Code Format

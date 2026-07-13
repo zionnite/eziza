@@ -203,12 +203,13 @@
 <div class="page">
   <nav class="toc" aria-label="Table of contents">
     <a href="#access"><span class="n">1</span>Getting access</a>
-    <a href="#auth"><span class="n">2</span>Authentication</a>
-    <a href="#lifecycle"><span class="n">3</span>Delivery lifecycle</a>
-    <a href="#endpoints"><span class="n">4</span>Endpoints</a>
-    <a href="#webhooks"><span class="n">5</span>Webhooks</a>
-    <a href="#errors"><span class="n">6</span>Errors</a>
-    <a href="#support"><span class="n">7</span>Support</a>
+    <a href="#sandbox"><span class="n">2</span>Sandbox mode</a>
+    <a href="#auth"><span class="n">3</span>Authentication</a>
+    <a href="#lifecycle"><span class="n">4</span>Delivery lifecycle</a>
+    <a href="#endpoints"><span class="n">5</span>Endpoints</a>
+    <a href="#webhooks"><span class="n">6</span>Webhooks</a>
+    <a href="#errors"><span class="n">7</span>Errors</a>
+    <a href="#support"><span class="n">8</span>Support</a>
   </nav>
 
   <article>
@@ -221,28 +222,54 @@
 
     <section class="clause" id="access">
       <h2><span class="num">01</span>Getting access</h2>
-      <p>Eziza doesn't have self-service tenant signup yet. Email <a href="mailto:admin@eziza.online">admin@eziza.online</a> with your platform name and a contact email, and we'll create your tenant and issue your first API key from the internal admin console. You'll receive:</p>
+      <p>Two paths in, depending on what you need:</p>
+      <ul>
+        <li><strong>Try it yourself, right now</strong> — <a href="https://github.com/zionnite/eziza-partners">sign up</a> for a free sandbox account. No approval wait, and nothing you do there touches a real rider — see <a href="#sandbox">Section 2</a>.</li>
+        <li><strong>Going live</strong> — email <a href="mailto:admin@eziza.online">admin@eziza.online</a> once you're ready for real riders and real deliveries, and we'll promote your tenant. If you'd rather skip sandbox entirely (e.g. an established partner), we can also create a live tenant for you directly from the internal admin console.</li>
+      </ul>
+      <p>Either way you end up with:</p>
       <ul>
         <li>A <strong>tenant record</strong> — name, contact email, and an optional webhook URL for receiving events</li>
-        <li>An <strong>API key</strong> — shown to us once at creation, then never retrievable again. Store it like any other secret.</li>
+        <li>A <strong>partner portal login</strong> — manage your own API keys and webhook config without emailing us for every change</li>
+        <li>An <strong>API key</strong> — shown once at creation, then never retrievable again. Store it like any other secret.</li>
       </ul>
-      <p>You can request additional keys later (e.g. one for staging, one for production), or have one revoked at any time.</p>
+      <p>You can issue additional keys at any time from the partner portal (e.g. one for staging, one for production), or revoke one yourself.</p>
+    </section>
+
+    <section class="clause" id="sandbox">
+      <h2><span class="num">02</span>Sandbox mode</h2>
+      <p>Every tenant starts in sandbox. Sandbox keys are prefixed <code>eziza_test_</code>, live keys <code>eziza_live_</code> — a quick visual check of which one you're holding, though the actual gate is server-side, not the prefix.</p>
+      <p>Sandbox deliveries never reach the real job board — no real rider or company ever sees or bids on them. Instead, a simulator plays <strong>only the rider's side</strong> of the lifecycle, so your own integration code exercises the exact same endpoints and webhooks it would in production:</p>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>Transition</th><th>Who drives it in sandbox</th></tr></thead>
+          <tbody>
+            <tr><td>A rider/company offers on your delivery</td><td>Simulated — appears ~10s after creation</td></tr>
+            <tr><td class="mono">open → assigned</td><td><strong>You</strong> — call <code>accept-bid</code> yourself, same as production</td></tr>
+            <tr><td>Rider "arrives" at pickup (<span class="mono">assigned → awaiting_pickup_confirm</span>)</td><td>Simulated — ~15s after assignment</td></tr>
+            <tr><td class="mono">awaiting_pickup_confirm → picked_up</td><td><strong>You</strong> — call <code>confirm-pickup</code> yourself</td></tr>
+            <tr><td>Rider marks delivered (<span class="mono">picked_up → delivered</span>)</td><td>Simulated — ~20s after pickup</td></tr>
+            <tr><td class="mono">delivered → confirmed</td><td><strong>You</strong> — call <code>confirm-receipt</code> yourself</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Every real webhook fires exactly the same way for sandbox deliveries — <code>bid.placed</code>, all six <code>delivery.*</code> events, and <code>location.updated</code> (the simulator writes a plausible GPS point near your pickup/dropoff address) — so you can fully exercise your webhook receiver without a human rider anywhere.</p>
       <div class="callout">
-        <span class="eyebrow">No sandbox environment</span>
-        <p>Test keys hit the same project as production today. Use a dedicated key per environment, and prefix your <code>external_order_id</code> so test deliveries are identifiable.</p>
+        <span class="eyebrow">Going live</span>
+        <p>Promotion doesn't invalidate your existing sandbox key — it keeps working, just against real riders now, which is confusing enough that we'd recommend issuing a fresh <code>eziza_live_</code> key from the portal right after promotion and retiring the old one.</p>
       </div>
     </section>
 
     <section class="clause" id="auth">
-      <h2><span class="num">02</span>Authentication</h2>
-      <p>Every request — except incoming webhooks, which are signed instead of bearer-authenticated (see <a href="#webhooks">Section 5</a>) — needs your API key as a bearer token:</p>
+      <h2><span class="num">03</span>Authentication</h2>
+      <p>Every request — except incoming webhooks, which are signed instead of bearer-authenticated (see <a href="#webhooks">Section 6</a>) — needs your API key as a bearer token:</p>
       <pre><code>Authorization: Bearer &lt;your_api_key&gt;</code></pre>
       <p>A missing, wrong, revoked key, or a key belonging to a deactivated tenant, gets a <code>401</code>:</p>
       <pre><code>{ "error": "Unauthorized" }</code></pre>
     </section>
 
     <section class="clause" id="lifecycle">
-      <h2><span class="num">03</span>Delivery lifecycle</h2>
+      <h2><span class="num">04</span>Delivery lifecycle</h2>
       <p>A delivery moves through one of two paths:</p>
       <div class="lifecycle">
         <span class="step">open</span><span class="arrow">→</span>
@@ -275,7 +302,7 @@
     </section>
 
     <section class="clause" id="endpoints">
-      <h2><span class="num">04</span>Endpoints</h2>
+      <h2><span class="num">05</span>Endpoints</h2>
       <p>All bodies are JSON; all responses are JSON. <code>OPTIONS</code> is supported for CORS on every endpoint.</p>
 
       <h3><span class="badge post">POST</span><span class="badge path">/create-delivery</span></h3>
@@ -352,7 +379,7 @@
     </section>
 
     <section class="clause" id="webhooks">
-      <h2><span class="num">05</span>Webhooks</h2>
+      <h2><span class="num">06</span>Webhooks</h2>
       <p>If your tenant record has a <code>webhook_url</code> set, Eziza <code>POST</code>s an event to it whenever something changes. Every request carries:</p>
       <pre><code>Content-Type: application/json
 X-Eziza-Event: &lt;event name&gt;
@@ -424,7 +451,7 @@ function isValid(rawBody, signatureHeader, secret) {
     </section>
 
     <section class="clause" id="errors">
-      <h2><span class="num">06</span>Errors</h2>
+      <h2><span class="num">07</span>Errors</h2>
       <div class="table-wrap">
         <table class="data">
           <thead><tr><th>Status</th><th>Meaning</th></tr></thead>
@@ -441,7 +468,7 @@ function isValid(rawBody, signatureHeader, secret) {
     </section>
 
     <section class="clause" id="support">
-      <h2><span class="num">07</span>Support</h2>
+      <h2><span class="num">08</span>Support</h2>
       <p>Questions, or requesting a new tenant/key: <a href="mailto:admin@eziza.online">admin@eziza.online</a>.</p>
     </section>
   </article>
