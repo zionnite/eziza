@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Eziza — Delivery API Integration Guide</title>
+<meta name="description" content="Integrate your platform with Eziza's delivery marketplace: authentication, the six tenant endpoints, webhook events and signature verification, and error handling." />
+<style>
+  :root{
+    --purple:#6C3483;
+    --purple-deep:#4A1480;
+    --navy:#0D0D3E;
+    --gold:#E8A838;
+    --teal:#00A9C7;
+
+    --bg:#FFFFFF;
+    --surface:#F8F6FF;
+    --surface-raised:#FFFFFF;
+    --border:#E4DEF2;
+    --text:#1A1A2E;
+    --muted:#655F72;
+    --accent:var(--purple);
+    --link:#5A2C74;
+    --code-bg:#F1ECFB;
+    --shadow: 0 1px 2px rgba(26,26,46,0.04);
+  }
+
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0B0B2E;
+      --surface:#131442;
+      --surface-raised:#171A4E;
+      --border:rgba(255,255,255,0.09);
+      --text:#ECEAF7;
+      --muted:#ACA5C9;
+      --accent:#B98CD1;
+      --link:#D6B8EA;
+      --code-bg:#1B1D52;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0B0B2E; --surface:#131442; --surface-raised:#171A4E;
+    --border:rgba(255,255,255,0.09); --text:#ECEAF7; --muted:#ACA5C9;
+    --accent:#B98CD1; --link:#D6B8EA; --code-bg:#1B1D52;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  :root[data-theme="light"]{
+    --bg:#FFFFFF; --surface:#F8F6FF; --surface-raised:#FFFFFF;
+    --border:#E4DEF2; --text:#1A1A2E; --muted:#655F72;
+    --accent:var(--purple); --link:#5A2C74; --code-bg:#F1ECFB;
+    --shadow: 0 1px 2px rgba(26,26,46,0.04);
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:16px;
+    line-height:1.7;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{ background:var(--purple); color:#fff; }
+
+  h1,h2,h3{
+    font-family:ui-serif,Georgia,"Iowan Old Style","Times New Roman",serif;
+    font-weight:600;
+    color:var(--text);
+    text-wrap:balance;
+    letter-spacing:-0.01em;
+  }
+
+  .mono{ font-family:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace; }
+  .eyebrow{
+    font-family:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
+    font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted);
+  }
+
+  a{ color:var(--link); text-decoration-color:color-mix(in srgb, var(--link) 40%, transparent); text-underline-offset:3px; }
+  a:hover{ text-decoration-thickness:2px; }
+  a:focus-visible, button:focus-visible{ outline:2px solid var(--gold); outline-offset:2px; border-radius:3px; }
+
+  /* ---------- Masthead ---------- */
+  .masthead{ background:linear-gradient(135deg,var(--navy) 0%,var(--purple-deep) 100%); padding:44px 24px 40px; }
+  .masthead-inner{ max-width:1040px; margin:0 auto; display:flex; flex-direction:column; gap:14px; }
+  .wordmark{ display:flex; align-items:center; gap:10px; }
+  .wordmark-mark{
+    width:30px; height:30px; border-radius:8px;
+    background:linear-gradient(135deg,var(--gold),#c9852a);
+    display:flex; align-items:center; justify-content:center;
+    font-family:ui-serif,Georgia,serif; font-weight:700; font-size:16px; color:#241102; flex:none;
+  }
+  .wordmark-name{ font-family:ui-serif,Georgia,serif; font-size:17px; font-weight:600; color:#F4F0FF; letter-spacing:0.01em; }
+  .masthead h1{ color:#fff; font-size:clamp(26px,4vw,38px); margin:6px 0 0; line-height:1.15; }
+  .masthead .rule{ width:52px; height:3px; border-radius:2px; background:var(--gold); margin:4px 0 2px; }
+  .masthead p.dek{ color:#C9C2E8; max-width:62ch; font-size:15px; margin:2px 0 0; line-height:1.6; }
+  .meta-row{ display:flex; flex-wrap:wrap; gap:8px 18px; margin-top:8px; }
+  .meta-item{ font-family:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace; font-size:12px; letter-spacing:0.02em; color:#C9C2E8; }
+  .meta-item b{ color:#F4F0FF; font-weight:600; }
+
+  /* ---------- Layout ---------- */
+  .page{ max-width:1040px; margin:0 auto; padding:40px 24px 100px; display:grid; grid-template-columns:230px minmax(0,1fr); gap:48px; align-items:start; }
+  @media (max-width:800px){ .page{ grid-template-columns:1fr; } }
+
+  /* ---------- TOC ---------- */
+  nav.toc{ position:sticky; top:24px; display:flex; flex-direction:column; gap:2px; border-left:2px solid var(--border); padding-left:16px; }
+  @media (max-width:800px){
+    nav.toc{ position:static; border-left:none; padding-left:0; border:1px solid var(--border); border-radius:12px; padding:14px 16px; background:var(--surface); margin-bottom:8px; }
+  }
+  nav.toc a{ display:flex; gap:8px; padding:6px 0; font-size:13px; color:var(--muted); text-decoration:none; }
+  nav.toc a:hover{ color:var(--accent); }
+  nav.toc a .n{ font-family:ui-monospace,"SF Mono",monospace; font-variant-numeric:tabular-nums; color:var(--accent); opacity:0.7; flex:none; width:16px; }
+
+  /* ---------- Article ---------- */
+  article{ min-width:0; }
+  .lede{ font-size:17px; color:var(--muted); max-width:68ch; margin:0 0 8px; }
+  section.clause{ max-width:74ch; padding-top:34px; margin-top:34px; border-top:1px solid var(--border); scroll-margin-top:24px; }
+  section.clause:first-of-type{ border-top:none; margin-top:20px; padding-top:0; }
+  .clause h2{ font-size:21px; display:flex; align-items:baseline; gap:10px; margin:0 0 12px; }
+  .clause h2 .num{ font-family:ui-monospace,"SF Mono",monospace; font-size:14px; color:var(--accent); opacity:0.75; }
+  .clause h3{ font-size:15.5px; margin:26px 0 10px; color:var(--text); display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .clause h3:first-of-type{ margin-top:18px; }
+  .clause p{ margin:0 0 14px; color:var(--text); }
+  .clause p.muted{ color:var(--muted); font-size:14.5px; }
+  .clause ul, .clause ol{ padding-left:1.1em; margin:0 0 14px; }
+  .clause li{ margin-bottom:7px; }
+  .clause li::marker{ color:var(--accent); }
+
+  .callout{ background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 18px; margin:0 0 18px; box-shadow:var(--shadow); }
+  .callout.warn{ background:rgba(232,168,56,0.08); border-color:rgba(232,168,56,0.3); }
+  .callout .eyebrow{ margin-bottom:6px; display:block; }
+  .callout p:last-child{ margin-bottom:0; }
+
+  /* ---------- Method + status badges ---------- */
+  .badge{
+    display:inline-flex; align-items:center; font-family:ui-monospace,"SF Mono",monospace;
+    font-size:11px; font-weight:700; letter-spacing:0.03em; padding:3px 9px; border-radius:6px; white-space:nowrap;
+  }
+  .badge.get{ background:rgba(0,169,199,0.14); color:var(--teal); }
+  .badge.post{ background:rgba(232,168,56,0.16); color:#B9791F; }
+  @media (prefers-color-scheme:dark){ .badge.post{ color:#F4D998; } }
+  :root[data-theme="dark"] .badge.post{ color:#F4D998; }
+  :root[data-theme="light"] .badge.post{ color:#B9791F; }
+  .badge.path{ background:var(--code-bg); color:var(--accent); font-weight:600; }
+  .endpoint-line{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+
+  /* ---------- Code blocks ---------- */
+  pre{
+    background:var(--code-bg); border:1px solid var(--border); border-radius:10px;
+    padding:16px 18px; overflow-x:auto; font-size:13px; line-height:1.6; margin:0 0 16px;
+  }
+  pre code{ font-family:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace; color:var(--text); }
+  code:not(pre code){
+    background:var(--code-bg); padding:2px 6px; border-radius:5px;
+    font-family:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace; font-size:0.88em;
+  }
+
+  /* ---------- Data table ---------- */
+  .table-wrap{ overflow-x:auto; border:1px solid var(--border); border-radius:12px; margin:0 0 20px; max-width:100%; }
+  table.data{ border-collapse:collapse; width:100%; min-width:520px; font-size:13.5px; background:var(--surface-raised); }
+  table.data th{
+    text-align:left; font-family:ui-monospace,"SF Mono",monospace; font-size:11px; letter-spacing:0.08em;
+    text-transform:uppercase; color:var(--muted); background:var(--surface); padding:11px 14px; border-bottom:1px solid var(--border); white-space:nowrap;
+  }
+  table.data td{ padding:12px 14px; border-bottom:1px solid var(--border); vertical-align:top; color:var(--text); }
+  table.data tr:last-child td{ border-bottom:none; }
+  table.data td.mono{ font-family:ui-monospace,"SF Mono",monospace; font-size:12.5px; white-space:nowrap; }
+  .req{ color:var(--accent); font-weight:700; }
+
+  /* ---------- Lifecycle diagram ---------- */
+  .lifecycle{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:0 0 18px; font-family:ui-monospace,"SF Mono",monospace; font-size:12.5px; }
+  .lifecycle .step{ background:var(--surface); border:1px solid var(--border); border-radius:999px; padding:6px 12px; color:var(--text); }
+  .lifecycle .arrow{ color:var(--muted); }
+  .lifecycle .step.end{ background:rgba(239,68,68,0.1); border-color:rgba(239,68,68,0.25); color:#B91C1C; }
+
+  footer{ max-width:1040px; margin:0 auto; padding:0 24px 60px; }
+  footer .fine{ border-top:1px solid var(--border); padding-top:20px; font-size:12.5px; color:var(--muted); }
+
+  @media (prefers-reduced-motion:no-preference){ section.clause{ scroll-behavior:smooth; } }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="masthead-inner">
+    <div class="wordmark">
+      <div class="wordmark-mark">E</div>
+      <div class="wordmark-name">Eziza</div>
+    </div>
+    <div class="rule"></div>
+    <h1>Delivery API Integration Guide</h1>
+    <p class="dek">Eziza is a delivery marketplace, not a dispatch service — nearby riders and logistics companies bid on your delivery, you (or your buyer) pick an offer, then Eziza handles live GPS tracking, OTP-verified handoff, and payout. This guide covers integrating your own platform with it.</p>
+    <div class="meta-row">
+      <span class="meta-item">Base URL <b>nvwpsccleewgirlwokys.supabase.co/functions/v1</b></span>
+      <span class="meta-item">Auth <b>Bearer API key</b></span>
+      <span class="meta-item">Contact <b>admin@eziza.online</b></span>
+    </div>
+  </div>
+</div>
+
+<div class="page">
+  <nav class="toc" aria-label="Table of contents">
+    <a href="#access"><span class="n">1</span>Getting access</a>
+    <a href="#auth"><span class="n">2</span>Authentication</a>
+    <a href="#lifecycle"><span class="n">3</span>Delivery lifecycle</a>
+    <a href="#endpoints"><span class="n">4</span>Endpoints</a>
+    <a href="#webhooks"><span class="n">5</span>Webhooks</a>
+    <a href="#errors"><span class="n">6</span>Errors</a>
+    <a href="#support"><span class="n">7</span>Support</a>
+  </nav>
+
+  <article>
+    <p class="lede">This guide is for an engineer integrating a platform — an e-commerce checkout, for example — with Eziza on behalf of their own buyers and merchants. ZeeFashion isn't a special case here; it's the first tenant built against exactly this API.</p>
+
+    <section class="clause" id="access">
+      <h2><span class="num">01</span>Getting access</h2>
+      <p>Eziza doesn't have self-service tenant signup yet. Email <a href="mailto:admin@eziza.online">admin@eziza.online</a> with your platform name and a contact email, and we'll create your tenant and issue your first API key from the internal admin console. You'll receive:</p>
+      <ul>
+        <li>A <strong>tenant record</strong> — name, contact email, and an optional webhook URL for receiving events</li>
+        <li>An <strong>API key</strong> — shown to us once at creation, then never retrievable again. Store it like any other secret.</li>
+      </ul>
+      <p>You can request additional keys later (e.g. one for staging, one for production), or have one revoked at any time.</p>
+      <div class="callout">
+        <span class="eyebrow">No sandbox environment</span>
+        <p>Test keys hit the same project as production today. Use a dedicated key per environment, and prefix your <code>external_order_id</code> so test deliveries are identifiable.</p>
+      </div>
+    </section>
+
+    <section class="clause" id="auth">
+      <h2><span class="num">02</span>Authentication</h2>
+      <p>Every request — except incoming webhooks, which are signed instead of bearer-authenticated (see <a href="#webhooks">Section 5</a>) — needs your API key as a bearer token:</p>
+      <pre><code>Authorization: Bearer &lt;your_api_key&gt;</code></pre>
+      <p>A missing, wrong, revoked key, or a key belonging to a deactivated tenant, gets a <code>401</code>:</p>
+      <pre><code>{ "error": "Unauthorized" }</code></pre>
+    </section>
+
+    <section class="clause" id="lifecycle">
+      <h2><span class="num">03</span>Delivery lifecycle</h2>
+      <p>A delivery moves through one of two paths:</p>
+      <div class="lifecycle">
+        <span class="step">open</span><span class="arrow">→</span>
+        <span class="step">assigned</span><span class="arrow">→</span>
+        <span class="step">awaiting_pickup_confirm</span><span class="arrow">→</span>
+        <span class="step">picked_up</span><span class="arrow">→</span>
+        <span class="step">delivered</span><span class="arrow">→</span>
+        <span class="step">confirmed</span>
+      </div>
+      <div class="lifecycle">
+        <span class="step">open</span><span class="mono" style="color:var(--muted); font-size:12px;">or</span>
+        <span class="step">assigned</span><span class="arrow">→</span>
+        <span class="step end">cancelled</span>
+      </div>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>Status</th><th>Meaning</th><th>Who moves it here</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">open</td><td>Live on the job board, accepting bids</td><td><code>create-delivery</code></td></tr>
+            <tr><td class="mono">assigned</td><td>A bid was accepted, a rider/company is assigned</td><td><code>accept-bid</code></td></tr>
+            <tr><td class="mono">awaiting_pickup_confirm</td><td>Rider has arrived, waiting on your merchant to hand the package over</td><td>the rider's own app</td></tr>
+            <tr><td class="mono">picked_up</td><td>Handoff confirmed, rider is en route</td><td><code>confirm-pickup</code></td></tr>
+            <tr><td class="mono">delivered</td><td>Rider marked it delivered, awaiting OTP-verified confirmation</td><td>the rider's own app</td></tr>
+            <tr><td class="mono">confirmed</td><td>Receipt confirmed — the rider/company gets paid at this point</td><td><code>confirm-receipt</code></td></tr>
+            <tr><td class="mono">cancelled</td><td>Cancelled while still open or assigned</td><td><code>cancel-delivery</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted"><code>open</code> deliveries accept bids for a <strong>bid window</strong> (30 minutes by default — an Eziza-side setting, not per-request) before closing to new offers. <code>bid_closes_at</code> in the <code>create-delivery</code> response tells you when.</p>
+    </section>
+
+    <section class="clause" id="endpoints">
+      <h2><span class="num">04</span>Endpoints</h2>
+      <p>All bodies are JSON; all responses are JSON. <code>OPTIONS</code> is supported for CORS on every endpoint.</p>
+
+      <h3><span class="badge post">POST</span><span class="badge path">/create-delivery</span></h3>
+      <p>Puts a delivery live on the job board.</p>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>Field</th><th>Type</th><th></th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">external_order_id</td><td>string</td><td class="req">required</td><td>Your own order ID. Unique per tenant — reusing one on retry returns a <code>500</code> duplicate-key error, not the existing delivery.</td></tr>
+            <tr><td class="mono">external_ref</td><td>string</td><td></td><td>Free-form, echoed back in webhooks</td></tr>
+            <tr><td class="mono">pickup_address</td><td>string</td><td class="req">required</td><td></td></tr>
+            <tr><td class="mono">pickup_lat / pickup_lng</td><td>number</td><td></td><td></td></tr>
+            <tr><td class="mono">pickup_state</td><td>string</td><td></td><td>Used for rider/company geographic matching</td></tr>
+            <tr><td class="mono">pickup_contact_name / _phone</td><td>string</td><td></td><td></td></tr>
+            <tr><td class="mono">delivery_address</td><td>string</td><td class="req">required</td><td></td></tr>
+            <tr><td class="mono">delivery_lat / delivery_lng</td><td>number</td><td></td><td></td></tr>
+            <tr><td class="mono">delivery_contact_name / _phone</td><td>string</td><td></td><td></td></tr>
+            <tr><td class="mono">package_description</td><td>string</td><td></td><td></td></tr>
+            <tr><td class="mono">package_value</td><td>number</td><td></td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted">Response <code>201</code></p>
+      <pre><code>{ "delivery_id": "uuid", "status": "open", "bid_closes_at": "2026-07-13T10:30:00.000Z" }</code></pre>
+
+      <h3><span class="badge get">GET</span><span class="badge path">/get-delivery?id=&lt;delivery_id&gt;</span></h3>
+      <p>Full delivery status, assigned rider info, and live GPS if a rider is currently active on it.</p>
+      <p class="muted">Response <code>200</code> — every column on the delivery row, plus:</p>
+      <pre><code>{
+  "id": "uuid",
+  "external_order_id": "…",
+  "status": "picked_up",
+  "agreed_price": 2500,
+  "rider": {
+    "id": "uuid",
+    "full_name": "…",
+    "phone": "…",
+    "vehicle_type": "bike",
+    "vehicle_plate": "…",
+    "rating_avg": 4.8
+  },
+  "rider_location": { "latitude": 6.5244, "longitude": 3.3792, "updated_at": "…" }
+}</code></pre>
+      <p class="muted"><code>rider</code> is <code>null</code> until a bid is accepted. <code>rider_location</code> is <code>null</code> unless the delivery is <code>assigned</code>, <code>awaiting_pickup_confirm</code>, or <code>picked_up</code> <strong>and</strong> the rider currently has a live GPS row. <code>404</code> if the delivery doesn't exist or doesn't belong to your tenant.</p>
+
+      <h3><span class="badge post">POST</span><span class="badge path">/cancel-delivery</span></h3>
+      <pre><code>{ "delivery_id": "uuid", "reason": "optional string" }</code></pre>
+      <p>Only works while status is <code>open</code> or <code>assigned</code> — <code>409</code> otherwise.</p>
+      <p class="muted">Response <code>200</code></p>
+      <pre><code>{ "delivery_id": "uuid", "status": "cancelled" }</code></pre>
+
+      <h3><span class="badge post">POST</span><span class="badge path">/accept-bid</span></h3>
+      <p>Accepts one bid on an <code>open</code> delivery; every other pending bid on it is automatically rejected.</p>
+      <pre><code>{ "delivery_id": "uuid", "bid_id": "uuid" }</code></pre>
+      <p class="muted">Response <code>200</code></p>
+      <pre><code>{ "delivery_id": "uuid", "bid_id": "uuid", "status": "assigned", "rider_id": "uuid", "agreed_price": 2500 }</code></pre>
+      <p><code>409</code> if the delivery isn't <code>open</code> anymore; <code>404</code> if the bid doesn't exist, isn't on this delivery, or was already accepted/rejected.</p>
+      <div class="callout warn">
+        <span class="eyebrow">Current limitation</span>
+        <p>There's no endpoint to list bids on a delivery. The only way to discover them today is the <code>bid.placed</code> webhook — if you need a polling fallback, ask us for a <code>list-bids</code> endpoint rather than assuming one exists.</p>
+      </div>
+
+      <h3><span class="badge post">POST</span><span class="badge path">/confirm-pickup</span></h3>
+      <p>Call this when your merchant has physically handed the package to the rider. Only valid while status is <code>awaiting_pickup_confirm</code>.</p>
+      <pre><code>{ "delivery_id": "uuid" }</code></pre>
+      <p class="muted">Response <code>200</code></p>
+      <pre><code>{ "delivery_id": "uuid", "status": "picked_up" }</code></pre>
+
+      <h3><span class="badge post">POST</span><span class="badge path">/confirm-receipt</span></h3>
+      <p>Call this when your buyer confirms they've received the package. Only valid while status is <code>delivered</code>. This is what triggers the rider/company getting paid.</p>
+      <pre><code>{ "delivery_id": "uuid" }</code></pre>
+      <p class="muted">Response <code>200</code></p>
+      <pre><code>{ "delivery_id": "uuid", "status": "confirmed" }</code></pre>
+    </section>
+
+    <section class="clause" id="webhooks">
+      <h2><span class="num">05</span>Webhooks</h2>
+      <p>If your tenant record has a <code>webhook_url</code> set, Eziza <code>POST</code>s an event to it whenever something changes. Every request carries:</p>
+      <pre><code>Content-Type: application/json
+X-Eziza-Event: &lt;event name&gt;
+X-Eziza-Signature: &lt;hex HMAC-SHA256 of the raw request body&gt;</code></pre>
+      <p><strong>Verify the signature before trusting the payload</strong> — compute HMAC-SHA256 of the exact raw body bytes using your <code>WEBHOOK_SIGNING_SECRET</code> (given to you alongside your API key), hex-encode it, and compare to <code>X-Eziza-Signature</code> with a constant-time comparison:</p>
+      <pre><code>// Node.js
+const crypto = require('crypto');
+function isValid(rawBody, signatureHeader, secret) {
+  const expected = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signatureHeader));
+}</code></pre>
+      <div class="callout warn">
+        <span class="eyebrow">No retries</span>
+        <p>If your endpoint is down or returns a non-2xx, the event is logged internally but <strong>not retried</strong>. Treat webhooks as a fast-path notification, not a guaranteed delivery mechanism — poll <code>get-delivery</code> periodically as a fallback for anything time-sensitive, exactly like Eziza's own rider app does internally for missed realtime events.</p>
+      </div>
+
+      <h3>delivery.* — status changed</h3>
+      <p>Fired on every dispatch-worthy status transition.</p>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>X-Eziza-Event</th><th>status</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">delivery.assigned</td><td class="mono">assigned</td></tr>
+            <tr><td class="mono">delivery.awaiting_pickup</td><td class="mono">awaiting_pickup_confirm</td></tr>
+            <tr><td class="mono">delivery.picked_up</td><td class="mono">picked_up</td></tr>
+            <tr><td class="mono">delivery.delivered</td><td class="mono">delivered</td></tr>
+            <tr><td class="mono">delivery.confirmed</td><td class="mono">confirmed</td></tr>
+            <tr><td class="mono">delivery.cancelled</td><td class="mono">cancelled</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <pre><code>{
+  "event": "delivery.picked_up",
+  "delivery_id": "uuid",
+  "external_order_id": "…",
+  "external_ref": "…",
+  "status": "picked_up",
+  "rider_id": "uuid",
+  "agreed_price": 2500,
+  "timestamp": "2026-07-13T10:12:00.000Z"
+}</code></pre>
+
+      <h3>bid.placed — a rider or company placed a new offer</h3>
+      <pre><code>{
+  "event": "bid.placed",
+  "delivery_id": "uuid",
+  "external_order_id": "…",
+  "bid": {
+    "id": "uuid",
+    "bidder_type": "rider",
+    "rider_id": "uuid",
+    "company_id": null,
+    "amount": 2500,
+    "status": "pending"
+  },
+  "timestamp": "…"
+}</code></pre>
+
+      <h3>location.updated — live rider GPS</h3>
+      <p>Fired on every GPS update from a rider currently active (<code>assigned</code>/<code>awaiting_pickup_confirm</code>/<code>picked_up</code>) on one of your deliveries — the same data <code>get-delivery</code>'s <code>rider_location</code> field surfaces. Use whichever fits your architecture better, webhook push or poll.</p>
+      <pre><code>{
+  "event": "location.updated",
+  "delivery_id": "uuid",
+  "external_order_id": "…",
+  "latitude": 6.5244,
+  "longitude": 3.3792,
+  "updated_at": "…"
+}</code></pre>
+    </section>
+
+    <section class="clause" id="errors">
+      <h2><span class="num">06</span>Errors</h2>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>Status</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">400</td><td>Missing required field(s)</td></tr>
+            <tr><td class="mono">401</td><td>Missing/invalid/revoked API key, or your tenant is deactivated</td></tr>
+            <tr><td class="mono">404</td><td>Not found, or exists but belongs to a different tenant</td></tr>
+            <tr><td class="mono">409</td><td>Valid request, but the delivery isn't in a state that allows this action</td></tr>
+            <tr><td class="mono">500</td><td>Unexpected error — including a reused <code>external_order_id</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted">All error bodies are <code>{ "error": "human-readable message" }</code>.</p>
+    </section>
+
+    <section class="clause" id="support">
+      <h2><span class="num">07</span>Support</h2>
+      <p>Questions, or requesting a new tenant/key: <a href="mailto:admin@eziza.online">admin@eziza.online</a>.</p>
+    </section>
+  </article>
+</div>
+
+<footer>
+  <div class="fine">Eziza Delivery API — for platforms integrating with Eziza's delivery marketplace on behalf of their own senders and merchants.</div>
+</footer>
+
+</body>
+</html>
