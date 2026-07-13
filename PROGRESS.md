@@ -571,7 +571,7 @@ Single login per tenant (mirrors `companies`' one-login pattern, not multi-user 
 **Security correction, found while building this (2026-07-13):** earlier in this session, `tenants`/`api_keys` were REVOKEd from `anon`/`authenticated` (migration `20260713000000`) on the claim that the pre-existing blanket GRANT was an active, exploitable hole. That claim was **not fully verified before being reported** — real testing done here (via `webhook_dispatch_log`, which had the identical GRANT-present/zero-RLS-policies setup and was still unfixed) showed RLS enabled with zero policies denies every command by default regardless of the underlying GRANT: anon `SELECT` returns `[]`, anon `INSERT` gets a `42501` RLS rejection — not the data leak/forgery originally described. The REVOKE itself was still reasonable (explicit denial beats an unpopulated policy set), but the severity was overstated at the time and corrected directly with the user once found. Lesson: a GRANT alone doesn't prove exploitability — check `pg_class.relrowsecurity` and actually test the anon key before calling something a live hole.
 
 **Not yet done:**
-- [ ] `eziza-partners` not pushed to a remote yet — repo exists locally (`/Users/zionnite/StudioProjects/eziza-partners`), not yet decided whether it gets its own GitHub repo like `eziza-admin` did
+- [x] `eziza-partners` pushed to its own GitHub repo — `https://github.com/zionnite/eziza-partners.git`
 - [ ] Multi-user-per-tenant (role-split logins — engineer/support/owner) explicitly deferred per user decision 2026-07-13: speculative team-structure assumption with zero evidence any real tenant needs it yet; revisit if a partner actually asks for it
 
 ## Key Credentials & URLs
