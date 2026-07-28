@@ -81,10 +81,22 @@ serve(async (req) => {
 
     const newStatus = record?.status as string | undefined
     const oldStatus = old_record?.status as string | undefined
+    const newRiderId = record?.rider_id as string | undefined
+    const oldRiderId = old_record?.rider_id as string | undefined
 
-    // Only dispatch when status actually changed to a dispatch-worthy event
-    if (!newStatus || newStatus === oldStatus) return json({ ok: true })
-    const event = DISPATCH_EVENTS[newStatus]
+    // A company winning a bid is initially assigned with rider_id still
+    // null (company_dashboard_page.dart's _placeBid() bids with no rider
+    // chosen yet); status is already 'assigned' by the time the company
+    // later picks a specific rider from their fleet (_assignRider()), so
+    // that update was previously silent to every tenant -- status doesn't
+    // change, only rider_id does, and the guard below only checked status.
+    // Re-dispatch the same 'assigned' event so tenants that already know
+    // how to read payload.rider_id off it need no changes of their own.
+    const statusChanged = !!newStatus && newStatus !== oldStatus
+    const riderBackfilled = newStatus === 'assigned' && !!newRiderId && newRiderId !== oldRiderId
+
+    if (!statusChanged && !riderBackfilled) return json({ ok: true })
+    const event = DISPATCH_EVENTS[newStatus ?? '']
     if (!event) return json({ ok: true })
 
     const tenantId = record.tenant_id as string

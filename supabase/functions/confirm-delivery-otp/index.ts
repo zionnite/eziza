@@ -44,28 +44,43 @@ function maskPhone(raw: string): string {
   return raw.replace(/\d(?=\d{4})/g, '*')
 }
 
-async function sendSms(phone: string, otp: string): Promise<void> {
-  const apiKey = Deno.env.get('TERMII_API_KEY')
+async function sendSms(phone: string, otp: string): Promise<Record<string, unknown> | null> {
+  const apiKey = Deno.env.get('SENDCHAMP_API_KEY')
   if (!apiKey) {
     // Dev / staging — log instead of sending so tests don't require a real key
     console.log(`[DEV] OTP for ${phone}: ${otp}`)
-    return
+    return null
   }
-  const res = await fetch('https://api.ng.termii.com/api/sms/send', {
+  const res = await fetch('https://api.sendchamp.com/api/v1/sms/send', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type':  'application/json',
+      'Accept':        'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
     body: JSON.stringify({
-      to:      normalisePhone(phone),
-      from:    'Eziza',
-      sms:     `Your Eziza delivery confirmation code is: ${otp}. Valid for 10 minutes. Do not share this code.`,
-      type:    'plain',
-      channel: 'generic',
-      api_key: apiKey,
+      to:      [normalisePhone(phone)],
+      message: `Your Eziza delivery confirmation code is: ${otp}. Valid for 10 minutes. Do not share this code.`,
+      // TEMP diagnostic: trying "Eziza" even though it's not registered as
+      // a Sender ID on the Sendchamp dashboard yet, per explicit request.
+      sender_name: 'Eziza',
+      // TEMP diagnostic re-test with sender_name "Eziza" + route non_dnd,
+      // per explicit request -- switch back to 'dnd' once this is resolved.
+      route: 'non_dnd',
     }),
   })
+  const bodyText = await res.text()
+  // TEMPORARY debug instrumentation — res.ok alone doesn't prove the SMS
+  // was actually accepted for delivery, only that the HTTP call succeeded.
+  // Logging + returning the raw body to diagnose a real SMS never arriving.
+  console.log(`[sendSms] status=${res.status} body=${bodyText}`)
   if (!res.ok) {
-    const body = await res.text()
-    throw new Error(`SMS failed (${res.status}): ${body}`)
+    throw new Error(`SMS failed (${res.status}): ${bodyText}`)
+  }
+  try {
+    return JSON.parse(bodyText)
+  } catch {
+    return { raw: bodyText }
   }
 }
 
@@ -141,19 +156,22 @@ serve(async (req) => {
       if (insertErr) throw insertErr
 
       let devOtp: string | undefined
+      let smsDebug: unknown
       try {
-        await sendSms(phone.trim(), otpCode)
+        smsDebug = await sendSms(phone.trim(), otpCode)
       } catch (smsErr) {
         // SMS failed — return the code in the response so the rider can
         // enter it manually (temporary until SMS provider is working).
         console.warn('[confirm-delivery-otp] SMS failed, falling back to dev_otp:', smsErr)
         devOtp = otpCode
+        smsDebug = { error: (smsErr as Error).message }
       }
 
       return json({
         ok:           true,
         masked_phone: maskPhone(phone.trim()),
         ...(devOtp ? { dev_otp: devOtp } : {}),
+        _sms_debug_TEMP: smsDebug, // TEMPORARY — remove once SMS delivery is confirmed working
       })
     }
 

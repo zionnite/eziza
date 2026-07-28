@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { validateApiKey } from '../_shared/auth.ts'
 import { cors, json } from '../_shared/cors.ts'
+import { deliveryLookupFailure } from '../_shared/errors.ts'
 
 // ── Tenant confirms receipt on behalf of their buyer ────────────────────────
 // Used when the buyer is a tenant customer (e.g. ZeeFashion) who confirms
@@ -22,14 +23,17 @@ serve(async (req) => {
     const { delivery_id } = await req.json()
     if (!delivery_id) return json({ error: 'Missing delivery_id' }, 400)
 
-    const { data: delivery } = await supabase
+    const { data: delivery, error: lookupErr } = await supabase
       .from('deliveries')
       .select('id, status')
       .eq('id', delivery_id)
       .eq('tenant_id', auth.tenantId)
       .single()
 
-    if (!delivery) return json({ error: 'Delivery not found' }, 404)
+    if (!delivery) {
+      const { message, status } = deliveryLookupFailure(lookupErr)
+      return json({ error: message }, status)
+    }
 
     if (delivery.status !== 'delivered') {
       return json(

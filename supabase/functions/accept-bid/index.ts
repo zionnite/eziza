@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { validateApiKey } from '../_shared/auth.ts'
 import { cors, json } from '../_shared/cors.ts'
+import { deliveryLookupFailure } from '../_shared/errors.ts'
 
 // Tenant (e.g. ZeeFashion) accepts a bid on behalf of a buyer who has no
 // Eziza account/session. Mirrors customer_delivery_detail_page.dart's
@@ -24,19 +25,22 @@ serve(async (req) => {
       return json({ error: 'Required: delivery_id, bid_id' }, 400)
     }
 
-    const { data: delivery } = await supabase
+    const { data: delivery, error: lookupErr } = await supabase
       .from('deliveries')
       .select('id, status, tenant_id')
       .eq('id', delivery_id)
       .eq('tenant_id', auth.tenantId)
       .single()
 
-    if (!delivery) return json({ error: 'Delivery not found' }, 404)
+    if (!delivery) {
+      const { message, status } = deliveryLookupFailure(lookupErr)
+      return json({ error: message }, status)
+    }
     if (delivery.status !== 'open') {
       return json({ error: `Cannot accept a bid on a delivery with status '${delivery.status}'` }, 409)
     }
 
-    const { data: bid } = await supabase
+    const { data: bid, error: bidLookupErr } = await supabase
       .from('delivery_bids')
       .select('id, delivery_id, rider_id, company_id, amount, status')
       .eq('id', bid_id)
@@ -44,7 +48,12 @@ serve(async (req) => {
       .eq('status', 'pending')
       .single()
 
-    if (!bid) return json({ error: 'Bid not found or already processed' }, 404)
+    if (!bid) {
+      const { message, status } = deliveryLookupFailure(
+        bidLookupErr, 'Bid not found or already processed', 'Invalid bid_id format',
+      )
+      return json({ error: message }, status)
+    }
 
     const { error: acceptErr } = await supabase
       .from('delivery_bids').update({ status: 'accepted' }).eq('id', bid_id)

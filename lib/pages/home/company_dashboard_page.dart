@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../constants/colors.dart';
 import '../../controllers/auth_controller.dart';
 import '../../utils/currency.dart';
+import '../../utils/error_messages.dart';
 import '../../widgets/delivery_trip_summary.dart';
 import '../../widgets/premium_card.dart';
 import '../shared/bank_account_page.dart';
@@ -323,7 +324,7 @@ class _CompanyDashboardPageState extends State<CompanyDashboardPage>
       _snack('Offer of ${formatNaira(amount)} submitted.');
       await _load();
     } catch (e) {
-      _snack('Could not send offer: ${e.toString()}');
+      _snack('Could not send offer: ${humanizeError(e, context: '_placeBid')}');
     }
     if (mounted) setState(() => _bidding = false);
   }

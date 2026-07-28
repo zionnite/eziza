@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../constants/colors.dart';
 import '../../services/wallet_service.dart';
 import '../../utils/currency.dart';
+import '../../utils/error_messages.dart';
 import '../../widgets/premium_card.dart';
 import 'paystack_checkout_page.dart';
 
@@ -117,7 +118,7 @@ class _WalletPageState extends State<WalletPage> with WidgetsBindingObserver {
       );
       if (completed == true) await _onReturnedFromPayment();
     } catch (e) {
-      _snack('Could not start payment: ${e.toString().replaceFirst('Exception: ', '')}');
+      _snack('Could not start payment: ${humanizeError(e, context: 'walletTopUp')}');
     }
     if (mounted) setState(() => _topUpLoading = false);
   }

@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { validateApiKey } from '../_shared/auth.ts'
 import { cors, json } from '../_shared/cors.ts'
+import { deliveryLookupFailure } from '../_shared/errors.ts'
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -21,14 +22,17 @@ serve(async (req) => {
     if (!delivery_id) return json({ error: 'Missing delivery_id' }, 400)
 
     // Verify ownership + cancellable status
-    const { data: delivery } = await supabase
+    const { data: delivery, error: lookupErr } = await supabase
       .from('deliveries')
       .select('id, status, rider_id')
       .eq('id', delivery_id)
       .eq('tenant_id', auth.tenantId)
       .single()
 
-    if (!delivery) return json({ error: 'Delivery not found' }, 404)
+    if (!delivery) {
+      const { message, status } = deliveryLookupFailure(lookupErr)
+      return json({ error: message }, status)
+    }
 
     if (!CANCELLABLE.includes(delivery.status)) {
       return json(

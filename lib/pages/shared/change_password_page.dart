@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../constants/colors.dart';
+import '../../utils/error_messages.dart';
 
 /// One shared page for all 3 roles (rider/company/customer) — mirrors
 /// ZeeFashion's change_password.dart exactly, including its one notable
@@ -69,7 +70,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
             icon: const Icon(Icons.check_circle_outline, color: Colors.white, size: 22));
       });
     } catch (e) {
-      Get.snackbar('Oops!', e.toString(),
+      Get.snackbar('Oops!', humanizeError(e, context: 'changePassword'),
           backgroundColor: EzizaColors.kError,
           colorText: Colors.white,
           snackPosition: SnackPosition.BOTTOM,

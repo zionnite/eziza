@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../constants/colors.dart';
 import '../../services/ratings_service.dart';
+import '../../services/shipbubble_service.dart';
 import '../../services/wallet_service.dart';
 import '../../utils/currency.dart';
 import '../../widgets/pin_verification_sheet.dart';
@@ -41,6 +43,13 @@ class _CustomerDeliveryDetailPageState
   bool _cancelling = false;
   RealtimeChannel? _channel;
 
+  // External carriers (Shipbubble)
+  Map<String, dynamic>? _carrierBooking;
+  List<Map<String, dynamic>> _carrierQuotes = [];
+  bool _loadingQuotes = false;
+  bool _bookingCarrier = false;
+  bool _cancellingCarrier = false;
+
   @override
   void initState() {
     super.initState();
@@ -75,6 +84,15 @@ class _CustomerDeliveryDetailPageState
           .eq('delivery_id', widget.deliveryId)
           .order('amount', ascending: true);
       if (mounted) _bids = List<Map<String, dynamic>>.from(bidsRes);
+    } catch (_) {}
+
+    try {
+      final booking = await _db
+          .from('external_carrier_bookings')
+          .select()
+          .eq('delivery_id', widget.deliveryId)
+          .maybeSingle();
+      if (mounted) _carrierBooking = booking != null ? Map<String, dynamic>.from(booking) : null;
     } catch (_) {}
 
     if (mounted) setState(() => _loading = false);
@@ -456,6 +474,7 @@ class _CustomerDeliveryDetailPageState
                           const SizedBox(height: 16),
                         ],
                         if (!widget.isRecipient) _bidsSection(),
+                        if (!widget.isRecipient) _externalCarrierSection(),
                         if (!widget.isRecipient && _canCancel())
                           _cancelSection(),
                       ],
@@ -2271,6 +2290,358 @@ class _CustomerDeliveryDetailPageState
         ),
       ),
     );
+  }
+
+  // ── External carriers (Shipbubble) ─────────────────────────────
+
+  Widget _externalCarrierSection() {
+    final status = _delivery?['status'] as String? ?? 'open';
+    final fulfillmentChannel = _delivery?['fulfillment_channel'] as String? ?? 'internal';
+    final isOpen = status == 'open';
+    final isExternallyBooked = fulfillmentChannel == 'external_carrier' && _carrierBooking != null;
+
+    if (!isOpen && !isExternallyBooked) return const SizedBox.shrink();
+
+    if (isExternallyBooked) {
+      return _sectionCard(
+        header: _sectionHeader(Icons.local_shipping_rounded, 'External Carrier'),
+        child: _carrierBookingCard(_carrierBooking!),
+      );
+    }
+
+    return _sectionCard(
+      header: _sectionHeader(Icons.local_shipping_outlined, 'External Carriers'),
+      child: _carrierQuotesContent(),
+    );
+  }
+
+  Widget _carrierQuotesContent() {
+    if (_carrierQuotes.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Get instant quotes from real courier companies (DHL, GIG, and more) as an alternative to rider/company offers.',
+            style: TextStyle(fontSize: 12, color: EzizaColors.kMuted, height: 1.4),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: _loadingQuotes ? null : _openCourierQuoteSheet,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: EzizaColors.kPurpleD,
+                side: const BorderSide(color: EzizaColors.kPurpleD),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: _loadingQuotes
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Text('Get Courier Quotes', style: TextStyle(fontWeight: FontWeight.w700)),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ..._carrierQuotes.map(_quoteCard),
+        const SizedBox(height: 4),
+        TextButton(
+          onPressed: _loadingQuotes ? null : _openCourierQuoteSheet,
+          child: const Text('Refresh quotes', style: TextStyle(color: EzizaColors.kMuted)),
+        ),
+      ],
+    );
+  }
+
+  Widget _quoteCard(Map<String, dynamic> quote) {
+    final courierName = quote['courier_name'] as String? ?? 'Courier';
+    final total = (quote['total'] as num?)?.toDouble() ?? 0;
+    final eta = quote['delivery_eta'] as String?;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: EzizaColors.kSurface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: EzizaColors.kBorder),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(courierName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                const SizedBox(height: 2),
+                Text(
+                  eta != null ? '${formatNaira(total)} • $eta' : formatNaira(total),
+                  style: const TextStyle(fontSize: 12, color: EzizaColors.kMuted),
+                ),
+              ],
+            ),
+          ),
+          GestureDetector(
+            onTap: _bookingCarrier ? null : () => _bookCourier(quote),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(colors: [EzizaColors.kPurple, EzizaColors.kPurpleD]),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: _bookingCarrier
+                  ? const SizedBox(
+                      width: 16, height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('Book', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _carrierBookingCard(Map<String, dynamic> booking) {
+    final courierName = booking['courier_name'] as String? ?? 'Courier';
+    final status = (booking['status'] as String? ?? 'pending').replaceAll('_', ' ');
+    final trackingUrl = booking['tracking_url'] as String?;
+    final canCancel = !['completed', 'cancelled', 'in transit', 'picked up'].contains(status);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(courierName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: EzizaColors.kPurple.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(status,
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: EzizaColors.kPurpleD)),
+            ),
+          ],
+        ),
+        if (trackingUrl != null) ...[
+          const SizedBox(height: 10),
+          GestureDetector(
+            onTap: () => launchUrl(Uri.parse(trackingUrl), mode: LaunchMode.externalApplication),
+            child: const Row(
+              children: [
+                Icon(Icons.open_in_new_rounded, size: 14, color: EzizaColors.kPurpleD),
+                SizedBox(width: 6),
+                Text('Track shipment',
+                    style: TextStyle(fontSize: 13, color: EzizaColors.kPurpleD, fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
+        ],
+        if (canCancel) ...[
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: TextButton(
+              onPressed: _cancellingCarrier ? null : () => _cancelCourierBooking(booking['id'] as String),
+              style: TextButton.styleFrom(foregroundColor: EzizaColors.kError),
+              child: _cancellingCarrier
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Text('Cancel Booking'),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  String _labelOf(Map<String, dynamic> item, {required List<String> keys}) {
+    for (final k in keys) {
+      final v = item[k];
+      if (v != null) return v.toString();
+    }
+    return 'Option';
+  }
+
+  InputDecoration _dropdownDecoration() => InputDecoration(
+    filled: true,
+    fillColor: EzizaColors.kSurface,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+    border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: EzizaColors.kBorder)),
+    enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: EzizaColors.kBorder)),
+  );
+
+  // Field names below are defensive (a couple of reasonable candidates per
+  // field) since Shipbubble's real category/box-size response shapes
+  // haven't been seen yet -- account isn't approved. Revisit once real
+  // data comes back from shipbubble-package-options.
+  Future<void> _openCourierQuoteSheet() async {
+    setState(() => _loadingQuotes = true);
+    Map<String, dynamic>? options;
+    try {
+      options = await ShipbubbleService.getPackageOptions();
+    } catch (e) {
+      if (mounted) _snack(e.toString().replaceFirst('Exception: ', ''));
+    }
+    if (mounted) setState(() => _loadingQuotes = false);
+    if (options == null || !mounted) return;
+
+    List<Map<String, dynamic>> asList(dynamic v) {
+      final raw = (v is Map && v['data'] != null) ? v['data'] : v;
+      return raw is List ? List<Map<String, dynamic>>.from(raw) : <Map<String, dynamic>>[];
+    }
+
+    final categories = asList(options['categories']);
+    final dimensions = asList(options['dimensions']);
+
+    Map<String, dynamic>? selectedCategory;
+    Map<String, dynamic>? selectedBox;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => SafeArea(
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 20, right: 20, top: 20,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Package Details', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                const SizedBox(height: 16),
+                const Text('Category',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: EzizaColors.kMuted)),
+                const SizedBox(height: 6),
+                DropdownButtonFormField<Map<String, dynamic>>(
+                  initialValue: selectedCategory,
+                  decoration: _dropdownDecoration(),
+                  items: categories
+                      .map((c) => DropdownMenuItem(
+                            value: c,
+                            child: Text(_labelOf(c, keys: ['category_name', 'name']),
+                                overflow: TextOverflow.ellipsis),
+                          ))
+                      .toList(),
+                  onChanged: (v) => setSheetState(() => selectedCategory = v),
+                ),
+                const SizedBox(height: 16),
+                const Text('Package Size',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: EzizaColors.kMuted)),
+                const SizedBox(height: 6),
+                DropdownButtonFormField<Map<String, dynamic>>(
+                  initialValue: selectedBox,
+                  decoration: _dropdownDecoration(),
+                  items: dimensions
+                      .map((d) => DropdownMenuItem(
+                            value: d,
+                            child: Text(_labelOf(d, keys: ['name', 'box_name']), overflow: TextOverflow.ellipsis),
+                          ))
+                      .toList(),
+                  onChanged: (v) => setSheetState(() => selectedBox = v),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: (selectedCategory == null || selectedBox == null)
+                        ? null
+                        : () {
+                            Navigator.pop(ctx);
+                            _fetchRates(selectedCategory!, selectedBox!);
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: EzizaColors.kPurpleD,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text('Get Quotes', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _fetchRates(Map<String, dynamic> category, Map<String, dynamic> box) async {
+    setState(() => _loadingQuotes = true);
+    try {
+      final categoryId = int.tryParse('${category['category_id'] ?? category['id']}') ?? 0;
+      final length = num.tryParse('${box['length'] ?? box['box_length']}') ?? 10;
+      final width  = num.tryParse('${box['width'] ?? box['box_width']}') ?? 10;
+      final height = num.tryParse('${box['height'] ?? box['box_height']}') ?? 10;
+      final weight = num.tryParse('${box['weight'] ?? box['max_weight']}') ?? 1;
+
+      final quotes = await ShipbubbleService.fetchRates(
+        deliveryId: widget.deliveryId,
+        categoryId: categoryId,
+        packageDimension: {'length': length, 'width': width, 'height': height},
+        unitWeight: weight.toDouble(),
+      );
+      if (mounted) setState(() => _carrierQuotes = quotes);
+    } catch (e) {
+      if (mounted) _snack(e.toString().replaceFirst('Exception: ', ''));
+    }
+    if (mounted) setState(() => _loadingQuotes = false);
+  }
+
+  Future<void> _bookCourier(Map<String, dynamic> quote) async {
+    final user = _db.auth.currentUser;
+    if (user == null) return;
+
+    final customer = await _db.from('customers').select('pin_set').eq('id', user.id).maybeSingle();
+    if (!mounted) return;
+    if (customer?['pin_set'] != true) {
+      _snack('Please set your transaction PIN in Security settings first.');
+      return;
+    }
+
+    final amount = (quote['total'] as num?)?.toDouble() ?? 0;
+    final verified = await PinVerificationSheet.verify(context, amount: amount, label: 'for courier shipping fee');
+    if (verified != true || !mounted) return;
+
+    setState(() => _bookingCarrier = true);
+    try {
+      await ShipbubbleService.bookShipment(quoteId: quote['id'] as String);
+      _snack('Courier booked! Tracking details will appear shortly.');
+      _carrierQuotes = [];
+      await _load();
+    } catch (e) {
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      if (msg.contains('Insufficient wallet balance')) {
+        await _showInsufficientBalanceDialog();
+      } else {
+        _snack(msg);
+      }
+    }
+    if (mounted) setState(() => _bookingCarrier = false);
+  }
+
+  Future<void> _cancelCourierBooking(String bookingId) async {
+    setState(() => _cancellingCarrier = true);
+    try {
+      await ShipbubbleService.cancelBooking(bookingId: bookingId);
+      _snack('Booking cancelled and refunded to your wallet.');
+      await _load();
+    } catch (e) {
+      _snack(e.toString().replaceFirst('Exception: ', ''));
+    }
+    if (mounted) setState(() => _cancellingCarrier = false);
   }
 
   // ── Layout helpers ────────────────────────────────────────────

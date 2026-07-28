@@ -1,10 +1,12 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:upgrader/upgrader.dart';
 
 import 'constants/colors.dart';
 import 'controllers/auth_controller.dart';
@@ -45,6 +47,10 @@ void main() async {
   Get.put(AuthController());
   Get.put(DeliveryController());
 
+  // Debug builds shouldn't be held back by a real dismiss/cooldown cached
+  // from a previous run -- mirrors ZeeFashion's main.dart.
+  if (kDebugMode) Upgrader.clearSavedSettings();
+
   runApp(const EzizaRiderApp());
 }
 
@@ -56,9 +62,18 @@ class EzizaRiderApp extends StatefulWidget {
 }
 
 class _EzizaRiderAppState extends State<EzizaRiderApp> {
+  // Initialized once — not on every rebuild. Mirrors ZeeFashion's main.dart:
+  // 2-day cooldown so a dismissed prompt doesn't reappear on every launch.
+  late final Upgrader _upgrader;
+
   @override
   void initState() {
     super.initState();
+    _upgrader = Upgrader(
+      debugLogging: kDebugMode,
+      durationUntilAlertAgain: const Duration(days: 1),
+    );
+
     // Supabase's own deep-link handling catches the eziza://reset link
     // (registered natively alongside eziza://wallet-topup-complete) and
     // emits this event once the recovery session is ready -- no need to
@@ -103,7 +118,13 @@ class _EzizaRiderAppState extends State<EzizaRiderApp> {
           surfaceTintColor: EzizaColors.kWhite,
         ),
       ),
-      home: const SplashPage(),
+      home: UpgradeAlert(
+        upgrader: _upgrader,
+        showIgnore: false,
+        showLater: true,
+        dialogStyle: UpgradeDialogStyle.cupertino,
+        child: const SplashPage(),
+      ),
     );
   }
 }

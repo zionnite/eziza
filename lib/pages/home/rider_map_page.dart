@@ -15,6 +15,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../constants/colors.dart';
 import '../../services/location_service.dart';
 import '../../services/ratings_service.dart';
+import '../../utils/error_messages.dart';
 import '../../widgets/rating_sheet.dart';
 
 const _ngDefault = LatLng(9.0820, 8.6753);
@@ -59,6 +60,7 @@ class _RiderMapPageState extends State<RiderMapPage> {
   bool _confirmed        = false; // customer has confirmed — delivery fully done
   bool _pulse            = false;
   bool _closing          = false; // guard against double-close when both Realtime + OTP fire
+  bool _advancingToDropoff = false; // guard against double-fire when both Realtime + the handoff poll see 'picked_up'
 
   // OTP state
   bool   _otpSheetOpen   = false;
@@ -464,7 +466,7 @@ class _RiderMapPageState extends State<RiderMapPage> {
       } catch (e) {
         if (mounted) {
           setState(() => _otpSheetOpen = false);
-          Get.snackbar('Could not send OTP', e.toString(),
+          Get.snackbar('Could not send OTP', humanizeError(e, context: 'sendOtp'),
               backgroundColor: EzizaColors.kError,
               colorText: EzizaColors.kWhite,
               snackPosition: SnackPosition.BOTTOM);
@@ -534,7 +536,12 @@ class _RiderMapPageState extends State<RiderMapPage> {
             .select('status')
             .eq('id', widget.delivery['id'])
             .maybeSingle();
-        if ((row?['status'] as String?) == 'picked_up' && mounted) {
+        // Re-check after the await -- Realtime may have already handled
+        // this exact transition while this request was in flight; without
+        // this, both fire and _advanceToDropoff() (and the rate-sender
+        // prompt inside it) runs twice.
+        if (!mounted || !_waitingHandoff) return;
+        if ((row?['status'] as String?) == 'picked_up') {
           _advanceToDropoff();
         }
       } catch (_) {}
@@ -542,6 +549,8 @@ class _RiderMapPageState extends State<RiderMapPage> {
   }
 
   void _advanceToDropoff() {
+    if (_advancingToDropoff) return;
+    _advancingToDropoff = true;
     _handoffPollTimer?.cancel();
     _handoffPollTimer = null;
     setState(() {
@@ -605,7 +614,7 @@ class _RiderMapPageState extends State<RiderMapPage> {
       riderName = row?['full_name'] as String?;
     } catch (_) {}
     if (!mounted) return;
-    showRatingSheet(
+    await showRatingSheet(
       context,
       title: ratingRole == 'sender' ? 'Rate the Sender' : 'Rate the Receiver',
       subtitle: ratingRole == 'sender'

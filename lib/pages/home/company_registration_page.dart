@@ -7,6 +7,7 @@ import '../../constants/colors.dart';
 import '../../models/location.dart';
 import '../../services/bank_service.dart';
 import '../../services/coverage_location_service.dart';
+import '../../utils/error_messages.dart';
 
 class CompanyRegistrationPage extends StatefulWidget {
   const CompanyRegistrationPage({super.key});
@@ -285,7 +286,7 @@ class _CompanyRegistrationPageState extends State<CompanyRegistrationPage>
     } catch (e) {
       if (mounted) {
         setState(() => _submitting = false);
-        _snack('Submission failed: ${e.toString()}');
+        _snack('Submission failed: ${humanizeError(e, context: 'companyRegistration')}');
       }
     }
   }

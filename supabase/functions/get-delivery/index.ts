@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { validateApiKey } from '../_shared/auth.ts'
 import { cors, json } from '../_shared/cors.ts'
+import { deliveryLookupFailure } from '../_shared/errors.ts'
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -29,7 +30,10 @@ serve(async (req) => {
       .eq('tenant_id', auth.tenantId)
       .single()
 
-    if (error || !delivery) return json({ error: 'Delivery not found' }, 404)
+    if (!delivery) {
+      const { message, status } = deliveryLookupFailure(error)
+      return json({ error: message }, status)
+    }
 
     // Include live rider location once a rider is assigned and active.
     // rider_locations.rider_id is the rider's auth.uid() (by design), not

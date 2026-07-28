@@ -62,6 +62,10 @@ dependencies:
   # after a real bug where an unrelated page reset the flag on every load)
   path_provider: ^2.1.4
 
+  # In-app update prompt -- checks the live App Store/Play Store listing
+  # against the installed version (mirrors main.dart's ZeeFashion setup)
+  upgrader: ^11.3.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
