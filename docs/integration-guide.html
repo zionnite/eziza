@@ -301,7 +301,7 @@
       <p class="muted"><code>open</code> deliveries accept bids for a <strong>bid window</strong> (30 minutes by default — an Eziza-side setting, not per-request) before closing to new offers. <code>bid_closes_at</code> in the <code>create-delivery</code> response tells you when.</p>
       <div class="callout">
         <span class="eyebrow">Alternative path</span>
-        <p>Instead of waiting for a rider/company bid, you can book a third-party courier (Shipbubble) directly — see <a href="#external-carriers">External Carriers</a> below. It reuses the same <code>assigned → picked_up → confirmed</code>/<code>cancelled</code> vocabulary, just driven by carrier webhooks instead of a rider's own app.</p>
+        <p>Instead of waiting for a rider/company bid, you can book a third-party courier directly — see <a href="#external-carriers">External Carriers</a> below. It reuses the same <code>assigned → picked_up → confirmed</code>/<code>cancelled</code> vocabulary, just driven by carrier webhooks instead of a rider's own app.</p>
       </div>
     </section>
 
@@ -326,7 +326,7 @@
             <tr><td class="mono">delivery_contact_name / _phone</td><td>string</td><td></td><td></td></tr>
             <tr><td class="mono">package_description</td><td>string</td><td></td><td></td></tr>
             <tr><td class="mono">package_value</td><td>number</td><td></td><td></td></tr>
-            <tr><td class="mono">package_category_id</td><td>number</td><td></td><td>Only needed if you plan to offer <a href="#external-carriers">External Carriers</a> on this delivery — one of Shipbubble's own category IDs, from <code>tenant-shipbubble-package-options</code>.</td></tr>
+            <tr><td class="mono">package_category_id</td><td>number</td><td></td><td>Only needed if you plan to offer <a href="#external-carriers">External Carriers</a> on this delivery — one of the carrier's own category IDs, from <code>tenant-shipbubble-package-options</code>.</td></tr>
             <tr><td class="mono">package_weight_kg</td><td>number</td><td></td><td>Same as above.</td></tr>
             <tr><td class="mono">package_dimension</td><td>object</td><td></td><td>Same as above — <code>{ "length": 10, "width": 10, "height": 10 }</code>.</td></tr>
           </tbody>
@@ -385,7 +385,7 @@
       <p class="muted">Response <code>200</code></p>
       <pre><code>{ "delivery_id": "uuid", "status": "confirmed" }</code></pre>
 
-      <h3 id="external-carriers" style="margin-top:40px;">External Carriers (Shipbubble)</h3>
+      <h3 id="external-carriers" style="margin-top:40px;">External Carriers</h3>
       <p>Book a real third-party courier directly on an <code>open</code> delivery, instead of waiting for a rider/company bid. Requires a prepaid <code>wallet_balance</code> on your tenant — Eziza debits the courier's fee from it at booking time, and credits it back on cancellation. Ask us to top it up, or use eziza-partners' "Request Top-Up" button if you have portal access.</p>
       <div class="callout warn">
         <span class="eyebrow">Requires package details</span>
@@ -393,7 +393,7 @@
       </div>
 
       <h3><span class="badge post">POST</span><span class="badge path">/tenant-shipbubble-package-options</span></h3>
-      <p>Shipbubble's own live category and box-size presets — use these to build the picker you show your merchant/buyer when collecting <code>package_category_id</code>/<code>package_weight_kg</code>/<code>package_dimension</code>. Cached for up to an hour on our side.</p>
+      <p>The carrier's own live category and box-size presets — use these to build the picker you show your merchant/buyer when collecting <code>package_category_id</code>/<code>package_weight_kg</code>/<code>package_dimension</code>. Cached for up to an hour on our side.</p>
       <p class="muted">Response <code>200</code></p>
       <pre><code>{ "categories": [ … ], "dimensions": [ … ] }</code></pre>
 
@@ -405,14 +405,14 @@
 ] }</code></pre>
 
       <h3><span class="badge post">POST</span><span class="badge path">/tenant-shipbubble-book</span></h3>
-      <p>Books the quote with Shipbubble and debits your tenant's <code>wallet_balance</code>. <code>409</code> if the balance is insufficient.</p>
+      <p>Books the quote with the carrier and debits your tenant's <code>wallet_balance</code>. <code>409</code> if the balance is insufficient.</p>
       <pre><code>{ "quote_id": "uuid" }</code></pre>
       <p class="muted">Response <code>200</code></p>
       <pre><code>{ "booking_id": "uuid", "shipbubble_order_id": "…", "tracking_url": "…" }</code></pre>
       <p>The delivery's <code>status</code> becomes <code>assigned</code> — the same <code>delivery.assigned</code> webhook fires as the normal bid-accept path, just with no <code>rider_id</code>.</p>
 
       <h3><span class="badge post">POST</span><span class="badge path">/tenant-shipbubble-cancel</span></h3>
-      <p>Cancels with Shipbubble and credits the fee back to your tenant's <code>wallet_balance</code>.</p>
+      <p>Cancels with the carrier and credits the fee back to your tenant's <code>wallet_balance</code>.</p>
       <pre><code>{ "booking_id": "uuid" }</code></pre>
       <p class="muted">Response <code>200</code></p>
       <pre><code>{ "delivery_id": "uuid", "status": "cancelled" }</code></pre>
