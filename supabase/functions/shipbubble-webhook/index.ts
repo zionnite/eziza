@@ -96,6 +96,20 @@ serve(async (req) => {
     // wallet action here -- a carrier-initiated cancellation (as opposed
     // to the customer calling shipbubble-cancel) has no refund path yet,
     // flagged as a known gap until this is live-tested.
+    //
+    // 'picked_up' also reflects onto deliveries.status (Eziza's own
+    // vocabulary already has this exact value) -- gives both customers and
+    // tenants the same granular status visibility already true for
+    // internal rider deliveries. This also means tenants get it for free:
+    // the existing on_delivery_update_notify trigger fires on any
+    // deliveries status change regardless of which function performs the
+    // update, and already relays to a tenant's webhook_url via
+    // dispatch-webhook -- no new tenant-relay code needed here at all.
+    //
+    // Deliberately NOT mapped: Shipbubble's own 'confirmed' status (their
+    // early lifecycle "order accepted", not "done") never touches
+    // deliveries.status='confirmed' here, since that value means "done" in
+    // Eziza's vocabulary -- only 'completed' maps to it.
     if (newStatus === 'completed') {
       await serviceClient
         .from('deliveries')
@@ -105,6 +119,11 @@ serve(async (req) => {
       await serviceClient
         .from('deliveries')
         .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
+        .eq('id', booking.delivery_id)
+    } else if (newStatus === 'picked_up') {
+      await serviceClient
+        .from('deliveries')
+        .update({ status: 'picked_up' })
         .eq('id', booking.delivery_id)
     }
 

@@ -32,6 +32,12 @@ serve(async (req) => {
       delivery_contact_phone,
       package_description,
       package_value,
+      // Optional -- required for External Carriers (Shipbubble) rate
+      // requests on this delivery later; if omitted, that feature is
+      // simply unavailable for it (rider/company bidding is unaffected).
+      package_category_id,
+      package_weight_kg,
+      package_dimension, // { length, width, height } cm
     } = body
 
     if (!external_order_id || !pickup_address || !delivery_address) {
@@ -70,6 +76,9 @@ serve(async (req) => {
         delivery_contact_phone,
         package_description,
         package_value,
+        package_category_id,
+        package_weight_kg,
+        package_dimension,
         status: 'open',
         bid_closes_at: bidClosesAt,
         is_sandbox: auth.mode === 'sandbox',
