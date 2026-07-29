@@ -137,7 +137,7 @@ class _ActiveDeliveryPageState extends State<ActiveDeliveryPage> {
             TileLayer(
               urlTemplate:
                   'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.eziza.rider',
+              userAgentPackageName: 'online.eziza.rider',
             ),
             MarkerLayer(markers: _buildMarkers()),
           ],

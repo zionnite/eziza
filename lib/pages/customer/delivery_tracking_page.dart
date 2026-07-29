@@ -566,7 +566,7 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
           children: [
             TileLayer(
               urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.eziza.rider',
+              userAgentPackageName: 'online.eziza.rider',
             ),
 
             // Route polyline

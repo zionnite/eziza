@@ -52,7 +52,7 @@ class RoutePreviewMap extends StatelessWidget {
             children: [
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.eziza.rider',
+                userAgentPackageName: 'online.eziza.rider',
               ),
               PolylineLayer(polylines: [
                 Polyline(

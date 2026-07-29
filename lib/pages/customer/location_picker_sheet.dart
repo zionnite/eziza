@@ -649,7 +649,7 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
               TileLayer(
                 urlTemplate:
                     'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.eziza.rider',
+                userAgentPackageName: 'online.eziza.rider',
               ),
             ],
           ),

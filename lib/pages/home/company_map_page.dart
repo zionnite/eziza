@@ -476,7 +476,7 @@ class _CompanyMapPageState extends State<CompanyMapPage> {
           children: [
             TileLayer(
               urlTemplate:         'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.eziza.rider',
+              userAgentPackageName: 'online.eziza.rider',
             ),
             if (polylines.isNotEmpty)
               PolylineLayer(polylines: polylines),
