@@ -253,8 +253,15 @@ class _CustomerDeliveryDetailPageState
   // Same cancellable-status scope as cancel_delivery_with_refund() /
   // the tenant-facing cancel-delivery edge function — once a rider has
   // picked up, this isn't a self-serve cancel anymore.
+  //
+  // Excludes external-carrier deliveries entirely: this generic path has
+  // no idea how to cancel a real Shipbubble shipment (cancel_delivery_
+  // with_refund now rejects it too, defensively) -- _carrierBookingCard's
+  // own "Cancel Booking" button is the correct one for that channel.
   bool _canCancel() {
     final status = _delivery?['status'] as String? ?? '';
+    final fulfillmentChannel = _delivery?['fulfillment_channel'] as String? ?? 'internal';
+    if (fulfillmentChannel == 'external_carrier') return false;
     return status == 'open' || status == 'assigned';
   }
 
@@ -1783,6 +1790,11 @@ class _CustomerDeliveryDetailPageState
 
   bool _isTrackable() {
     final status = _delivery?['status'] as String? ?? 'open';
+    // External carrier deliveries have no Eziza rider to show a live GPS
+    // map for -- their own "Track shipment" link (Shipbubble's tracking
+    // URL) in _carrierBookingCard is the correct tracking surface instead.
+    final fulfillmentChannel = _delivery?['fulfillment_channel'] as String? ?? 'internal';
+    if (fulfillmentChannel == 'external_carrier') return false;
     return [
       'assigned',
       'awaiting_pickup_confirm',
