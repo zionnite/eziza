@@ -37,6 +37,7 @@ class _CustomerDeliveryDetailPageState
 
   Map<String, dynamic>? _delivery;
   List<Map<String, dynamic>> _bids = [];
+  String? _handoffCode;
   bool _loading = true;
   bool _accepting = false;
   bool _confirming = false;
@@ -71,6 +72,22 @@ class _CustomerDeliveryDetailPageState
           .eq('id', widget.deliveryId)
           .single();
       if (mounted) _delivery = Map<String, dynamic>.from(d);
+    } catch (_) {}
+
+    // Delivery hand-off code — generated at creation, readable here because
+    // RLS scopes it to the sender and a matched/claimed recipient only. A
+    // rider's own query for this delivery never gets this back at all.
+    try {
+      final otpRow = await _db
+          .from('delivery_otps')
+          .select('code, verified_at')
+          .eq('delivery_id', widget.deliveryId)
+          .maybeSingle();
+      if (mounted) {
+        _handoffCode = (otpRow != null && otpRow['verified_at'] == null)
+            ? otpRow['code'] as String?
+            : null;
+      }
     } catch (_) {}
 
     try {
@@ -162,7 +179,13 @@ class _CustomerDeliveryDetailPageState
           callback: (p) {
             final d = Map<String, dynamic>.from(p.newRecord);
             if (d['id'] != widget.deliveryId || !mounted) return;
-            setState(() => _delivery = {...?_delivery, ...d});
+            setState(() {
+              _delivery = {...?_delivery, ...d};
+              // Rider just verified the code (or the delivery was cancelled)
+              // -- nothing left to hand off, so stop showing it.
+              final s = d['status'] as String?;
+              if (s == 'confirmed' || s == 'cancelled') _handoffCode = null;
+            });
           },
         )
         .subscribe();
@@ -473,6 +496,7 @@ class _CustomerDeliveryDetailPageState
                         if (widget.isRecipient) _recipientBanner(),
                         _statusStepper(),
                         _actionBanner(),
+                        if (_handoffCode != null) _handoffCodeCard(),
                         _routeCard(),
                         _packageCard(),
                         if (_showRiderCard()) _assignedRiderCard(),
@@ -1346,6 +1370,71 @@ class _CustomerDeliveryDetailPageState
   }
 
   // ── Route card ────────────────────────────────────────────────
+
+  Widget _handoffCodeCard() {
+    final code = _handoffCode!;
+    return _sectionCard(
+      header: _sectionHeader(Icons.password_rounded, 'Delivery Code'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            widget.isRecipient
+                ? 'Give this code to the rider when the package arrives.'
+                : 'Give this code to whoever will receive the package — the rider will ask for it to confirm delivery.',
+            style: const TextStyle(
+              fontSize: 13,
+              color: EzizaColors.kMuted,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 14),
+          GestureDetector(
+            onTap: () {
+              Clipboard.setData(ClipboardData(text: code));
+              _snack(
+                'Delivery code copied! Share it with whoever will receive the package.',
+              );
+            },
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(
+                vertical: 14,
+                horizontal: 16,
+              ),
+              decoration: BoxDecoration(
+                color: EzizaColors.kSurface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: EzizaColors.kPurple.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    code,
+                    style: const TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 8,
+                      color: EzizaColors.kText,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Icon(
+                    Icons.copy_rounded,
+                    size: 18,
+                    color: EzizaColors.kPurpleD,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _routeCard() {
     final d = _delivery!;

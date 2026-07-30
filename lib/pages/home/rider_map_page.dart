@@ -15,7 +15,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../constants/colors.dart';
 import '../../services/location_service.dart';
 import '../../services/ratings_service.dart';
-import '../../utils/error_messages.dart';
 import '../../widgets/rating_sheet.dart';
 
 const _ngDefault = LatLng(9.0820, 8.6753);
@@ -64,7 +63,6 @@ class _RiderMapPageState extends State<RiderMapPage> {
 
   // OTP state
   bool   _otpSheetOpen   = false;
-  String _otpMaskedPhone = '';
 
   String _pickupContact  = '';
   String _pickupPhone    = '';
@@ -429,14 +427,13 @@ class _RiderMapPageState extends State<RiderMapPage> {
     );
   }
 
-  /// Calls the confirm-delivery-otp edge function.
-  /// Returns the response body map, or throws on error.
-  Future<Map<String, dynamic>> _callOtp(
-      String action, {String? otp}) async {
+  /// Calls the confirm-delivery-otp edge function to check a code the rider
+  /// was told by whoever answered the door. Returns the response body map,
+  /// or throws on error.
+  Future<Map<String, dynamic>> _callOtp(String otp) async {
     final res = await _db.functions.invoke(
       'confirm-delivery-otp',
       body: {
-        'action':      action,
         'delivery_id': widget.delivery['id'],
         'otp': otp,
       },
@@ -448,34 +445,13 @@ class _RiderMapPageState extends State<RiderMapPage> {
     return body;
   }
 
-  /// Sends OTP SMS and opens the entry sheet.
-  /// Called immediately after marking delivered, and when reopening the sheet.
+  /// Opens the code-entry sheet. Called immediately after marking delivered,
+  /// and when reopening the sheet. The code itself was generated back when
+  /// the delivery was created and is never sent to the rider -- only the
+  /// sender and a matched/claimed recipient can see it.
   Future<void> _showOtpSheet() async {
     if (_otpSheetOpen || !mounted) return;
     setState(() => _otpSheetOpen = true);
-
-    // Send (or resend) the OTP first so the sheet can show the masked phone.
-    String maskedPhone = _otpMaskedPhone; // reuse if already sent
-    String? devOtp;
-    if (maskedPhone.isEmpty) {
-      try {
-        final res = await _callOtp('send');
-        maskedPhone = res['masked_phone'] as String? ?? _dropoffPhone;
-        devOtp = res['dev_otp'] as String?;
-        if (mounted) setState(() => _otpMaskedPhone = maskedPhone);
-      } catch (e) {
-        if (mounted) {
-          setState(() => _otpSheetOpen = false);
-          Get.snackbar('Could not send OTP', humanizeError(e, context: 'sendOtp'),
-              backgroundColor: EzizaColors.kError,
-              colorText: EzizaColors.kWhite,
-              snackPosition: SnackPosition.BOTTOM);
-        }
-        return;
-      }
-    }
-
-    if (!mounted) { setState(() => _otpSheetOpen = false); return; }
 
     await showModalBottomSheet<void>(
       context:       context,
@@ -485,15 +461,7 @@ class _RiderMapPageState extends State<RiderMapPage> {
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => _OtpSheet(
-        maskedPhone: maskedPhone,
-        devOtp:     devOtp,
-        onVerify: (code) => _callOtp('verify', otp: code),
-        onResend: () async {
-          final res = await _callOtp('send');
-          final mp = res['masked_phone'] as String? ?? maskedPhone;
-          if (mounted) setState(() => _otpMaskedPhone = mp);
-          return (mp: mp, devOtp: res['dev_otp'] as String?);
-        },
+        onVerify: (code) => _callOtp(code),
         onConfirmed: () {
           _otpSheetOpen = false;
           _closeMap();
@@ -1162,17 +1130,11 @@ class _RiderMapPageState extends State<RiderMapPage> {
 
 class _OtpSheet extends StatefulWidget {
   const _OtpSheet({
-    required this.maskedPhone,
     required this.onVerify,
-    required this.onResend,
     required this.onConfirmed,
-    this.devOtp,
   });
 
-  final String maskedPhone;
-  final String? devOtp;
   final Future<Map<String, dynamic>> Function(String code) onVerify;
-  final Future<({String mp, String? devOtp})> Function() onResend;
   final VoidCallback onConfirmed;
 
   @override
@@ -1180,38 +1142,14 @@ class _OtpSheet extends StatefulWidget {
 }
 
 class _OtpSheetState extends State<_OtpSheet> {
-  final _ctrl    = TextEditingController();
+  final _ctrl = TextEditingController();
   String? _error;
-  bool    _loading    = false;
-  bool    _resending  = false;
-  int     _resendSecs = 0;
-  Timer?  _resendTimer;
-  late String  _maskedPhone;
-  String? _devOtp;
-
-  @override
-  void initState() {
-    super.initState();
-    _maskedPhone = widget.maskedPhone;
-    _devOtp      = widget.devOtp;
-    _startResendCooldown(30);
-  }
+  bool    _loading = false;
 
   @override
   void dispose() {
     _ctrl.dispose();
-    _resendTimer?.cancel();
     super.dispose();
-  }
-
-  void _startResendCooldown(int seconds) {
-    _resendTimer?.cancel();
-    setState(() => _resendSecs = seconds);
-    _resendTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-      setState(() { if (_resendSecs > 0) _resendSecs--; });
-      if (_resendSecs == 0) _resendTimer?.cancel();
-    });
   }
 
   Future<void> _submit() async {
@@ -1228,34 +1166,6 @@ class _OtpSheetState extends State<_OtpSheet> {
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) setState(() { _error = e.toString(); _loading = false; });
-    }
-  }
-
-  Future<void> _resend() async {
-    if (_resendSecs > 0 || _resending) return;
-    setState(() { _resending = true; _error = null; });
-    try {
-      final result = await widget.onResend();
-      if (mounted) {
-        setState(() {
-          _maskedPhone = result.mp;
-          _devOtp      = result.devOtp;
-          _resending   = false;
-          _ctrl.clear();
-        });
-        _startResendCooldown(60);
-        Get.snackbar('Code sent',
-            result.devOtp != null
-                ? 'SMS unavailable — use the code shown on screen.'
-                : 'A new code was sent to ${result.mp}',
-            backgroundColor: EzizaColors.kSuccess,
-            colorText: Colors.white,
-            snackPosition: SnackPosition.BOTTOM);
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() { _error = 'Could not resend: ${e.toString()}'; _resending = false; });
-      }
     }
   }
 
@@ -1289,35 +1199,11 @@ class _OtpSheetState extends State<_OtpSheet> {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800,
                 color: EzizaColors.kText)),
         const SizedBox(height: 6),
-        Text(
-          _devOtp != null
-              ? 'SMS unavailable — use the code below to test:'
-              : 'Ask the recipient for the code sent to\n$_maskedPhone',
+        const Text(
+          'Ask whoever received the package for their 6-digit delivery code',
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 13, color: EzizaColors.kMuted, height: 1.5),
+          style: TextStyle(fontSize: 13, color: EzizaColors.kMuted, height: 1.5),
         ),
-
-        // Dev fallback — show OTP on screen when SMS is not working
-        if (_devOtp != null) ...[
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFF8E1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: EzizaColors.kGold),
-            ),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              const Icon(Icons.warning_amber_rounded,
-                  color: EzizaColors.kGold, size: 18),
-              const SizedBox(width: 8),
-              Text(_devOtp!,
-                  style: const TextStyle(
-                      fontSize: 26, fontWeight: FontWeight.w900,
-                      letterSpacing: 8, color: EzizaColors.kText)),
-            ]),
-          ),
-        ],
 
         const SizedBox(height: 24),
 
@@ -1395,32 +1281,6 @@ class _OtpSheetState extends State<_OtpSheet> {
                       style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700,
                           color: Colors.white)),
             ),
-          ),
-        ),
-
-        const SizedBox(height: 12),
-
-        // Resend button
-        GestureDetector(
-          onTap: _resendSecs > 0 || _resending ? null : _resend,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: _resending
-                ? const SizedBox(width: 16, height: 16,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: EzizaColors.kPurple))
-                : Text(
-                    _resendSecs > 0
-                        ? 'Resend code in ${_resendSecs}s'
-                        : 'Resend code',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: _resendSecs > 0
-                          ? EzizaColors.kMuted
-                          : EzizaColors.kPurpleD,
-                    ),
-                  ),
           ),
         ),
       ]),

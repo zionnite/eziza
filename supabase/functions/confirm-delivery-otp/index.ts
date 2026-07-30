@@ -9,82 +9,13 @@ const serviceClient = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
 )
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// The delivery's handoff code is generated once, at creation, by the
+// deliveries_set_handoff_code trigger -- never here, and never over SMS.
+// This function only ever checks a rider's guess against it and reports
+// pass/fail; the code itself is never included in any response.
 
-function makeOtp(): string {
-  // Cryptographically random 6-digit code
-  const arr = new Uint32Array(1)
-  crypto.getRandomValues(arr)
-  return String(100000 + (arr[0] % 900000))
-}
-
-async function sha256hex(text: string): Promise<string> {
-  const buf = await crypto.subtle.digest(
-    'SHA-256',
-    new TextEncoder().encode(text),
-  )
-  return Array.from(new Uint8Array(buf))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('')
-}
-
-/** Normalise Nigerian phone numbers to international format without leading +.
- *  08012345678 → 2348012345678
- *  +2348012345678 → 2348012345678
- */
-function normalisePhone(raw: string): string {
-  const digits = raw.replace(/\D/g, '')
-  if (digits.startsWith('0')) return '234' + digits.slice(1)
-  if (digits.startsWith('234')) return digits
-  return digits
-}
-
-function maskPhone(raw: string): string {
-  // Show only last 4 digits: ***-***-4567
-  return raw.replace(/\d(?=\d{4})/g, '*')
-}
-
-async function sendSms(phone: string, otp: string): Promise<Record<string, unknown> | null> {
-  const apiKey = Deno.env.get('SENDCHAMP_API_KEY')
-  if (!apiKey) {
-    // Dev / staging — log instead of sending so tests don't require a real key
-    console.log(`[DEV] OTP for ${phone}: ${otp}`)
-    return null
-  }
-  const res = await fetch('https://api.sendchamp.com/api/v1/sms/send', {
-    method: 'POST',
-    headers: {
-      'Content-Type':  'application/json',
-      'Accept':        'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      to:      [normalisePhone(phone)],
-      message: `Your Eziza delivery confirmation code is: ${otp}. Valid for 10 minutes. Do not share this code.`,
-      // TEMP diagnostic: trying "Eziza" even though it's not registered as
-      // a Sender ID on the Sendchamp dashboard yet, per explicit request.
-      sender_name: 'Eziza',
-      // TEMP diagnostic re-test with sender_name "Eziza" + route non_dnd,
-      // per explicit request -- switch back to 'dnd' once this is resolved.
-      route: 'non_dnd',
-    }),
-  })
-  const bodyText = await res.text()
-  // TEMPORARY debug instrumentation — res.ok alone doesn't prove the SMS
-  // was actually accepted for delivery, only that the HTTP call succeeded.
-  // Logging + returning the raw body to diagnose a real SMS never arriving.
-  console.log(`[sendSms] status=${res.status} body=${bodyText}`)
-  if (!res.ok) {
-    throw new Error(`SMS failed (${res.status}): ${bodyText}`)
-  }
-  try {
-    return JSON.parse(bodyText)
-  } catch {
-    return { raw: bodyText }
-  }
-}
-
-// ── Main handler ──────────────────────────────────────────────────────────────
+const MAX_ATTEMPTS   = 3
+const LOCKOUT_MS     = 2 * 60 * 1000 // 2 minutes
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok')
@@ -103,18 +34,15 @@ serve(async (req) => {
 
   try {
     const body = await req.json()
-    const { action, delivery_id, otp } = body as {
-      action:      string
-      delivery_id: string
-      otp?:        string
-    }
+    const { delivery_id, otp } = body as { delivery_id: string; otp?: string }
 
     if (!delivery_id) return json({ error: 'delivery_id required' }, 400)
+    if (!otp?.trim())  return json({ error: 'otp required' }, 400)
 
     // Fetch delivery + verify the calling user is the assigned rider
     const { data: delivery } = await serviceClient
       .from('deliveries')
-      .select('id, status, delivery_contact_phone, rider_id')
+      .select('id, status, rider_id')
       .eq('id', delivery_id)
       .maybeSingle()
 
@@ -130,103 +58,55 @@ serve(async (req) => {
       return json({ error: 'Not authorised for this delivery' }, 403)
     }
 
-    // ── action: send ──────────────────────────────────────────────────────────
-    if (action === 'send') {
-      if (delivery.status !== 'delivered') {
-        return json({ error: 'Delivery must have status "delivered" before requesting OTP' }, 400)
-      }
+    const { data: codeRow } = await serviceClient
+      .from('delivery_otps')
+      .select('id, code, attempts, verified_at, locked_until')
+      .eq('delivery_id', delivery_id)
+      .maybeSingle()
 
-      const phone = delivery.delivery_contact_phone as string | null
-      if (!phone?.trim()) {
-        return json({ error: 'No recipient phone number on file for this delivery' }, 400)
-      }
+    if (!codeRow) return json({ error: 'No delivery code found for this delivery.' }, 400)
+    if (codeRow.verified_at) return json({ error: 'This delivery is already confirmed.' }, 400)
 
-      const otpCode   = makeOtp()
-      const otpHash   = await sha256hex(otpCode)
-      const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString()
-
-      // Delete any previous OTPs for this delivery before inserting a fresh one
-      await serviceClient.from('delivery_otps').delete().eq('delivery_id', delivery_id)
-
-      const { error: insertErr } = await serviceClient.from('delivery_otps').insert({
-        delivery_id,
-        otp_hash:   otpHash,
-        expires_at: expiresAt,
-      })
-      if (insertErr) throw insertErr
-
-      let devOtp: string | undefined
-      let smsDebug: unknown
-      try {
-        smsDebug = await sendSms(phone.trim(), otpCode)
-      } catch (smsErr) {
-        // SMS failed — return the code in the response so the rider can
-        // enter it manually (temporary until SMS provider is working).
-        console.warn('[confirm-delivery-otp] SMS failed, falling back to dev_otp:', smsErr)
-        devOtp = otpCode
-        smsDebug = { error: (smsErr as Error).message }
-      }
-
-      return json({
-        ok:           true,
-        masked_phone: maskPhone(phone.trim()),
-        ...(devOtp ? { dev_otp: devOtp } : {}),
-        _sms_debug_TEMP: smsDebug, // TEMPORARY — remove once SMS delivery is confirmed working
-      })
+    if (codeRow.locked_until && new Date(codeRow.locked_until) > new Date()) {
+      const waitSecs = Math.ceil((new Date(codeRow.locked_until).getTime() - Date.now()) / 1000)
+      return json({ error: `Too many incorrect attempts. Try again in ${waitSecs}s.` }, 400)
     }
 
-    // ── action: verify ────────────────────────────────────────────────────────
-    if (action === 'verify') {
-      if (!otp?.trim()) return json({ error: 'otp required' }, 400)
-
-      const { data: otpRow } = await serviceClient
-        .from('delivery_otps')
-        .select('id, otp_hash, expires_at, attempts, verified_at')
-        .eq('delivery_id', delivery_id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
-      if (!otpRow)           return json({ error: 'No OTP found — request a new one.' }, 400)
-      if (otpRow.verified_at) return json({ error: 'This delivery is already confirmed.' }, 400)
-      if (new Date(otpRow.expires_at) < new Date()) {
-        return json({ error: 'OTP expired — tap "Resend code" to get a new one.' }, 400)
-      }
-      if (otpRow.attempts >= 3) {
-        return json({ error: 'Too many incorrect attempts — tap "Resend code" to get a new one.' }, 400)
-      }
-
-      const inputHash = await sha256hex(otp.trim())
-
-      // Always increment attempts before checking (prevents timing oracle)
+    if (otp.trim() !== codeRow.code) {
+      const attempts = codeRow.attempts + 1
+      const lockingNow = attempts >= MAX_ATTEMPTS
       await serviceClient
         .from('delivery_otps')
-        .update({ attempts: otpRow.attempts + 1 })
-        .eq('id', otpRow.id)
+        .update({
+          attempts: lockingNow ? 0 : attempts,
+          locked_until: lockingNow
+            ? new Date(Date.now() + LOCKOUT_MS).toISOString()
+            : null,
+        })
+        .eq('id', codeRow.id)
 
-      if (inputHash !== otpRow.otp_hash) {
-        const remaining = 2 - otpRow.attempts
-        return json(
-          { error: `Incorrect code. ${remaining} attempt${remaining === 1 ? '' : 's'} left.` },
-          400,
-        )
+      if (lockingNow) {
+        return json({ error: `Too many incorrect attempts. Try again in ${LOCKOUT_MS / 1000}s.` }, 400)
       }
-
-      // OTP correct — mark verified, confirm delivery
-      await serviceClient
-        .from('delivery_otps')
-        .update({ verified_at: new Date().toISOString() })
-        .eq('id', otpRow.id)
-
-      await serviceClient
-        .from('deliveries')
-        .update({ status: 'confirmed', confirmed_at: new Date().toISOString() })
-        .eq('id', delivery_id)
-
-      return json({ ok: true })
+      const remaining = MAX_ATTEMPTS - attempts
+      return json(
+        { error: `Incorrect code. ${remaining} attempt${remaining === 1 ? '' : 's'} left.` },
+        400,
+      )
     }
 
-    return json({ error: `Unknown action: ${action}` }, 400)
+    // Correct — mark verified, confirm delivery
+    await serviceClient
+      .from('delivery_otps')
+      .update({ verified_at: new Date().toISOString() })
+      .eq('id', codeRow.id)
+
+    await serviceClient
+      .from('deliveries')
+      .update({ status: 'confirmed', confirmed_at: new Date().toISOString() })
+      .eq('id', delivery_id)
+
+    return json({ ok: true })
   } catch (err) {
     console.error('[confirm-delivery-otp]', err)
     return json({ error: (err as Error).message }, 500)
