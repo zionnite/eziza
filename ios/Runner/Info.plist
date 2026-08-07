@@ -22,23 +22,38 @@
 	<string>$(FLUTTER_BUILD_NAME)</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
-	<key>CFBundleVersion</key>
-	<string>$(FLUTTER_BUILD_NUMBER)</string>
-	<!-- Paystack top-up callback — see paystack-initialize's callback_url and
-	     wallet_page.dart's AppLinks listener. -->
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
+			<key>CFBundleURLName</key>
+			<string>online.eziza.rider.paystack</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>eziza</string>
 			</array>
-			<key>CFBundleURLName</key>
-			<string>com.eziza.rider.paystack</string>
 		</dict>
 	</array>
+	<key>CFBundleVersion</key>
+	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Eziza needs camera access to capture your identity documents for rider verification.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Eziza uses your location in the background to broadcast your GPS position during active deliveries.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Eziza uses your location in the background to broadcast your GPS position during active deliveries.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Eziza uses your location to show your position on the map and help riders find pickup and dropoff points.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Eziza may save photos to your library.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Eziza needs photo library access to upload your identity documents for rider verification.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -60,31 +75,13 @@
 			</array>
 		</dict>
 	</dict>
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<key>NSAllowsArbitraryLoads</key>
-		<true/>
-	</dict>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Eziza uses your location to show your position on the map and help riders find pickup and dropoff points.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Eziza uses your location in the background to broadcast your GPS position during active deliveries.</string>
-	<key>NSLocationAlwaysUsageDescription</key>
-	<string>Eziza uses your location in the background to broadcast your GPS position during active deliveries.</string>
-	<key>NSCameraUsageDescription</key>
-	<string>Eziza needs camera access to capture your identity documents for rider verification.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Eziza needs photo library access to upload your identity documents for rider verification.</string>
-	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Eziza may save photos to your library.</string>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
 	<key>UIBackgroundModes</key>
 	<array>
-		<string>fetch</string>
 		<string>location</string>
 		<string>remote-notification</string>
 	</array>
-	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

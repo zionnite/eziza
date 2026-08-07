@@ -51,18 +51,17 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyC2S6_2zK3z4reSZMy7PJXpVvaeRuar-1I',
-    appId: '1:727989696650:android:a2cc0ecb0df85dceee5573',
+    appId: '1:727989696650:android:d3487ef446036926ee5573',
     messagingSenderId: '727989696650',
     projectId: 'eziza-rider',
     storageBucket: 'eziza-rider.firebasestorage.app',
   );
-
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyBu9pLcYxSWggwxisyB9pn3UO9NlxxVf-k',
-    appId: '1:727989696650:ios:f02c064733951d17ee5573',
+    appId: '1:727989696650:ios:b399d29e3cc617deee5573',
     messagingSenderId: '727989696650',
     projectId: 'eziza-rider',
     storageBucket: 'eziza-rider.firebasestorage.app',
-    iosBundleId: 'com.eziza.ezizaRider',
+    iosBundleId: 'online.eziza.rider',
   );
 }
