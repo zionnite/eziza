@@ -5,13 +5,19 @@ import { json } from '../_shared/cors.ts'
 // ── Inbound webhook from Shipbubble on shipment status change ────────────
 // Signed with x-ship-signature = HMAC-SHA512(raw body, SECRET_KEY) per
 // Shipbubble's docs -- same primitive (HMAC) already used for Eziza's own
-// outbound tenant webhooks, just SHA-512 instead of SHA-256.
+// outbound tenant webhooks, just SHA-512 instead of SHA-256. SECRET_KEY is
+// the same value as SHIPBUBBLE_API_KEY -- confirmed live 2026-08-08, no
+// separate webhook secret exists anywhere in Shipbubble's dashboard.
 //
-// Exact webhook payload field names aren't confirmed against a real event
-// yet (account not approved) -- this defensively checks a couple of
-// reasonable candidates and always stores the full raw payload into
-// status_history regardless, so nothing is lost even if a field name
-// guess is wrong. Revisit once a real webhook has actually been received.
+// Real payload shape confirmed live 2026-08-08 (see PROGRESS.md): top-level
+// `order_id`/`status` fields exist as guessed, but `status` can be STALE --
+// observed reporting 'confirmed' after a retried/delayed delivery while
+// `package_status` (queried fresh at send time) already showed 'Completed'.
+// `package_status` is a chronological array of every transition on the
+// order; its own last entry is the reliable current status, so that's
+// preferred over the top-level `status` field below. Always stores the
+// full raw payload into status_history regardless, so nothing is lost even
+// if a future payload shape differs.
 
 const serviceClient = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -62,7 +68,17 @@ serve(async (req) => {
   try {
     const payload = JSON.parse(rawBody)
     const shipbubbleOrderId = (payload.order_id ?? payload.data?.order_id) as string | undefined
-    const rawStatus = (payload.status ?? payload.data?.status ?? payload.event) as string | undefined
+
+    const packageStatusList = Array.isArray(payload.package_status) ? payload.package_status : undefined
+    const latestPackageStatus = packageStatusList?.length
+      ? (packageStatusList[packageStatusList.length - 1]?.status as string | undefined)
+      : undefined
+    const rawStatus = (
+      latestPackageStatus?.toLowerCase().replace(/\s+/g, '_')
+      ?? payload.status
+      ?? payload.data?.status
+      ?? payload.event
+    ) as string | undefined
 
     if (!shipbubbleOrderId || !rawStatus) return json({ ok: true, reason: 'no order_id/status in payload' })
 
