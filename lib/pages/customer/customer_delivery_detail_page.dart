@@ -2411,7 +2411,7 @@ class _CustomerDeliveryDetailPageState
     }
 
     return _sectionCard(
-      header: _sectionHeader(Icons.local_shipping_outlined, 'External Carriers'),
+      header: _sectionHeader(Icons.local_shipping_outlined, 'Choose Delivery Partner'),
       child: _carrierQuotesContent(),
     );
   }
