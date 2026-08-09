@@ -181,7 +181,7 @@ class _DeliveryCard extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               ),
-              child: const Text('Place Bid'),
+              child: const Text('Place Offer'),
             ),
           ]),
         ]),
@@ -201,7 +201,7 @@ class _DeliveryCard extends StatelessWidget {
         padding: EdgeInsets.fromLTRB(
             24, 24, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Text('Place a Bid',
+          const Text('Place an Offer',
               style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -243,7 +243,7 @@ class _DeliveryCard extends StatelessWidget {
                 final result = await Get.find<DeliveryController>()
                     .placeBid(delivery.id, amount, note: note.text.trim());
                 if (result == 'true') {
-                  Get.snackbar('Bid placed', 'Your bid has been submitted.',
+                  Get.snackbar('Offer placed', 'Your offer has been submitted.',
                       backgroundColor: EzizaColors.kSuccess,
                       colorText: EzizaColors.kWhite,
                       snackPosition: SnackPosition.BOTTOM);
@@ -254,7 +254,7 @@ class _DeliveryCard extends StatelessWidget {
                       snackPosition: SnackPosition.BOTTOM);
                 }
               },
-              child: const Text('Submit Bid'),
+              child: const Text('Submit Offer'),
             ),
           ),
         ]),
