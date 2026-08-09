@@ -90,7 +90,7 @@ serve(async (req) => {
       }, 400)
     }
 
-    const { data: tenant } = await supabase.from('tenants').select('email').eq('id', auth.tenantId).single()
+    const { data: tenant } = await supabase.from('tenants').select('email, pickup_only_carriers').eq('id', auth.tenantId).single()
 
     const senderCode = await validateAddress(apiKey, 'sender', {
       name:  delivery.pickup_contact_name || 'Sender',
@@ -135,7 +135,16 @@ serve(async (req) => {
     if (!ratesRes.ok) throw new Error(`fetch_rates failed: ${JSON.stringify(ratesBody)}`)
 
     const requestToken = ratesBody.data.request_token as string
-    const couriers = (ratesBody.data.couriers ?? []) as Array<Record<string, unknown>>
+    let couriers = (ratesBody.data.couriers ?? []) as Array<Record<string, unknown>>
+
+    // Some tenants (ZeeFashion, confirmed 2026-08-09) never want a "dropoff"
+    // courier offered -- that would mean the merchant has to personally
+    // take the package to a station, which isn't how they operate. Only
+    // "pickup" couriers (rider comes to the merchant's own location) survive
+    // for those tenants; other tenants see every option Shipbubble returns.
+    if (tenant?.pickup_only_carriers) {
+      couriers = couriers.filter((c) => c.service_type === 'pickup')
+    }
 
     await supabase.from('external_carrier_quotes').delete().eq('delivery_id', delivery_id)
 
