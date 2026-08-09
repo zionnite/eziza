@@ -2438,7 +2438,7 @@ class _CustomerDeliveryDetailPageState
               ),
               child: _loadingQuotes
                   ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Text('Get Courier Quotes', style: TextStyle(fontWeight: FontWeight.w700)),
+                  : const Text('Get Delivery Quotes', style: TextStyle(fontWeight: FontWeight.w700)),
             ),
           ),
         ],
