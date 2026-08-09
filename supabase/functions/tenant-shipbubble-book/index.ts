@@ -41,9 +41,13 @@ serve(async (req) => {
       return json({ error: 'This quote has expired — get new rates and try again.' }, 400)
     }
 
+    // "Insufficient tenant balance" means nothing to a tenant's own buyer --
+    // it's the merchant's prepaid Eziza balance, not the buyer's wallet.
+    // Customer-facing message here instead; the real cause is still visible
+    // to the tenant via their own eziza-partners dashboard.
     const { data: tenant } = await supabase.from('tenants').select('wallet_balance').eq('id', auth.tenantId).single()
     if (!tenant || Number(tenant.wallet_balance ?? 0) < Number(quote.total)) {
-      return json({ error: 'Insufficient tenant balance' }, 400)
+      return json({ error: 'Instant Courier is temporarily unavailable for this store. Please choose a different delivery option.' }, 400)
     }
 
     const bookRes = await fetch(`${SHIPBUBBLE_BASE}/shipping/labels`, {

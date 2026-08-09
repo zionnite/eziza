@@ -2629,10 +2629,11 @@ class _CustomerDeliveryDetailPageState
                 DropdownButtonFormField<Map<String, dynamic>>(
                   initialValue: selectedCategory,
                   decoration: _dropdownDecoration(),
+                  isExpanded: true,
                   items: categories
                       .map((c) => DropdownMenuItem(
                             value: c,
-                            child: Text(_labelOf(c, keys: ['category_name', 'name']),
+                            child: Text(_labelOf(c, keys: ['category', 'category_name', 'name']),
                                 overflow: TextOverflow.ellipsis),
                           ))
                       .toList(),
@@ -2645,6 +2646,7 @@ class _CustomerDeliveryDetailPageState
                 DropdownButtonFormField<Map<String, dynamic>>(
                   initialValue: selectedBox,
                   decoration: _dropdownDecoration(),
+                  isExpanded: true,
                   items: dimensions
                       .map((d) => DropdownMenuItem(
                             value: d,

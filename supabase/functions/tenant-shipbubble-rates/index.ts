@@ -15,8 +15,28 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
 )
 
+// Shipbubble's own validation messages are accurate but not customer-facing
+// -- e.g. it uses "please provide a full name" for a single-word name, and a
+// generic "couldn't validate the provided address" for one it can't geocode.
+// Translated here into something a merchant/customer can actually act on,
+// since these two are the failure modes actually seen live (2026-08-08):
+// a customer profile with no last name, and a placeholder pickup address.
+function friendlyAddressError(role: 'sender' | 'receiver', name: string, body: Record<string, unknown>): string {
+  const raw = (body?.message ?? (Array.isArray(body?.errors) ? body.errors[0] : undefined) ?? '') as string
+  const who = role === 'sender' ? "The merchant's pickup contact name" : "The recipient's name"
+  if (/full name/i.test(raw)) {
+    return `${who} on file ("${name}") looks incomplete -- the courier requires a full first and last name (e.g. "John Doe"). Please update it before using Instant Courier.`
+  }
+  if (/couldn't validate|clear and accurate address/i.test(raw)) {
+    const which = role === 'sender' ? 'pickup' : 'delivery'
+    return `The ${which} address on file couldn't be matched to a real location. Please make sure it includes a full street, city, and state.`
+  }
+  return raw || `Could not validate the ${role === 'sender' ? 'pickup' : 'delivery'} address.`
+}
+
 async function validateAddress(
   apiKey: string,
+  role: 'sender' | 'receiver',
   args: { name: string; email: string; phone: string; address: string; lat?: number | null; lng?: number | null },
 ): Promise<number> {
   const res = await fetch(`${SHIPBUBBLE_BASE}/shipping/address/validate`, {
@@ -36,7 +56,7 @@ async function validateAddress(
     }),
   })
   const body = await res.json()
-  if (!res.ok) throw new Error(`Address validation failed: ${JSON.stringify(body)}`)
+  if (!res.ok) throw new Error(friendlyAddressError(role, args.name, body))
   return body.data.address_code
 }
 
@@ -72,14 +92,14 @@ serve(async (req) => {
 
     const { data: tenant } = await supabase.from('tenants').select('email').eq('id', auth.tenantId).single()
 
-    const senderCode = await validateAddress(apiKey, {
+    const senderCode = await validateAddress(apiKey, 'sender', {
       name:  delivery.pickup_contact_name || 'Sender',
       email: tenant?.email ?? `sender+${delivery_id}@eziza.online`,
       phone: delivery.pickup_contact_phone || '',
       address: delivery.pickup_address,
       lat: delivery.pickup_lat, lng: delivery.pickup_lng,
     })
-    const receiverCode = await validateAddress(apiKey, {
+    const receiverCode = await validateAddress(apiKey, 'receiver', {
       name:  delivery.delivery_contact_name || 'Receiver',
       email: `receiver+${delivery_id}@eziza.online`,
       phone: delivery.delivery_contact_phone || '',
