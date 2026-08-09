@@ -158,6 +158,7 @@ serve(async (req) => {
       total:        c.total,
       currency:     c.currency,
       delivery_eta: c.delivery_eta,
+      pickup_eta:   c.pickup_eta,
       raw_response: c,
       expires_at:   new Date(Date.now() + 20 * 60 * 1000).toISOString(),
     }))
@@ -165,7 +166,7 @@ serve(async (req) => {
     const { data: inserted, error: insertErr } = await supabase
       .from('external_carrier_quotes')
       .insert(rows)
-      .select('id, courier_id, courier_name, service_code, total, currency, delivery_eta')
+      .select('id, courier_id, courier_name, service_code, total, currency, delivery_eta, pickup_eta')
 
     if (insertErr) throw insertErr
 
