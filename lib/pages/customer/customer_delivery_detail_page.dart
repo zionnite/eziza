@@ -2706,7 +2706,7 @@ class _CustomerDeliveryDetailPageState
                 size: 13, color: isDropoff ? EzizaColors.kGold : EzizaColors.kSuccess),
             const SizedBox(width: 5),
             Text(
-              isDropoff ? 'You need to drop this off at a station' : 'Rider will pick up from you',
+              isDropoff ? 'Station Drop-off required' : 'Rider will pick up from you',
               style: TextStyle(
                 fontSize: 12, fontWeight: FontWeight.w600,
                 color: isDropoff ? EzizaColors.kGold : EzizaColors.kSuccess,
