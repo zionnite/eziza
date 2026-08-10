@@ -1475,6 +1475,16 @@ class _CustomerDeliveryDetailPageState
             contactPhone: d['delivery_contact_phone'] as String?,
             icon: Icons.location_on_rounded,
             color: EzizaColors.kGold,
+            // Recipient isn't a logged-in customer with a profile to fix
+            // later (unlike the sender's own name, read live from
+            // customers.full_name server-side as of 2026-08-10) -- this is
+            // the only way to correct a typo'd/incomplete name or phone
+            // after creation. Only the sender can edit, and only before a
+            // courier is booked -- editing after that wouldn't retroactively
+            // fix anything already sent to Shipbubble or shown to a rider.
+            onEdit: (!widget.isRecipient && d['status'] == 'open')
+                ? () => _editRecipientSheet(d)
+                : null,
           ),
         ],
       ),
@@ -1488,6 +1498,7 @@ class _CustomerDeliveryDetailPageState
     String? contactPhone,
     required IconData icon,
     required Color color,
+    VoidCallback? onEdit,
   }) => Container(
     padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
@@ -1555,6 +1566,14 @@ class _CustomerDeliveryDetailPageState
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    if (onEdit != null)
+                      GestureDetector(
+                        onTap: onEdit,
+                        child: const Padding(
+                          padding: EdgeInsets.only(left: 6),
+                          child: Icon(Icons.edit_outlined, size: 13, color: EzizaColors.kMuted),
+                        ),
+                      ),
                   ],
                 ),
               ],
@@ -1564,6 +1583,110 @@ class _CustomerDeliveryDetailPageState
       ],
     ),
   );
+
+  // ── Edit recipient details ───────────────────────────────────
+
+  Future<void> _editRecipientSheet(Map<String, dynamic> d) async {
+    final nameCtrl = TextEditingController(text: d['delivery_contact_name'] as String? ?? '');
+    final phoneCtrl = TextEditingController(text: d['delivery_contact_phone'] as String? ?? '');
+    String? error;
+    bool saving = false;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => SafeArea(
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 20, right: 20, top: 20,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Edit Recipient Details', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                const SizedBox(height: 4),
+                const Text('Only possible before a courier is booked.',
+                    style: TextStyle(fontSize: 12, color: EzizaColors.kMuted)),
+                const SizedBox(height: 16),
+                const Text('Recipient Name',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: EzizaColors.kMuted)),
+                const SizedBox(height: 6),
+                TextField(controller: nameCtrl, decoration: _dropdownDecoration().copyWith(hintText: 'Full name, e.g. John Doe')),
+                const SizedBox(height: 16),
+                const Text('Recipient Phone',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: EzizaColors.kMuted)),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: phoneCtrl,
+                  keyboardType: TextInputType.phone,
+                  decoration: _dropdownDecoration().copyWith(hintText: '080xxxxxxxx'),
+                ),
+                if (error != null) ...[
+                  const SizedBox(height: 10),
+                  Text(error!, style: const TextStyle(fontSize: 12, color: EzizaColors.kError)),
+                ],
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: saving
+                        ? null
+                        : () async {
+                            final name = nameCtrl.text.trim();
+                            final phone = phoneCtrl.text.trim();
+                            if (name.isEmpty) {
+                              setSheetState(() => error = 'Enter the recipient\'s name.');
+                              return;
+                            }
+                            if (!name.contains(RegExp(r'\s'))) {
+                              setSheetState(() => error = 'Enter the recipient\'s full name (first and last).');
+                              return;
+                            }
+                            if (phone.isEmpty) {
+                              setSheetState(() => error = 'Enter the recipient\'s phone number.');
+                              return;
+                            }
+                            setSheetState(() {
+                              saving = true;
+                              error = null;
+                            });
+                            try {
+                              await _db.from('deliveries').update({
+                                'delivery_contact_name':  name,
+                                'delivery_contact_phone': phone,
+                              }).eq('id', widget.deliveryId);
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              await _load();
+                              if (mounted) _snack('Recipient details updated.');
+                            } catch (e) {
+                              setSheetState(() {
+                                saving = false;
+                                error = 'Could not save. Please try again.';
+                              });
+                            }
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: EzizaColors.kPurpleD,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: saving
+                        ? const SizedBox(width: 18, height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Text('Save', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   // ── Package card ──────────────────────────────────────────────
 
