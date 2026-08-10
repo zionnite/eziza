@@ -10,6 +10,10 @@ class DeliveryController extends GetxController {
   final openDeliveries   = <Delivery>[].obs;
   final activeDelivery   = Rxn<Delivery>();
   final loading          = false.obs;
+  // Delivery ids this rider already has a pending offer on — job board uses
+  // this to swap "Place Offer" for a sent-state instead of letting the rider
+  // think they haven't bid yet.
+  final myPendingBidDeliveryIds = <String>{}.obs;
 
   String? _riderId;
   RealtimeChannel? _channel;
@@ -18,6 +22,7 @@ class DeliveryController extends GetxController {
     _riderId = rider.id;
     _loadOpen();
     _loadActive();
+    _loadMyBids();
     _subscribeRealtime();
   }
 
@@ -71,6 +76,20 @@ class DeliveryController extends GetxController {
     } catch (_) {}
   }
 
+  // ── My pending offers ──────────────────────────────────────
+  Future<void> _loadMyBids() async {
+    if (_riderId == null) return;
+    try {
+      final rows = await _client
+          .from('delivery_bids')
+          .select('delivery_id')
+          .eq('rider_id', _riderId!)
+          .eq('status', 'pending');
+      myPendingBidDeliveryIds
+          .assignAll((rows as List).map((r) => r['delivery_id'] as String));
+    } catch (_) {}
+  }
+
   // ── Realtime: refresh on delivery table changes ───────────
   void _subscribeRealtime() {
     if (_channel != null) {
@@ -88,6 +107,17 @@ class DeliveryController extends GetxController {
             _loadActive();
           },
         )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'delivery_bids',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'rider_id',
+            value: _riderId,
+          ),
+          callback: (_) => _loadMyBids(),
+        )
         .subscribe();
   }
 
@@ -100,6 +130,7 @@ class DeliveryController extends GetxController {
         'amount': amount,
         'note': note,
       });
+      await _loadMyBids();
       return 'true';
     } catch (e) {
       return e.toString();
@@ -127,5 +158,6 @@ class DeliveryController extends GetxController {
   Future<void> refresh() async {
     await _loadOpen();
     await _loadActive();
+    await _loadMyBids();
   }
 }

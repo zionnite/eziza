@@ -50,8 +50,9 @@ class _JobBoardPageState extends State<JobBoardPage> {
       ),
       body: Obx(() {
         // If there's an active delivery, show a banner at the top
-        final active = _delivery.activeDelivery.value;
-        final open   = _delivery.openDeliveries;
+        final active  = _delivery.activeDelivery.value;
+        final open    = _delivery.openDeliveries;
+        final myBids  = _delivery.myPendingBidDeliveryIds.toSet();
 
         return RefreshIndicator(
           onRefresh: _delivery.refresh,
@@ -68,7 +69,10 @@ class _JobBoardPageState extends State<JobBoardPage> {
                 padding: const EdgeInsets.all(16),
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate(
-                    (ctx, i) => _DeliveryCard(delivery: open[i]),
+                    (ctx, i) => _DeliveryCard(
+                      delivery: open[i],
+                      hasOffer: myBids.contains(open[i].id),
+                    ),
                     childCount: open.length,
                   ),
                 ),
@@ -129,7 +133,8 @@ class _ActiveBanner extends StatelessWidget {
 // ── Open delivery card ────────────────────────────────────────
 class _DeliveryCard extends StatelessWidget {
   final Delivery delivery;
-  const _DeliveryCard({required this.delivery});
+  final bool hasOffer;
+  const _DeliveryCard({required this.delivery, required this.hasOffer});
 
   @override
   Widget build(BuildContext context) {
@@ -171,18 +176,39 @@ class _DeliveryCard extends StatelessWidget {
                   style: const TextStyle(
                       color: EzizaColors.kMuted, fontSize: 12)),
             const Spacer(),
-            ElevatedButton(
-              onPressed: () => _showBidSheet(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: EzizaColors.kPurple,
-                foregroundColor: EzizaColors.kWhite,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
+            if (hasOffer)
+              Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: EzizaColors.kSurface,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: EzizaColors.kBorder),
+                ),
+                child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.check_circle,
+                      size: 16, color: EzizaColors.kSuccess),
+                  SizedBox(width: 6),
+                  Text('Offer Sent',
+                      style: TextStyle(
+                          color: EzizaColors.kMuted,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13)),
+                ]),
+              )
+            else
+              ElevatedButton(
+                onPressed: () => _showBidSheet(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: EzizaColors.kPurple,
+                  foregroundColor: EzizaColors.kWhite,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20, vertical: 10),
+                ),
+                child: const Text('Place Offer'),
               ),
-              child: const Text('Place Offer'),
-            ),
           ]),
         ]),
       ),
