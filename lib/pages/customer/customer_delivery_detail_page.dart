@@ -38,7 +38,10 @@ class _CustomerDeliveryDetailPageState
   List<Map<String, dynamic>> _bids = [];
   String? _handoffCode;
   bool _loading = true;
-  bool _accepting = false;
+  // Which offer is currently being accepted -- null means none. Per-item
+  // (not a single shared bool) so accepting one offer doesn't show every
+  // other offer's button as loading too.
+  String? _acceptingBidId;
   bool _confirming = false;
   bool _cancelling = false;
   RealtimeChannel? _channel;
@@ -47,7 +50,9 @@ class _CustomerDeliveryDetailPageState
   Map<String, dynamic>? _carrierBooking;
   List<Map<String, dynamic>> _carrierQuotes = [];
   bool _loadingQuotes = false;
-  bool _bookingCarrier = false;
+  // Which quote is currently being booked -- null means none. Same per-item
+  // fix as _acceptingBidId above, same underlying bug.
+  String? _bookingCarrierQuoteId;
   bool _cancellingCarrier = false;
 
   @override
@@ -213,10 +218,11 @@ class _CustomerDeliveryDetailPageState
     );
     if (verified != true || !mounted) return;
 
-    setState(() => _accepting = true);
+    final bidId = bid['id'] as String;
+    setState(() => _acceptingBidId = bidId);
     try {
       await WalletService.acceptBidWithPayment(
-        bidId: bid['id'] as String,
+        bidId: bidId,
         customerId: user.id,
       );
       _snack('Offer accepted! Your package is being arranged.');
@@ -230,7 +236,7 @@ class _CustomerDeliveryDetailPageState
     } catch (_) {
       _snack('Could not accept offer. Please try again.');
     }
-    if (mounted) setState(() => _accepting = false);
+    if (mounted) setState(() => _acceptingBidId = null);
   }
 
   Future<void> _showInsufficientBalanceDialog() {
@@ -2386,7 +2392,7 @@ class _CustomerDeliveryDetailPageState
             Container(height: 1, color: EzizaColors.kBorder),
             Padding(
               padding: const EdgeInsets.all(12),
-              child: _accepting
+              child: _acceptingBidId == bid['id']
                   ? const Center(
                       child: SizedBox(
                         width: 18,
@@ -2646,14 +2652,14 @@ class _CustomerDeliveryDetailPageState
             ),
           ),
           GestureDetector(
-            onTap: _bookingCarrier ? null : () => _bookCourier(quote),
+            onTap: _bookingCarrierQuoteId == quote['id'] ? null : () => _bookCourier(quote),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(colors: [EzizaColors.kPurple, EzizaColors.kPurpleD]),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: _bookingCarrier
+              child: _bookingCarrierQuoteId == quote['id']
                   ? const SizedBox(
                       width: 16, height: 16,
                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
@@ -2891,9 +2897,10 @@ class _CustomerDeliveryDetailPageState
     final verified = await PinVerificationSheet.verify(context, amount: amount, label: 'for courier shipping fee');
     if (verified != true || !mounted) return;
 
-    setState(() => _bookingCarrier = true);
+    final quoteId = quote['id'] as String;
+    setState(() => _bookingCarrierQuoteId = quoteId);
     try {
-      await ShipbubbleService.bookShipment(quoteId: quote['id'] as String);
+      await ShipbubbleService.bookShipment(quoteId: quoteId);
       _snack('Courier booked! Tracking details will appear shortly.');
       _carrierQuotes = [];
       await _load();
@@ -2905,7 +2912,7 @@ class _CustomerDeliveryDetailPageState
         _snack(msg);
       }
     }
-    if (mounted) setState(() => _bookingCarrier = false);
+    if (mounted) setState(() => _bookingCarrierQuoteId = null);
   }
 
   Future<void> _cancelCourierBooking(String bookingId) async {
