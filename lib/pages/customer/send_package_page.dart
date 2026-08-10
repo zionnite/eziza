@@ -189,8 +189,18 @@ class _SendPackagePageState extends State<SendPackagePage>
       _snack('Enter your phone number so the rider can reach you.');
       return;
     }
-    if (_deliveryContactCtrl.text.trim().isEmpty) {
+    final recipientName = _deliveryContactCtrl.text.trim();
+    if (recipientName.isEmpty) {
       _snack('Enter the recipient\'s name.');
+      return;
+    }
+    // Shipbubble (and any external carrier the customer later chooses)
+    // requires a full first + last name -- checked here at creation time
+    // instead of only surfacing as a booking-time API error, since the
+    // recipient isn't a logged-in customer with a profile to fix later
+    // the way the sender's own name can be.
+    if (!recipientName.trim().contains(RegExp(r'\s'))) {
+      _snack('Enter the recipient\'s full name (first and last), not just one word.');
       return;
     }
     if (_deliveryPhoneCtrl.text.trim().isEmpty) {
@@ -336,7 +346,7 @@ class _SendPackagePageState extends State<SendPackagePage>
                   ),
                   const SizedBox(height: 14),
                   _field('Recipient Name *', _deliveryContactCtrl,
-                      hint: 'Name of person receiving package'),
+                      hint: 'Full name, e.g. John Doe'),
                   const SizedBox(height: 14),
                   _field('Recipient Phone *', _deliveryPhoneCtrl,
                       hint: '080xxxxxxxx',
