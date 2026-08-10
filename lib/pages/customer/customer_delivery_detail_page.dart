@@ -2606,65 +2606,75 @@ class _CustomerDeliveryDetailPageState
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: EzizaColors.kBorder),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(children: [
-                  Expanded(
-                    child: Text(courierName,
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-                        overflow: TextOverflow.ellipsis),
-                  ),
-                  if (serviceType != null) ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: (isDropoff ? EzizaColors.kGold : EzizaColors.kSuccess).withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        isDropoff ? 'Station Drop-off' : 'Rider picks up',
-                        style: TextStyle(
-                          fontSize: 9, fontWeight: FontWeight.w700,
-                          color: isDropoff ? EzizaColors.kGold : EzizaColors.kSuccess,
-                        ),
-                      ),
-                    ),
-                  ],
-                ]),
-                const SizedBox(height: 2),
-                Text(formatNaira(total), style: const TextStyle(fontSize: 12, color: EzizaColors.kMuted)),
-                if (pickupEta != null || deliveryEta != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    [
-                      if (pickupEta != null) 'Pickup: $pickupEta',
-                      if (deliveryEta != null) 'Delivery: $deliveryEta',
-                    ].join('  ·  '),
-                    style: const TextStyle(fontSize: 11, color: EzizaColors.kMuted),
-                  ),
-                ],
-              ],
+          // Full-width row so the service-type badge sits at the card's
+          // actual far right edge, not just the right edge of the text
+          // column next to the Book button.
+          Row(children: [
+            Expanded(
+              child: Text(courierName,
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                  overflow: TextOverflow.ellipsis),
             ),
-          ),
-          GestureDetector(
-            onTap: _bookingCarrierQuoteId == quote['id'] ? null : () => _bookCourier(quote),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [EzizaColors.kPurple, EzizaColors.kPurpleD]),
-                borderRadius: BorderRadius.circular(10),
+            if (serviceType != null) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: (isDropoff ? EzizaColors.kGold : EzizaColors.kSuccess).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  isDropoff ? 'Station Drop-off' : 'Rider picks up',
+                  style: TextStyle(
+                    fontSize: 9, fontWeight: FontWeight.w700,
+                    color: isDropoff ? EzizaColors.kGold : EzizaColors.kSuccess,
+                  ),
+                ),
               ),
-              child: _bookingCarrierQuoteId == quote['id']
-                  ? const SizedBox(
-                      width: 16, height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('Book', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
-            ),
+            ],
+          ]),
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(formatNaira(total), style: const TextStyle(fontSize: 12, color: EzizaColors.kMuted)),
+                    if (pickupEta != null || deliveryEta != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        [
+                          if (pickupEta != null) 'Pickup: $pickupEta',
+                          if (deliveryEta != null) 'Delivery: $deliveryEta',
+                        ].join('  ·  '),
+                        style: const TextStyle(fontSize: 11, color: EzizaColors.kMuted),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 14),
+              GestureDetector(
+                onTap: _bookingCarrierQuoteId == quote['id'] ? null : () => _bookCourier(quote),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: [EzizaColors.kPurple, EzizaColors.kPurpleD]),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: _bookingCarrierQuoteId == quote['id']
+                      ? const SizedBox(
+                          width: 16, height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Text('Book', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                ),
+              ),
+            ],
           ),
         ],
       ),
