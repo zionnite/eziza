@@ -111,8 +111,23 @@ serve(async (req) => {
     // all in this schema -- Shipbubble requires the field, so a
     // non-deliverable placeholder is used; this is address *validation*,
     // not an email being sent anywhere.
+    //
+    // Sender name: delivery.pickup_contact_name is a snapshot taken once at
+    // delivery-creation time, never re-synced afterward -- confirmed live
+    // 2026-08-10, updating the profile's full_name didn't fix a "needs a
+    // full name" error on a retry because this was still reading the old
+    // value. Since the sender IS the logged-in customer here (not a
+    // separate person, unlike the receiver), prefer their current
+    // customers.full_name so a profile fix takes effect immediately without
+    // needing a new delivery.
+    const { data: customer } = await serviceClient
+      .from('customers')
+      .select('full_name')
+      .eq('id', user.id)
+      .maybeSingle()
+
     const senderCode = await validateAddress(apiKey, 'sender', {
-      name:  delivery.pickup_contact_name || 'Sender',
+      name:  customer?.full_name || delivery.pickup_contact_name || 'Sender',
       email: user.email ?? `sender+${delivery_id}@eziza.online`,
       phone: delivery.pickup_contact_phone || '',
       address: delivery.pickup_address,
