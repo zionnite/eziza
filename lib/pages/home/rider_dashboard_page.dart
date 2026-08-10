@@ -44,6 +44,7 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
   Rider? get _rider => _auth.rider.value;
 
   List<Map<String, dynamic>> _openDeliveries   = [];
+  Set<String> _myBidDeliveryIds = {};
   List<Map<String, dynamic>> _activeDeliveries = [];
   List<Map<String, dynamic>> _jobHistory       = [];
   List<Map<String, dynamic>> _pendingInvites   = [];
@@ -165,6 +166,17 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
         });
       }
       _openDeliveries = filtered;
+
+      // This rider's own pending offers — job board card uses this to show
+      // "Offer Sent" instead of "Make an Offer" for deliveries already bid on.
+      final myBidsRes = await _db
+          .from('delivery_bids')
+          .select('delivery_id')
+          .eq('rider_id', riderId)
+          .eq('status', 'pending');
+      _myBidDeliveryIds = (myBidsRes as List)
+          .map((r) => r['delivery_id'] as String)
+          .toSet();
 
       // Pending company invites (rider_id = auth.uid in this table)
       final inviteRes = await _db
@@ -1095,6 +1107,10 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
                     'amount':      amount,
                     'status':      'pending',
                   }, onConflict: 'delivery_id,rider_id');
+                  if (mounted) {
+                    setState(() =>
+                        _myBidDeliveryIds.add(delivery['id'] as String));
+                  }
                   Get.snackbar('Offer sent',
                       'Your offer has been submitted.',
                       backgroundColor: EzizaColors.kSuccess,
@@ -2361,6 +2377,7 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
   Widget _deliveryCard(Map<String, dynamic> d) {
     final dist = _pickupDistance(d);
     final desc = d['package_description'] as String?;
+    final alreadyBid = _myBidDeliveryIds.contains(d['id'] as String);
     return PremiumCard(
       onTap: () => _showBidSheet(d),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -2397,10 +2414,16 @@ class _RiderDashboardPageState extends State<RiderDashboardPage>
               maxLines: 1, overflow: TextOverflow.ellipsis),
         ],
         const SizedBox(height: 14),
-        PremiumButton(
-            label: 'Make an Offer',
-            icon: Icons.local_offer_rounded,
-            onTap: () => _showBidSheet(d)),
+        alreadyBid
+            ? PremiumButton(
+                label: 'Offer Sent — Tap to Edit',
+                icon: Icons.check_circle_rounded,
+                colors: const [EzizaColors.kMuted, EzizaColors.kMuted],
+                onTap: () => _showBidSheet(d))
+            : PremiumButton(
+                label: 'Make an Offer',
+                icon: Icons.local_offer_rounded,
+                onTap: () => _showBidSheet(d)),
       ]),
     );
   }
