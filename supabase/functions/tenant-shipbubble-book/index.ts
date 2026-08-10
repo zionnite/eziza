@@ -47,7 +47,7 @@ serve(async (req) => {
     // to the tenant via their own eziza-partners dashboard.
     const { data: tenant } = await supabase.from('tenants').select('wallet_balance').eq('id', auth.tenantId).single()
     if (!tenant || Number(tenant.wallet_balance ?? 0) < Number(quote.total)) {
-      return json({ error: 'Instant Courier is temporarily unavailable for this store. Please choose a different delivery option.' }, 400)
+      return json({ error: 'This delivery option is temporarily unavailable. Please choose a different one.' }, 400)
     }
 
     const bookRes = await fetch(`${SHIPBUBBLE_BASE}/shipping/labels`, {

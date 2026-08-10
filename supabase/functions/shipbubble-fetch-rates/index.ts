@@ -24,7 +24,7 @@ function friendlyAddressError(role: 'sender' | 'receiver', name: string, body: R
   const raw = (body?.message ?? (Array.isArray(body?.errors) ? body.errors[0] : undefined) ?? '') as string
   const who = role === 'sender' ? 'Your name' : "The recipient's name"
   if (/full name/i.test(raw)) {
-    return `${who} on file ("${name}") looks incomplete -- the courier requires a full first and last name (e.g. "John Doe"). Please update it before using Instant Courier.`
+    return `${who} ("${name}") needs a full first and last name -- please update it and try again.`
   }
   if (/couldn't validate|clear and accurate address/i.test(raw)) {
     const which = role === 'sender' ? 'pickup' : 'delivery'
