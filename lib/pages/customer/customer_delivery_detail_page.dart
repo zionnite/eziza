@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../constants/colors.dart';
 import '../../services/ratings_service.dart';
@@ -2669,7 +2668,6 @@ class _CustomerDeliveryDetailPageState
   Widget _carrierBookingCard(Map<String, dynamic> booking) {
     final courierName = booking['courier_name'] as String? ?? 'Courier';
     final status = (booking['status'] as String? ?? 'pending').replaceAll('_', ' ');
-    final trackingUrl = booking['tracking_url'] as String?;
     final canCancel = !['completed', 'cancelled', 'in transit', 'picked up'].contains(status);
 
     return Column(
@@ -2691,20 +2689,6 @@ class _CustomerDeliveryDetailPageState
             ),
           ],
         ),
-        if (trackingUrl != null) ...[
-          const SizedBox(height: 10),
-          GestureDetector(
-            onTap: () => launchUrl(Uri.parse(trackingUrl), mode: LaunchMode.externalApplication),
-            child: const Row(
-              children: [
-                Icon(Icons.open_in_new_rounded, size: 14, color: EzizaColors.kPurpleD),
-                SizedBox(width: 6),
-                Text('Track shipment',
-                    style: TextStyle(fontSize: 13, color: EzizaColors.kPurpleD, fontWeight: FontWeight.w600)),
-              ],
-            ),
-          ),
-        ],
         if (canCancel) ...[
           const SizedBox(height: 12),
           SizedBox(
