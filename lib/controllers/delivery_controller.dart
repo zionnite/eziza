@@ -12,8 +12,9 @@ class DeliveryController extends GetxController {
   final loading          = false.obs;
   // Delivery ids this rider already has a pending offer on — job board uses
   // this to swap "Place Offer" for a sent-state instead of letting the rider
-  // think they haven't bid yet.
-  final myPendingBidDeliveryIds = <String>{}.obs;
+  // think they haven't bid yet. RxList (not RxSet) to match openDeliveries'
+  // proven-working Obx reactivity pattern.
+  final myPendingBidDeliveryIds = <String>[].obs;
 
   String? _riderId;
   RealtimeChannel? _channel;
@@ -85,8 +86,8 @@ class DeliveryController extends GetxController {
           .select('delivery_id')
           .eq('rider_id', _riderId!)
           .eq('status', 'pending');
-      myPendingBidDeliveryIds
-          .assignAll((rows as List).map((r) => r['delivery_id'] as String));
+      myPendingBidDeliveryIds.value =
+          (rows as List).map((r) => r['delivery_id'] as String).toList();
     } catch (_) {}
   }
 
