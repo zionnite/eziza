@@ -2669,6 +2669,10 @@ class _CustomerDeliveryDetailPageState
     final courierName = booking['courier_name'] as String? ?? 'Courier';
     final status = (booking['status'] as String? ?? 'pending').replaceAll('_', ' ');
     final canCancel = !['completed', 'cancelled', 'in transit', 'picked up'].contains(status);
+    final pickupEta = booking['pickup_eta'] as String?;
+    final deliveryEta = booking['delivery_eta'] as String?;
+    final serviceType = booking['service_type'] as String?;
+    final isDropoff = serviceType == 'dropoff';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2689,6 +2693,31 @@ class _CustomerDeliveryDetailPageState
             ),
           ],
         ),
+        if (serviceType != null) ...[
+          const SizedBox(height: 8),
+          Row(children: [
+            Icon(isDropoff ? Icons.storefront_rounded : Icons.two_wheeler_rounded,
+                size: 13, color: isDropoff ? EzizaColors.kGold : EzizaColors.kSuccess),
+            const SizedBox(width: 5),
+            Text(
+              isDropoff ? 'You need to drop this off at a station' : 'Rider will pick up from you',
+              style: TextStyle(
+                fontSize: 12, fontWeight: FontWeight.w600,
+                color: isDropoff ? EzizaColors.kGold : EzizaColors.kSuccess,
+              ),
+            ),
+          ]),
+        ],
+        if (pickupEta != null || deliveryEta != null) ...[
+          const SizedBox(height: 6),
+          Text(
+            [
+              if (pickupEta != null) 'Pickup: $pickupEta',
+              if (deliveryEta != null) 'Delivery: $deliveryEta',
+            ].join('  ·  '),
+            style: const TextStyle(fontSize: 12, color: EzizaColors.kMuted),
+          ),
+        ],
         if (canCancel) ...[
           const SizedBox(height: 12),
           SizedBox(
