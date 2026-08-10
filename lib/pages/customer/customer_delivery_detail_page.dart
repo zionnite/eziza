@@ -2627,7 +2627,7 @@ class _CustomerDeliveryDetailPageState
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        isDropoff ? 'Drop-off required' : 'Rider picks up',
+                        isDropoff ? 'Station Drop-off' : 'Rider picks up',
                         style: TextStyle(
                           fontSize: 9, fontWeight: FontWeight.w700,
                           color: isDropoff ? EzizaColors.kGold : EzizaColors.kSuccess,
