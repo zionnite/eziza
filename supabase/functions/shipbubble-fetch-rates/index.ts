@@ -185,6 +185,8 @@ serve(async (req) => {
       total:        c.total,
       currency:     c.currency,
       delivery_eta: c.delivery_eta,
+      pickup_eta:   c.pickup_eta,
+      service_type: c.service_type,
       raw_response: c,
       expires_at:   new Date(Date.now() + 20 * 60 * 1000).toISOString(),
     }))
@@ -192,7 +194,7 @@ serve(async (req) => {
     const { data: inserted, error: insertErr } = await serviceClient
       .from('external_carrier_quotes')
       .insert(rows)
-      .select('id, courier_id, courier_name, service_code, total, currency, delivery_eta')
+      .select('id, courier_id, courier_name, service_code, total, currency, delivery_eta, pickup_eta, service_type')
 
     if (insertErr) throw insertErr
 

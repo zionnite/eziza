@@ -2584,7 +2584,14 @@ class _CustomerDeliveryDetailPageState
   Widget _quoteCard(Map<String, dynamic> quote) {
     final courierName = quote['courier_name'] as String? ?? 'Courier';
     final total = (quote['total'] as num?)?.toDouble() ?? 0;
-    final eta = quote['delivery_eta'] as String?;
+    final deliveryEta = quote['delivery_eta'] as String?;
+    final pickupEta = quote['pickup_eta'] as String?;
+    // Shipbubble's own vocabulary: 'pickup' = the courier collects from the
+    // sender's location, 'dropoff' = the sender has to take it to a station
+    // themselves. Not every courier offers pickup -- shown per-quote so the
+    // customer isn't surprised after booking.
+    final serviceType = quote['service_type'] as String?;
+    final isDropoff = serviceType == 'dropoff';
 
     return Container(
       margin: const EdgeInsets.only(top: 10),
@@ -2600,12 +2607,42 @@ class _CustomerDeliveryDetailPageState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(courierName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                Row(children: [
+                  Expanded(
+                    child: Text(courierName,
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                        overflow: TextOverflow.ellipsis),
+                  ),
+                  if (serviceType != null) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: (isDropoff ? EzizaColors.kGold : EzizaColors.kSuccess).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        isDropoff ? 'Drop-off required' : 'Rider picks up',
+                        style: TextStyle(
+                          fontSize: 9, fontWeight: FontWeight.w700,
+                          color: isDropoff ? EzizaColors.kGold : EzizaColors.kSuccess,
+                        ),
+                      ),
+                    ),
+                  ],
+                ]),
                 const SizedBox(height: 2),
-                Text(
-                  eta != null ? '${formatNaira(total)} • $eta' : formatNaira(total),
-                  style: const TextStyle(fontSize: 12, color: EzizaColors.kMuted),
-                ),
+                Text(formatNaira(total), style: const TextStyle(fontSize: 12, color: EzizaColors.kMuted)),
+                if (pickupEta != null || deliveryEta != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    [
+                      if (pickupEta != null) 'Pickup: $pickupEta',
+                      if (deliveryEta != null) 'Delivery: $deliveryEta',
+                    ].join('  ·  '),
+                    style: const TextStyle(fontSize: 11, color: EzizaColors.kMuted),
+                  ),
+                ],
               ],
             ),
           ),
