@@ -47,9 +47,39 @@ serve(async (req) => {
   const reference = data.reference as string
   const amountKobo = data.amount as number
   const metadata = data.metadata ?? {}
-  const customerId = metadata.customer_id as string | undefined
   const purpose = metadata.purpose as string | undefined
 
+  // Tenant self-service top-up (eziza-partners → tenant-paystack-initialize).
+  // Same idempotency shape as the customer branch below — the unique index
+  // on tenant_wallet_transactions.reference makes a duplicate webhook
+  // delivery a no-op insert failure, not a double-credit. Clearing any
+  // pending manual "please credit me" flag here too, since a real payment
+  // just landed and that request is now moot.
+  if (purpose === 'tenant_topup') {
+    const tenantId = metadata.tenant_id as string | undefined
+    if (!tenantId) return json({ ok: true, reason: 'missing tenant_id' })
+
+    const { error } = await supabase.from('tenant_wallet_transactions').insert({
+      tenant_id: tenantId,
+      amount: amountKobo / 100,
+      type: 'credit',
+      description: 'Wallet top-up via Paystack',
+      reference,
+    })
+
+    if (error && !error.message.includes('duplicate key')) {
+      return json({ error: error.message }, 500)
+    }
+
+    await supabase
+      .from('tenants')
+      .update({ topup_requested_at: null, topup_requested_amount: null })
+      .eq('id', tenantId)
+
+    return json({ ok: true })
+  }
+
+  const customerId = metadata.customer_id as string | undefined
   if (purpose !== 'wallet_topup' || !customerId) {
     return json({ ok: true, reason: 'not a wallet top-up' })
   }
