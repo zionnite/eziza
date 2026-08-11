@@ -71,9 +71,20 @@ serve(async (req) => {
       return json({ error: error.message }, 500)
     }
 
+    // Paystack marks an authorization "reusable" when it's safe to charge
+    // again without the customer present (card payments typically qualify,
+    // bank-transfer/USSD generally don't) — saving it here is what lets a
+    // tenant's own top-up quietly enable auto-recharge later, with no
+    // separate "save my card" step of its own.
+    const authorization = data.authorization as { authorization_code?: string; reusable?: boolean } | undefined
+    const tenantUpdate: Record<string, unknown> = { topup_requested_at: null, topup_requested_amount: null }
+    if (authorization?.reusable && authorization.authorization_code) {
+      tenantUpdate.paystack_authorization_code = authorization.authorization_code
+    }
+
     await supabase
       .from('tenants')
-      .update({ topup_requested_at: null, topup_requested_amount: null })
+      .update(tenantUpdate)
       .eq('id', tenantId)
 
     return json({ ok: true })
