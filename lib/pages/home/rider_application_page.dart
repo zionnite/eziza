@@ -374,6 +374,13 @@ class _RiderApplicationPageState extends State<RiderApplicationPage>
             opacity: anim,
             child: child,
           ),
+          layoutBuilder: (currentChild, previousChildren) => Stack(
+            alignment: Alignment.topCenter,
+            children: [
+              ...previousChildren,
+              ?currentChild,
+            ],
+          ),
           child: KeyedSubtree(
             key: ValueKey(_step),
             child: SingleChildScrollView(
@@ -735,14 +742,16 @@ class _RiderApplicationPageState extends State<RiderApplicationPage>
         else
           DropdownButtonFormField<Bank>(
             initialValue: _selectedBank,
+            isExpanded: true,
             decoration: _inputDec('Bank Name',
                 prefixIcon: const Icon(Icons.account_balance_outlined,
                     color: EzizaColors.kMuted)),
             hint: const Text('Select your bank',
                 style: TextStyle(color: EzizaColors.kMuted)),
             items: _banks
-                .map((b) =>
-                    DropdownMenuItem(value: b, child: Text(b.name)))
+                .map((b) => DropdownMenuItem(
+                    value: b,
+                    child: Text(b.name, overflow: TextOverflow.ellipsis)))
                 .toList(),
             onChanged: (v) => setState(() => _selectedBank = v),
             validator: (v) => v == null ? 'Required' : null,
