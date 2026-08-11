@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { cors, json } from '../_shared/cors.ts'
+import { getPlatformFeePct, applyCommission } from '../_shared/commission.ts'
 
 // ── Customer requests external-carrier quotes for one of their own open
 // deliveries. Mirrors Shipbubble's real flow: address/validate (sender +
@@ -175,21 +176,28 @@ serve(async (req) => {
     // already used for OTPs on a resend.
     await serviceClient.from('external_carrier_quotes').delete().eq('delivery_id', delivery_id)
 
-    const rows = couriers.map((c) => ({
-      delivery_id,
-      customer_id:  user.id,
-      courier_id:   String(c.courier_id),
-      courier_name: c.courier_name,
-      service_code: c.service_code,
-      request_token: requestToken,
-      total:        c.total,
-      currency:     c.currency,
-      delivery_eta: c.delivery_eta,
-      pickup_eta:   c.pickup_eta,
-      service_type: c.service_type,
-      raw_response: c,
-      expires_at:   new Date(Date.now() + 20 * 60 * 1000).toISOString(),
-    }))
+    const feePct = await getPlatformFeePct(serviceClient)
+    const rows = couriers.map((c) => {
+      const carrierCost = Number(c.total)
+      const { total, commission } = applyCommission(carrierCost, feePct)
+      return {
+        delivery_id,
+        customer_id:  user.id,
+        courier_id:   String(c.courier_id),
+        courier_name: c.courier_name,
+        service_code: c.service_code,
+        request_token: requestToken,
+        total,
+        carrier_cost: carrierCost,
+        commission_amount: commission,
+        currency:     c.currency,
+        delivery_eta: c.delivery_eta,
+        pickup_eta:   c.pickup_eta,
+        service_type: c.service_type,
+        raw_response: c,
+        expires_at:   new Date(Date.now() + 20 * 60 * 1000).toISOString(),
+      }
+    })
 
     const { data: inserted, error: insertErr } = await serviceClient
       .from('external_carrier_quotes')

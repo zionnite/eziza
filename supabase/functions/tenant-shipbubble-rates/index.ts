@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { validateApiKey } from '../_shared/auth.ts'
 import { cors, json } from '../_shared/cors.ts'
+import { getPlatformFeePct, applyCommission } from '../_shared/commission.ts'
 
 // ── Tenant-authenticated twin of shipbubble-fetch-rates. Package details
 // (category/weight/dimension) are read off the delivery row itself, set
@@ -148,21 +149,28 @@ serve(async (req) => {
 
     await supabase.from('external_carrier_quotes').delete().eq('delivery_id', delivery_id)
 
-    const rows = couriers.map((c) => ({
-      delivery_id,
-      tenant_id:    auth.tenantId,
-      courier_id:   String(c.courier_id),
-      courier_name: c.courier_name,
-      service_code: c.service_code,
-      request_token: requestToken,
-      total:        c.total,
-      currency:     c.currency,
-      delivery_eta: c.delivery_eta,
-      pickup_eta:   c.pickup_eta,
-      service_type: c.service_type,
-      raw_response: c,
-      expires_at:   new Date(Date.now() + 20 * 60 * 1000).toISOString(),
-    }))
+    const feePct = await getPlatformFeePct(supabase)
+    const rows = couriers.map((c) => {
+      const carrierCost = Number(c.total)
+      const { total, commission } = applyCommission(carrierCost, feePct)
+      return {
+        delivery_id,
+        tenant_id:    auth.tenantId,
+        courier_id:   String(c.courier_id),
+        courier_name: c.courier_name,
+        service_code: c.service_code,
+        request_token: requestToken,
+        total,
+        carrier_cost: carrierCost,
+        commission_amount: commission,
+        currency:     c.currency,
+        delivery_eta: c.delivery_eta,
+        pickup_eta:   c.pickup_eta,
+        service_type: c.service_type,
+        raw_response: c,
+        expires_at:   new Date(Date.now() + 20 * 60 * 1000).toISOString(),
+      }
+    })
 
     const { data: inserted, error: insertErr } = await supabase
       .from('external_carrier_quotes')
