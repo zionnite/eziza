@@ -29,7 +29,22 @@ class SupabaseService {
     }
   }
 
-  static Future<void> signOut() => _client.auth.signOut();
+  static Future<void> signOut() async {
+    // Must run before auth.signOut() -- gotrue clears currentUser and fires
+    // AuthChangeEvent.signedOut only after the local session is already
+    // gone, so any cleanup reacting to that event would see a null
+    // currentUser and silently no-op. There was previously no cleanup here
+    // at all, so a signed-out device kept its device_tokens row (and kept
+    // receiving that user's push notifications) until a different device
+    // logged into the same account and overwrote it.
+    final userId = currentUser?.id;
+    if (userId != null) {
+      try {
+        await _client.from('device_tokens').delete().eq('auth_user_id', userId);
+      } catch (_) {}
+    }
+    await _client.auth.signOut();
+  }
 
   // ── Simple registration (auth user only, no rider row) ─────────
   static Future<String> registerUser({
