@@ -84,10 +84,16 @@ serve(async (req) => {
     if (delivery.tenant_id !== auth.tenantId) return json({ error: 'Not authorized for this delivery' }, 403)
     if (delivery.status !== 'open') return json({ error: 'Delivery is not open' }, 409)
 
+    // The full message (field names, "call create-delivery") is meant for
+    // ZeeFashion's own logs/devs, not a buyer -- it was reaching customers
+    // verbatim as "Could Not Load Quotes" on track_order.dart, confirmed
+    // live 2026-08-11. ZeeFashion now hides the "Choose a Delivery Partner"
+    // option outright when it knows package details are missing
+    // (has_package_details), so this is now defense-in-depth for any
+    // delivery created before that fix, or a race between the two.
     if (!delivery.package_category_id || !delivery.package_weight_kg || !delivery.package_dimension) {
       return json({
-        error: 'This delivery has no package details on file — pass package_category_id, ' +
-          'package_weight_kg, and package_dimension when calling create-delivery to enable External Carriers.',
+        error: 'Delivery-partner options aren’t available for this order.',
       }, 400)
     }
 

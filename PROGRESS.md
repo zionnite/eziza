@@ -826,6 +826,14 @@ ZeeFashion customers viewing offers from Eziza-routed internal riders/companies 
 - [x] `dispatch-bid-webhook/index.ts`: looks up `riders.full_name` or `companies.name` for the bid and includes it as `bid.bidder_name` in the relayed payload. Deployed to `nvwpsccleewgirlwokys`.
 - [x] ZeeFashion side: `eziza_delivery_bids.bidder_name` column added, `logistics-gateway`'s `bid.placed` handler stores it, `track_order.dart` displays it (falling back to the generic label only when absent). Same fix applied to ZeeFashion's own internal (non-Eziza) bid list, which had the identical bug for the same reason — see ZeeFashion's own PROGRESS.md.
 
+## tenant-shipbubble-rates raw error reaching ZeeFashion customers — FIXED 2026-08-11
+
+Reported live: ZeeFashion customers tapping to get a Shipbubble quote saw the internal, developer-facing message "This delivery has no package details on file — pass package_category_id, package_weight_kg, and package_dimension when calling create-delivery to enable External Carriers" verbatim as their error dialog.
+
+- [x] Root fix is on ZeeFashion's side (`delivery_requests.has_package_details`, set at `request_delivery` time, gates the "Choose a Delivery Partner" UI outright) — see ZeeFashion's own PROGRESS.md.
+- [x] `tenant-shipbubble-rates/index.ts`: this file's own missing-package-details check now returns "Delivery-partner options aren't available for this order." instead of the field-name message, as defense-in-depth for any delivery created before ZeeFashion's fix. Redeployed with `--no-verify-jwt` (required — caught via the standard garbage-auth check, same gotcha as before).
+- [x] Confirmed live against two real open deliveries: #280 (has real package details on file) still returns real Shipbubble quotes; #281 (genuinely has none) now returns the friendly message instead of the raw one.
+
 ## Tracking Code Format
 - 6 uppercase alphanumeric chars
 - Character set: `ABCDEFGHJKMNPQRSTUVWXYZ23456789` (no O, 0, I, 1, L)
