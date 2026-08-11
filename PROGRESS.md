@@ -819,6 +819,13 @@ Sendchamp joined Termii on the same wall (SMS licensing/KYC neither could clear)
 - [x] `flutter analyze` clean on both edited files.
 - [x] **Live-verified end-to-end against the real deployed function** with a throwaway rider (real auth user + `riders` row) and two throwaway deliveries: confirmed a delivery's code exists from the moment it's inserted (checked inside a rolled-back transaction, before any status change); confirmed RLS directly via role/JWT impersonation — the real sender sees the code, an unrelated authenticated user and `anon` both get zero rows; called the live `confirm-delivery-otp` with a wrong code (correct "N attempts left" error), then the right code (`{"ok":true}`, delivery flipped to `confirmed`, re-verify correctly rejected as "already confirmed"); separately drove a second throwaway delivery through 3 wrong attempts and confirmed the lockout message with a live countdown. **Found and cleaned up one real side effect while tearing down**: the confirmed throwaway delivery had triggered a genuine `earnings_ledger` row (₦0, since no `agreed_price` was ever set on it) — same "`confirmed` is the one status transition with side effects beyond the row itself" lesson noted earlier in this file. Deleted the ledger row before the delivery/rider/auth user, all four confirmed gone afterward.
 
+## Bidder name missing on tenant bid webhooks — FIXED 2026-08-11
+
+ZeeFashion customers viewing offers from Eziza-routed internal riders/companies saw only the literal string "Rider" or "Company" for every bid, never the actual name (e.g. "bigZee, Singapore" or "Joons-me Consulting Agency Ltd") — `dispatch-bid-webhook`'s `bid.placed` payload only ever carried `bidder_type` + the raw `rider_id`/`company_id`, no name.
+
+- [x] `dispatch-bid-webhook/index.ts`: looks up `riders.full_name` or `companies.name` for the bid and includes it as `bid.bidder_name` in the relayed payload. Deployed to `nvwpsccleewgirlwokys`.
+- [x] ZeeFashion side: `eziza_delivery_bids.bidder_name` column added, `logistics-gateway`'s `bid.placed` handler stores it, `track_order.dart` displays it (falling back to the generic label only when absent). Same fix applied to ZeeFashion's own internal (non-Eziza) bid list, which had the identical bug for the same reason — see ZeeFashion's own PROGRESS.md.
+
 ## Tracking Code Format
 - 6 uppercase alphanumeric chars
 - Character set: `ABCDEFGHJKMNPQRSTUVWXYZ23456789` (no O, 0, I, 1, L)

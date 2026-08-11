@@ -57,6 +57,19 @@ serve(async (req) => {
 
     if (!tenant?.webhook_url || !tenant.is_active) return json({ ok: true })
 
+    // The tenant's own buyer sees this name directly (e.g. ZeeFashion's
+    // track_order.dart bid list) — without it, every offer was previously
+    // shown as the literal string "Rider" or "Company" with no way to tell
+    // bidders apart. Confirmed live 2026-08-11.
+    let bidderName: string | null = null
+    if (record.rider_id) {
+      const { data: rider } = await supabase.from('riders').select('full_name').eq('id', record.rider_id).maybeSingle()
+      bidderName = rider?.full_name ?? null
+    } else if (record.company_id) {
+      const { data: company } = await supabase.from('companies').select('name').eq('id', record.company_id).maybeSingle()
+      bidderName = company?.name ?? null
+    }
+
     const payload = JSON.stringify({
       event:             'bid.placed',
       delivery_id:       deliveryId,
@@ -64,6 +77,7 @@ serve(async (req) => {
       bid: {
         id:          bidId,
         bidder_type: record.rider_id ? 'rider' : 'company',
+        bidder_name: bidderName,
         rider_id:    record.rider_id   ?? null,
         company_id:  record.company_id ?? null,
         amount:      record.amount,
