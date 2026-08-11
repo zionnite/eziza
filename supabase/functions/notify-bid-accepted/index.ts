@@ -57,7 +57,7 @@ serve(async (req) => {
 
     const amountStr = amount ? ` of ₦${Math.round(amount).toLocaleString()}` : ''
 
-    await fetch(notifyUrl, {
+    const res = await fetch(notifyUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: authHeader },
       body: JSON.stringify({
@@ -72,7 +72,13 @@ serve(async (req) => {
       }),
     })
 
-    return json({ ok: true })
+    // send-notification itself can 200 with {reason:'no_token'} (already
+    // ruled out above) or fail against FCM (stale token, bad creds) -- swallowing
+    // that here made every real send failure look identical to "sent fine",
+    // same silent-failure class as logistics-gateway's old _notify() bug on
+    // the ZeeFashion side.
+    const fcmResult = await res.json().catch(() => null)
+    return json({ ok: res.ok, fcm_status: res.status, fcm: fcmResult })
   } catch (err) {
     return json({ error: (err as Error).message }, 500)
   }

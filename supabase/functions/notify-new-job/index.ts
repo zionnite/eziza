@@ -50,12 +50,20 @@ serve(async (req) => {
     const notifyUrl  = `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-notification`
     const authHeader = `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
 
-    const push = (userId: string, title: string, body: string, data: Record<string, string>) =>
-      fetch(notifyUrl, {
+    // send-notification returns 200/{ok:true} both when it genuinely sent a
+    // push AND when it silently no-op'd on a missing token ({reason:'no_token'})
+    // -- checking res.ok alone (as this used to) counts the second case as a
+    // real send, which is exactly how "riders:2" showed up in logs for
+    // deliveries where neither matched rider actually had a device token.
+    const push = async (userId: string, title: string, body: string, data: Record<string, string>) => {
+      const res = await fetch(notifyUrl, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json', Authorization: authHeader },
         body:    JSON.stringify({ user_id: userId, title, body, data }),
       })
+      const result = await res.json().catch(() => null)
+      return { delivered: res.ok && !result?.reason, result }
+    }
 
     // ── 1. Riders ─────────────────────────────────────────────────────────────
     const { data: riders } = await supabase
@@ -75,6 +83,11 @@ serve(async (req) => {
     )
 
     let ridersSent = 0
+    let ridersMatchedNoToken = 0
+    const countRider = (r: { delivered: boolean; result: { reason?: string } | null }) => {
+      if (r.delivered) ridersSent++
+      else if (r.result?.reason === 'no_token') ridersMatchedNoToken++
+    }
     const riderJobs = (riders ?? []).map((r) => {
       const coverage: string[] = r.coverage_states ?? []
 
@@ -85,7 +98,7 @@ serve(async (req) => {
           '📦 New Job Available',
           `Pickup: ${short}`,
           { type: 'new_job', delivery_id: deliveryId },
-        ).then((res) => { if (res.ok) ridersSent++ })
+        ).then(countRider)
       }
 
       // ── Condition 2: GPS radius match ──────────────────────────────────────
@@ -101,7 +114,7 @@ serve(async (req) => {
         '📦 New Job Available',
         `Pickup: ${short}`,
         { type: 'new_job', delivery_id: deliveryId },
-      ).then((res) => { if (res.ok) ridersSent++ })
+      ).then(countRider)
     })
 
     // ── 2. Companies ──────────────────────────────────────────────────────────
@@ -114,6 +127,7 @@ serve(async (req) => {
       .not('auth_user_id', 'is', null)
 
     let companiesSent = 0
+    let companiesMatchedNoToken = 0
     const companyJobs = (companies ?? []).map((c) => {
       const companyState = (c.state as string | null)?.trim().toLowerCase()
 
@@ -127,12 +141,21 @@ serve(async (req) => {
         '📦 New Delivery Request',
         `Pickup: ${short}`,
         { type: 'new_job', delivery_id: deliveryId },
-      ).then((res) => { if (res.ok) companiesSent++ })
+      ).then((r) => {
+        if (r.delivered) companiesSent++
+        else if (r.result?.reason === 'no_token') companiesMatchedNoToken++
+      })
     })
 
     await Promise.allSettled([...riderJobs, ...companyJobs])
 
-    return json({ ok: true, riders: ridersSent, companies: companiesSent })
+    return json({
+      ok: true,
+      riders: ridersSent,
+      companies: companiesSent,
+      riders_matched_no_token: ridersMatchedNoToken,
+      companies_matched_no_token: companiesMatchedNoToken,
+    })
   } catch (err) {
     return json({ error: (err as Error).message }, 500)
   }
